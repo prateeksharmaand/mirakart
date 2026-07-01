@@ -21,6 +21,11 @@ const SOFT_DELETE_TABLES = new Set([
 ]);
 
 export const softDeleteMiddleware: Prisma.Middleware = async (params, next) => {
+  // Guard: ensure model exists (can be undefined in some Prisma operations)
+  if (!params.model) {
+    return next(params);
+  }
+
   // Only apply to read operations: findUnique, findFirst, findMany, count
   if (["findUnique", "findFirst", "findMany", "count"].includes(params.action)) {
     // Check if this model supports soft deletes
