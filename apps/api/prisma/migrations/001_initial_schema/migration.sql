@@ -1,24 +1,24 @@
 -- Create enums
-CREATE TYPE admin_status AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED');
-CREATE TYPE permission_action AS ENUM ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'REJECT', 'EXPORT');
-CREATE TYPE merchant_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED');
-CREATE TYPE merchant_document_type AS ENUM ('BUSINESS_LICENSE', 'TAX_CERTIFICATE', 'ID_PROOF', 'BANK_DETAILS', 'OTHER');
-CREATE TYPE merchant_document_status AS ENUM ('PENDING', 'VERIFIED', 'REJECTED');
-CREATE TYPE customer_status AS ENUM ('ACTIVE', 'INACTIVE', 'BLOCKED');
-CREATE TYPE address_type AS ENUM ('SHIPPING', 'BILLING', 'BOTH');
-CREATE TYPE product_status AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ARCHIVED');
-CREATE TYPE attribute_type AS ENUM ('SELECT', 'COLOR', 'TEXT');
-CREATE TYPE order_status AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED');
-CREATE TYPE order_item_status AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED');
-CREATE TYPE payment_method AS ENUM ('CARD', 'UPI', 'NETBANKING', 'WALLET', 'COD');
-CREATE TYPE payment_status AS ENUM ('PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED');
-CREATE TYPE return_status AS ENUM ('REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'AWAITING_SHIPMENT', 'ITEM_RECEIVED', 'COMPLETED', 'CANCELLED');
-CREATE TYPE actor_type AS ENUM ('ADMIN', 'MERCHANT', 'CUSTOMER', 'SYSTEM');
-CREATE TYPE notification_recipient_type AS ENUM ('CUSTOMER', 'MERCHANT', 'ADMIN');
-CREATE TYPE banner_position AS ENUM ('HOME_HERO', 'HOME_SECONDARY', 'CATEGORY_TOP', 'STOREFRONT_TOP');
+CREATE TYPE IF NOT EXISTSIF NOT EXISTS admin_status AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED');
+CREATE TYPE IF NOT EXISTSIF NOT EXISTS permission_action AS ENUM ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'REJECT', 'EXPORT');
+CREATE TYPE IF NOT EXISTSIF NOT EXISTS merchant_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED');
+CREATE TYPE IF NOT EXISTSmerchant_document_type AS ENUM ('BUSINESS_LICENSE', 'TAX_CERTIFICATE', 'ID_PROOF', 'BANK_DETAILS', 'OTHER');
+CREATE TYPE IF NOT EXISTSmerchant_document_status AS ENUM ('PENDING', 'VERIFIED', 'REJECTED');
+CREATE TYPE IF NOT EXISTScustomer_status AS ENUM ('ACTIVE', 'INACTIVE', 'BLOCKED');
+CREATE TYPE IF NOT EXISTSaddress_type AS ENUM ('SHIPPING', 'BILLING', 'BOTH');
+CREATE TYPE IF NOT EXISTSproduct_status AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ARCHIVED');
+CREATE TYPE IF NOT EXISTSattribute_type AS ENUM ('SELECT', 'COLOR', 'TEXT');
+CREATE TYPE IF NOT EXISTSorder_status AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED');
+CREATE TYPE IF NOT EXISTSorder_item_status AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED');
+CREATE TYPE IF NOT EXISTSpayment_method AS ENUM ('CARD', 'UPI', 'NETBANKING', 'WALLET', 'COD');
+CREATE TYPE IF NOT EXISTSpayment_status AS ENUM ('PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED');
+CREATE TYPE IF NOT EXISTSreturn_status AS ENUM ('REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'AWAITING_SHIPMENT', 'ITEM_RECEIVED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE IF NOT EXISTSactor_type AS ENUM ('ADMIN', 'MERCHANT', 'CUSTOMER', 'SYSTEM');
+CREATE TYPE IF NOT EXISTSnotification_recipient_type AS ENUM ('CUSTOMER', 'MERCHANT', 'ADMIN');
+CREATE TYPE IF NOT EXISTSbanner_position AS ENUM ('HOME_HERO', 'HOME_SECONDARY', 'CATEGORY_TOP', 'STOREFRONT_TOP');
 
 -- Admin Users
-CREATE TABLE admin_users (
+CREATE TABLE IF NOT EXISTSadmin_users (
   id VARCHAR(255) PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
@@ -33,10 +33,10 @@ CREATE TABLE admin_users (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_admin_users_status ON admin_users(status);
+CREATE INDEX IF NOT EXISTSidx_admin_users_status ON admin_users(status);
 
 -- Roles
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTSroles (
   id VARCHAR(255) PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
   description TEXT,
@@ -46,7 +46,7 @@ CREATE TABLE roles (
 );
 
 -- Permissions
-CREATE TABLE permissions (
+CREATE TABLE IF NOT EXISTSpermissions (
   id VARCHAR(255) PRIMARY KEY,
   code VARCHAR(255) NOT NULL UNIQUE,
   module VARCHAR(255) NOT NULL,
@@ -54,17 +54,17 @@ CREATE TABLE permissions (
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_permissions_module ON permissions(module);
+CREATE INDEX IF NOT EXISTSidx_permissions_module ON permissions(module);
 
 -- Role Permissions
-CREATE TABLE role_permissions (
+CREATE TABLE IF NOT EXISTSrole_permissions (
   role_id VARCHAR(255) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
   permission_id VARCHAR(255) NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
   PRIMARY KEY (role_id, permission_id)
 );
 
 -- Refresh Tokens
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTSrefresh_tokens (
   id VARCHAR(255) PRIMARY KEY,
   token_hash VARCHAR(255) NOT NULL UNIQUE,
   principal_type actor_type NOT NULL,
@@ -75,10 +75,10 @@ CREATE TABLE refresh_tokens (
   revoked_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_refresh_tokens_principal ON refresh_tokens(principal_type, principal_id);
+CREATE INDEX IF NOT EXISTSidx_refresh_tokens_principal ON refresh_tokens(principal_type, principal_id);
 
 -- Password Reset Tokens
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTSpassword_reset_tokens (
   id VARCHAR(255) PRIMARY KEY,
   token_hash VARCHAR(255) NOT NULL UNIQUE,
   principal_type actor_type NOT NULL,
@@ -87,10 +87,10 @@ CREATE TABLE password_reset_tokens (
   used_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_password_reset_tokens_principal ON password_reset_tokens(principal_type, principal_id);
+CREATE INDEX IF NOT EXISTSidx_password_reset_tokens_principal ON password_reset_tokens(principal_type, principal_id);
 
 -- Media
-CREATE TABLE media (
+CREATE TABLE IF NOT EXISTSmedia (
   id VARCHAR(255) PRIMARY KEY,
   bucket VARCHAR(255) NOT NULL,
   object_key VARCHAR(512) NOT NULL,
@@ -105,7 +105,7 @@ CREATE TABLE media (
 );
 
 -- Merchants
-CREATE TABLE merchants (
+CREATE TABLE IF NOT EXISTSmerchants (
   id VARCHAR(255) PRIMARY KEY,
   store_name VARCHAR(255) NOT NULL,
   store_slug VARCHAR(255) NOT NULL UNIQUE,
@@ -132,10 +132,10 @@ CREATE TABLE merchants (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_merchants_status ON merchants(status);
+CREATE INDEX IF NOT EXISTSidx_merchants_status ON merchants(status);
 
 -- Merchant Documents
-CREATE TABLE merchant_documents (
+CREATE TABLE IF NOT EXISTSmerchant_documents (
   id VARCHAR(255) PRIMARY KEY,
   merchant_id VARCHAR(255) NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
   type merchant_document_type NOT NULL,
@@ -143,10 +143,10 @@ CREATE TABLE merchant_documents (
   media_id VARCHAR(255) NOT NULL REFERENCES media(id),
   uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_merchant_documents_merchant_id ON merchant_documents(merchant_id);
+CREATE INDEX IF NOT EXISTSidx_merchant_documents_merchant_id ON merchant_documents(merchant_id);
 
 -- Customers
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTScustomers (
   id VARCHAR(255) PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
@@ -160,10 +160,10 @@ CREATE TABLE customers (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_customers_status ON customers(status);
+CREATE INDEX IF NOT EXISTSidx_customers_status ON customers(status);
 
 -- Addresses
-CREATE TABLE addresses (
+CREATE TABLE IF NOT EXISTSaddresses (
   id VARCHAR(255) PRIMARY KEY,
   customer_id VARCHAR(255) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
   label VARCHAR(255),
@@ -180,10 +180,10 @@ CREATE TABLE addresses (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_addresses_customer_id ON addresses(customer_id);
+CREATE INDEX IF NOT EXISTSidx_addresses_customer_id ON addresses(customer_id);
 
 -- Categories
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTScategories (
   id VARCHAR(255) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL UNIQUE,
@@ -197,10 +197,10 @@ CREATE TABLE categories (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_categories_parent_id ON categories(parent_id);
+CREATE INDEX IF NOT EXISTSidx_categories_parent_id ON categories(parent_id);
 
 -- Brands
-CREATE TABLE brands (
+CREATE TABLE IF NOT EXISTSbrands (
   id VARCHAR(255) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL UNIQUE,
@@ -213,7 +213,7 @@ CREATE TABLE brands (
 );
 
 -- Attributes
-CREATE TABLE attributes (
+CREATE TABLE IF NOT EXISTSattributes (
   id VARCHAR(255) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL UNIQUE,
@@ -223,7 +223,7 @@ CREATE TABLE attributes (
 );
 
 -- Attribute Values
-CREATE TABLE attribute_values (
+CREATE TABLE IF NOT EXISTSattribute_values (
   id VARCHAR(255) PRIMARY KEY,
   attribute_id VARCHAR(255) NOT NULL REFERENCES attributes(id) ON DELETE CASCADE,
   value VARCHAR(255) NOT NULL,
@@ -233,7 +233,7 @@ CREATE TABLE attribute_values (
 );
 
 -- Products
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTSproducts (
   id VARCHAR(255) PRIMARY KEY,
   merchant_id VARCHAR(255) NOT NULL REFERENCES merchants(id),
   category_id VARCHAR(255) NOT NULL REFERENCES categories(id),
@@ -257,19 +257,19 @@ CREATE TABLE products (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_products_merchant_id ON products(merchant_id);
-CREATE INDEX idx_products_category_id ON products(category_id);
-CREATE INDEX idx_products_status ON products(status);
+CREATE INDEX IF NOT EXISTSidx_products_merchant_id ON products(merchant_id);
+CREATE INDEX IF NOT EXISTSidx_products_category_id ON products(category_id);
+CREATE INDEX IF NOT EXISTSidx_products_status ON products(status);
 
 -- Product Attributes
-CREATE TABLE product_attributes (
+CREATE TABLE IF NOT EXISTSproduct_attributes (
   product_id VARCHAR(255) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   attribute_id VARCHAR(255) NOT NULL REFERENCES attributes(id) ON DELETE CASCADE,
   PRIMARY KEY (product_id, attribute_id)
 );
 
 -- Product Variants
-CREATE TABLE product_variants (
+CREATE TABLE IF NOT EXISTSproduct_variants (
   id VARCHAR(255) PRIMARY KEY,
   product_id VARCHAR(255) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   sku VARCHAR(100) NOT NULL UNIQUE,
@@ -282,17 +282,17 @@ CREATE TABLE product_variants (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_product_variants_product_id ON product_variants(product_id);
+CREATE INDEX IF NOT EXISTSidx_product_variants_product_id ON product_variants(product_id);
 
 -- Product Variant Attribute Values
-CREATE TABLE product_variant_attribute_values (
+CREATE TABLE IF NOT EXISTSproduct_variant_attribute_values (
   variant_id VARCHAR(255) NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
   attribute_value_id VARCHAR(255) NOT NULL REFERENCES attribute_values(id) ON DELETE CASCADE,
   PRIMARY KEY (variant_id, attribute_value_id)
 );
 
 -- Inventory
-CREATE TABLE inventory (
+CREATE TABLE IF NOT EXISTSinventory (
   id VARCHAR(255) PRIMARY KEY,
   variant_id VARCHAR(255) NOT NULL UNIQUE REFERENCES product_variants(id) ON DELETE CASCADE,
   quantity INT DEFAULT 0,
@@ -302,7 +302,7 @@ CREATE TABLE inventory (
 );
 
 -- Product Images
-CREATE TABLE product_images (
+CREATE TABLE IF NOT EXISTSproduct_images (
   id VARCHAR(255) PRIMARY KEY,
   product_id VARCHAR(255) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   variant_id VARCHAR(255) REFERENCES product_variants(id) ON DELETE CASCADE,
@@ -310,10 +310,10 @@ CREATE TABLE product_images (
   sort_order INT DEFAULT 0,
   is_primary BOOLEAN DEFAULT FALSE
 );
-CREATE INDEX idx_product_images_product_id ON product_images(product_id);
+CREATE INDEX IF NOT EXISTSidx_product_images_product_id ON product_images(product_id);
 
 -- Cart
-CREATE TABLE carts (
+CREATE TABLE IF NOT EXISTScarts (
   id VARCHAR(255) PRIMARY KEY,
   customer_id VARCHAR(255) NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -321,7 +321,7 @@ CREATE TABLE carts (
 );
 
 -- Cart Items
-CREATE TABLE cart_items (
+CREATE TABLE IF NOT EXISTScart_items (
   id VARCHAR(255) PRIMARY KEY,
   cart_id VARCHAR(255) NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
   variant_id VARCHAR(255) NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
@@ -333,7 +333,7 @@ CREATE TABLE cart_items (
 );
 
 -- Orders
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTSorders (
   id VARCHAR(255) PRIMARY KEY,
   order_number VARCHAR(255) NOT NULL UNIQUE,
   customer_id VARCHAR(255) NOT NULL REFERENCES customers(id),
@@ -351,11 +351,11 @@ CREATE TABLE orders (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP
 );
-CREATE INDEX idx_orders_customer_id ON orders(customer_id);
-CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTSidx_orders_customer_id ON orders(customer_id);
+CREATE INDEX IF NOT EXISTSidx_orders_status ON orders(status);
 
 -- Order Items
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTSorder_items (
   id VARCHAR(255) PRIMARY KEY,
   order_id VARCHAR(255) NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   merchant_id VARCHAR(255) NOT NULL REFERENCES merchants(id),
@@ -370,11 +370,11 @@ CREATE TABLE order_items (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_merchant_id ON order_items(merchant_id);
+CREATE INDEX IF NOT EXISTSidx_order_items_order_id ON order_items(order_id);
+CREATE INDEX IF NOT EXISTSidx_order_items_merchant_id ON order_items(merchant_id);
 
 -- Order Status History
-CREATE TABLE order_status_history (
+CREATE TABLE IF NOT EXISTSorder_status_history (
   id VARCHAR(255) PRIMARY KEY,
   order_id VARCHAR(255) NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   status order_status NOT NULL,
@@ -382,10 +382,10 @@ CREATE TABLE order_status_history (
   changed_by_id VARCHAR(255) REFERENCES admin_users(id),
   changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_order_status_history_order_id ON order_status_history(order_id);
+CREATE INDEX IF NOT EXISTSidx_order_status_history_order_id ON order_status_history(order_id);
 
 -- Payments
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTSpayments (
   id VARCHAR(255) PRIMARY KEY,
   order_id VARCHAR(255) NOT NULL UNIQUE REFERENCES orders(id),
   method payment_method NOT NULL,
@@ -400,7 +400,7 @@ CREATE TABLE payments (
 );
 
 -- Return Reasons
-CREATE TABLE return_reasons (
+CREATE TABLE IF NOT EXISTSreturn_reasons (
   id VARCHAR(255) PRIMARY KEY,
   label VARCHAR(255) NOT NULL UNIQUE,
   is_active BOOLEAN DEFAULT TRUE,
@@ -408,7 +408,7 @@ CREATE TABLE return_reasons (
 );
 
 -- Returns
-CREATE TABLE returns (
+CREATE TABLE IF NOT EXISTSreturns (
   id VARCHAR(255) PRIMARY KEY,
   return_number VARCHAR(255) NOT NULL UNIQUE,
   order_id VARCHAR(255) NOT NULL REFERENCES orders(id),
@@ -425,21 +425,21 @@ CREATE TABLE returns (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_returns_order_id ON returns(order_id);
-CREATE INDEX idx_returns_merchant_id ON returns(merchant_id);
-CREATE INDEX idx_returns_status ON returns(status);
+CREATE INDEX IF NOT EXISTSidx_returns_order_id ON returns(order_id);
+CREATE INDEX IF NOT EXISTSidx_returns_merchant_id ON returns(merchant_id);
+CREATE INDEX IF NOT EXISTSidx_returns_status ON returns(status);
 
 -- Return Images
-CREATE TABLE return_images (
+CREATE TABLE IF NOT EXISTSreturn_images (
   id VARCHAR(255) PRIMARY KEY,
   return_id VARCHAR(255) NOT NULL REFERENCES returns(id) ON DELETE CASCADE,
   media_id VARCHAR(255) NOT NULL REFERENCES media(id),
   sort_order INT DEFAULT 0
 );
-CREATE INDEX idx_return_images_return_id ON return_images(return_id);
+CREATE INDEX IF NOT EXISTSidx_return_images_return_id ON return_images(return_id);
 
 -- Return Status History
-CREATE TABLE return_status_history (
+CREATE TABLE IF NOT EXISTSreturn_status_history (
   id VARCHAR(255) PRIMARY KEY,
   return_id VARCHAR(255) NOT NULL REFERENCES returns(id) ON DELETE CASCADE,
   status return_status NOT NULL,
@@ -448,10 +448,10 @@ CREATE TABLE return_status_history (
   changed_by_id VARCHAR(255),
   changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_return_status_history_return_id ON return_status_history(return_id);
+CREATE INDEX IF NOT EXISTSidx_return_status_history_return_id ON return_status_history(return_id);
 
 -- Notifications
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTSnotifications (
   id VARCHAR(255) PRIMARY KEY,
   recipient_type notification_recipient_type NOT NULL,
   customer_id VARCHAR(255) REFERENCES customers(id) ON DELETE CASCADE,
@@ -465,12 +465,12 @@ CREATE TABLE notifications (
   read_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_notifications_customer ON notifications(recipient_type, customer_id);
-CREATE INDEX idx_notifications_merchant ON notifications(recipient_type, merchant_id);
-CREATE INDEX idx_notifications_admin ON notifications(recipient_type, admin_user_id);
+CREATE INDEX IF NOT EXISTSidx_notifications_customer ON notifications(recipient_type, customer_id);
+CREATE INDEX IF NOT EXISTSidx_notifications_merchant ON notifications(recipient_type, merchant_id);
+CREATE INDEX IF NOT EXISTSidx_notifications_admin ON notifications(recipient_type, admin_user_id);
 
 -- Device Tokens
-CREATE TABLE device_tokens (
+CREATE TABLE IF NOT EXISTSdevice_tokens (
   id VARCHAR(255) PRIMARY KEY,
   token VARCHAR(500) NOT NULL UNIQUE,
   principal_type actor_type NOT NULL,
@@ -479,10 +479,10 @@ CREATE TABLE device_tokens (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_device_tokens_principal ON device_tokens(principal_type, principal_id);
+CREATE INDEX IF NOT EXISTSidx_device_tokens_principal ON device_tokens(principal_type, principal_id);
 
 -- Settings
-CREATE TABLE settings (
+CREATE TABLE IF NOT EXISTSsettings (
   id VARCHAR(255) PRIMARY KEY,
   key VARCHAR(255) NOT NULL UNIQUE,
   value JSONB NOT NULL,
@@ -490,10 +490,10 @@ CREATE TABLE settings (
   updated_by_id VARCHAR(255) REFERENCES admin_users(id),
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_settings_group ON settings(group_name);
+CREATE INDEX IF NOT EXISTSidx_settings_group ON settings(group_name);
 
 -- Banners
-CREATE TABLE banners (
+CREATE TABLE IF NOT EXISTSbanners (
   id VARCHAR(255) PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   media_id VARCHAR(255) NOT NULL REFERENCES media(id),
@@ -506,10 +506,10 @@ CREATE TABLE banners (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_banners_position_active ON banners(position, is_active);
+CREATE INDEX IF NOT EXISTSidx_banners_position_active ON banners(position, is_active);
 
 -- Audit Log
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTSaudit_logs (
   id VARCHAR(255) PRIMARY KEY,
   actor_type actor_type NOT NULL,
   actor_id VARCHAR(255),
@@ -521,8 +521,8 @@ CREATE TABLE audit_logs (
   user_agent TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_logs_actor ON audit_logs(actor_type, actor_id);
+CREATE INDEX IF NOT EXISTSidx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTSidx_audit_logs_actor ON audit_logs(actor_type, actor_id);
 
 -- Add foreign key for admin_users.role_id
 ALTER TABLE admin_users ADD CONSTRAINT fk_admin_users_role_id FOREIGN KEY (role_id) REFERENCES roles(id);
