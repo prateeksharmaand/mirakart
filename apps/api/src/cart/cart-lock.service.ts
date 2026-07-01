@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { Redis } from "ioredis";
 
 /**
@@ -21,7 +21,7 @@ export interface CartLock {
 }
 
 @Injectable()
-export class CartLockService {
+export class CartLockService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CartLockService.name);
   private readonly redis: Redis;
   private readonly lockPrefix = "cart:lock:";
