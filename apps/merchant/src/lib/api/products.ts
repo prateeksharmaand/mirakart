@@ -4,7 +4,7 @@ export interface ProductVariant {
   id: string;
   sku: string;
   price: number;
-  comparePrice?: number | null;
+  compareAtPrice?: number | null;
   inventory?: { quantity: number } | null;
   attributeValues?: Array<{ attributeValue: { value: string; attribute: { name: string } } }>;
 }
@@ -15,8 +15,8 @@ export interface Product {
   slug: string;
   description?: string | null;
   status: string;
-  price: number;
-  comparePrice?: number | null;
+  basePrice: number;
+  compareAtPrice?: number | null;
   createdAt: string;
   category?: { id: string; name: string } | null;
   brand?: { id: string; name: string } | null;
@@ -37,14 +37,25 @@ export async function getMerchantProduct(id: string): Promise<Product> {
 export async function createProduct(data: {
   name: string;
   description?: string;
-  categoryId?: string;
+  categoryId: string;
   brandId?: string;
-  price: number;
-  comparePrice?: number;
-  variants: Array<{ sku: string; price: number; stock: number }>;
+  basePrice: number;
+  compareAtPrice?: number;
+  sku?: string;
+  status?: string;
 }): Promise<Product> {
   const res = await apiClient.post("/merchants/me/products", data);
   return res.data.data as Product;
+}
+
+export async function addVariant(productId: string, data: {
+  sku: string;
+  price: number;
+  compareAtPrice?: number;
+  attributeValueIds: string[];
+}): Promise<ProductVariant> {
+  const res = await apiClient.post(`/merchants/me/products/${productId}/variants`, data);
+  return res.data.data as ProductVariant;
 }
 
 export async function updateProduct(id: string, data: Partial<{
@@ -52,8 +63,8 @@ export async function updateProduct(id: string, data: Partial<{
   description: string;
   categoryId: string;
   brandId: string;
-  price: number;
-  comparePrice: number;
+  basePrice: number;
+  compareAtPrice: number;
   status: string;
 }>): Promise<Product> {
   const res = await apiClient.patch(`/merchants/me/products/${id}`, data);
@@ -64,6 +75,6 @@ export async function deleteProduct(id: string): Promise<void> {
   await apiClient.delete(`/merchants/me/products/${id}`);
 }
 
-export async function updateVariantStock(productId: string, variantId: string, quantity: number): Promise<void> {
+export async function updateVariantInventory(productId: string, variantId: string, quantity: number): Promise<void> {
   await apiClient.patch(`/merchants/me/products/${productId}/variants/${variantId}/inventory`, { quantity });
 }

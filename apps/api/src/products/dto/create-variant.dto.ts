@@ -28,9 +28,9 @@ export class CreateVariantDto {
   @Min(0)
   weight?: number;
 
-  @ApiProperty({ type: [String], description: "e.g. [sizeM.id, colorRed.id]" })
+  @ApiPropertyOptional({ type: [String], description: "e.g. [sizeM.id, colorRed.id]" })
+  @IsOptional()
   @IsArray()
-  @ArrayMinSize(1)
   @IsString({ each: true })
-  attributeValueIds!: string[];
+  attributeValueIds?: string[];
 }
