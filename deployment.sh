@@ -59,7 +59,7 @@ if [[ ! -f "$APP_DIR/.env" ]]; then
 fi
 info ".env present"
 
-# ── 3. Patch production URLs inside .env ──────────────────────────────────────
+# ── 4. Patch production URLs inside .env ──────────────────────────────────────
 step "Ensuring production URLs in .env..."
 # API URL
 if grep -q 'NEXT_PUBLIC_API_URL=http://localhost' "$APP_DIR/.env"; then
@@ -77,11 +77,10 @@ if grep -q 'NODE_ENV=development' "$APP_DIR/.env"; then
   info "NODE_ENV=production"
 fi
 
-# ── 4. SSL certificate ────────────────────────────────────────────────────────
+# ── 5. SSL certificate ────────────────────────────────────────────────────────
 step "Checking SSL certificate..."
 
 cert_exists() {
-  # Inspect the certbot-conf volume for the domain cert
   docker volume inspect "$VOL_CERTBOT_CONF" >/dev/null 2>&1 || return 1
   local mount
   mount=$(docker volume inspect "$VOL_CERTBOT_CONF" --format '{{ .Mountpoint }}')
@@ -91,60 +90,47 @@ cert_exists() {
 if cert_exists; then
   info "SSL cert found — skipping issuance"
 else
-  warn "No SSL cert found for $DOMAIN — starting first-time issuance."
+  warn "No SSL cert found — issuing certificate from Let's Encrypt (standalone mode)."
+  warn "Port 80 must be open and DNS A records must point to this server."
 
-  # Ensure volumes exist before we touch them
+  # Ensure the cert storage volume exists
   docker volume create "$VOL_CERTBOT_CONF" >/dev/null 2>&1 || true
-  docker volume create "$VOL_CERTBOT_WWW"  >/dev/null 2>&1 || true
 
-  # Create a temporary self-signed cert so nginx can start while we get the real one
-  step "Creating temporary self-signed cert (lets nginx start on port 443)..."
-  local_cert_mount=$(docker volume inspect "$VOL_CERTBOT_CONF" --format '{{ .Mountpoint }}')
-  mkdir -p "$local_cert_mount/live/$DOMAIN"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-    -keyout "$local_cert_mount/live/$DOMAIN/privkey.pem" \
-    -out    "$local_cert_mount/live/$DOMAIN/fullchain.pem" \
-    -subj   "/CN=$DOMAIN" 2>/dev/null
-  info "Temporary cert created"
+  # Stop any containers that might be holding port 80
+  $COMPOSE_CMD down 2>/dev/null || true
 
-  # Start nginx so it can serve the ACME HTTP-01 challenge on port 80
-  step "Starting nginx for HTTP challenge..."
-  $COMPOSE_CMD up -d nginx
-  sleep 5
+  # Certbot standalone: starts its own HTTP server on port 80, no nginx needed.
+  # Renewals (after first issue) are handled by the certbot sidecar in docker-compose.prod.yml
+  # using the webroot method through nginx.
+  step "Running Certbot (standalone) to issue SSL certificate..."
+  docker run --rm \
+    -p 80:80 \
+    -v "${VOL_CERTBOT_CONF}:/etc/letsencrypt" \
+    certbot/certbot certonly \
+      --standalone \
+      --email "$CERTBOT_EMAIL" \
+      --agree-tos \
+      --no-eff-email \
+      -d "$DOMAIN" \
+      -d "www.$DOMAIN" \
+      -d "admin.$DOMAIN" \
+      -d "seller.$DOMAIN" \
+      -d "api.$DOMAIN"
 
-  # Request the real cert from Let's Encrypt
-  step "Requesting certificate from Let's Encrypt..."
-  $COMPOSE_CMD run --rm \
-    --entrypoint /bin/sh certbot -c "
-      certbot certonly \
-        --webroot -w /var/www/certbot \
-        --email $CERTBOT_EMAIL \
-        --agree-tos --no-eff-email \
-        --force-renewal \
-        -d $DOMAIN \
-        -d www.$DOMAIN \
-        -d admin.$DOMAIN \
-        -d seller.$DOMAIN \
-        -d api.$DOMAIN
-    "
-  info "Real SSL certificate issued"
-
-  # Reload nginx so it picks up the real cert
-  $COMPOSE_CMD exec -T nginx nginx -s reload
-  info "Nginx reloaded with real cert"
+  info "SSL certificate issued for $DOMAIN and all subdomains"
 fi
 
-# ── 5. Build Docker images ────────────────────────────────────────────────────
+# ── 6. Build Docker images ────────────────────────────────────────────────────
 step "Building Docker images (this may take several minutes on first run)..."
 $COMPOSE_CMD build --parallel
 info "Images built"
 
-# ── 6. Start / recreate all services ─────────────────────────────────────────
+# ── 7. Start / recreate all services ─────────────────────────────────────────
 step "Starting all services..."
 $COMPOSE_CMD up -d --remove-orphans
 info "Services started"
 
-# ── 7. Wait for API health ────────────────────────────────────────────────────
+# ── 8. Wait for API health ────────────────────────────────────────────────────
 step "Waiting for API to become healthy..."
 ATTEMPTS=0
 MAX=36  # 36 × 5s = 3 minutes
@@ -162,12 +148,12 @@ done
 echo ""
 info "API is healthy"
 
-# ── 8. Database migrations ────────────────────────────────────────────────────
+# ── 9. Database migrations ────────────────────────────────────────────────────
 step "Running database migrations..."
 $COMPOSE_CMD exec -T api pnpm --filter @mirakart/api db:migrate
 info "Migrations applied"
 
-# ── 9. Nginx config test + reload ────────────────────────────────────────────
+# ── 10. Nginx config test + reload ───────────────────────────────────────────
 step "Testing and reloading nginx..."
 $COMPOSE_CMD exec -T nginx nginx -t
 $COMPOSE_CMD exec -T nginx nginx -s reload
