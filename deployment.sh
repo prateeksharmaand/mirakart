@@ -150,7 +150,7 @@ info "API is healthy"
 
 # ── 9. Database migrations ────────────────────────────────────────────────────
 step "Running database migrations..."
-$COMPOSE_CMD exec -T -u root api pnpm --filter @mirakart/api db:migrate
+$COMPOSE_CMD exec -T -u root api sh -c "cd /app/apps/api && npx prisma migrate deploy --skip-generate"
 info "Migrations applied"
 
 # ── 10. Nginx config test + reload ───────────────────────────────────────────
