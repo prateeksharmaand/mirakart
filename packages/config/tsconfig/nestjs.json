@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true
+  }
+  // outDir is intentionally NOT set here: relative paths in a base tsconfig
+  // resolve relative to the base file itself, not the consuming project, so
+  // a shared "./dist" would scatter every consumer's build output into
+  // packages/config/tsconfig/dist. Each consumer must set its own outDir.
+}

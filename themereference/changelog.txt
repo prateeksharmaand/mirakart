@@ -1,0 +1,292 @@
+v1.5.3
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.5.2
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.5.1
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.5.0
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.4.9
+-- Updated: Language file.
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.4.8
+-- Updated: Load More - Infinity Scroll pagination.
+-- Updated: Clotya Core plugin.
+
+v1.4.7
+-- Added: Social Login/Register with Google.
+-- Added: Social Login/Register with Facebook.
+-- Added: "Extra Tab" option in product page.
+-- Added: Lowest price in the latest 30 days.
+-- Updated: Clotya Core plugin.
+
+v1.4.6
+-- Added: KLB AI integration to generate product descriptions using OpenAI.
+-- Added: KLB AI integration to generate product short descriptions using OpenAI.
+-- Added: "Generate Full Description (AI)" and "Generate Short Description (AI)" buttons to WooCommerce product edit page.
+-- Added: Brands A-Z list.
+-- Added: Searcy by product tags.
+-- Added: Ajax Search with Variable SKU.
+-- Updated: Clotya Core plugin.
+
+v1.4.5
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.4.4
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.4.3
+-- Updated: Elementor Product Categories widget.
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.4.2
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.4.1
+-- Added: Product Categories Widget on Category Page.
+-- Updated: Product Categories widget.
+-- Updated: WooCommerce Brands Widget.
+-- Fixed: Mobile Menu double click issue.
+-- Updated: Clotya Core plugin.
+
+v1.4.0
+-- Added: Current year tag for copyright.
+-- Fixed: Product Tab Carousel widget.
+-- Updated: Language file.
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.3.9
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.3.8
+-- Added: Search for Mobile Header.
+-- Added: Side Cart.
+-- Added: Login Popup.
+-- Added: SKU for the product box.
+-- Added: Attributes for the product Box.
+-- Added: Variations on Product Archive.
+-- Added: Column option for Cross Sells Products.
+-- Added: Column option for Cross Upsell Products.
+-- Added: Product Detail Low Stock Notification.
+-- Added: Product Detail Shipping Class Notification.
+-- Added: Product Detail Vertical Tab.
+-- Added: Product Detail Accordion Tab.
+-- Added: Product Detail Accordion Tab in Content.
+-- Added: Product Detail How many people have added a product in their cart.
+-- Added: Blog Grid Layout.
+-- Added: Single Gallery 1 Column.
+-- Added: Single Gallery 2 Columns.
+-- Added: Single Gallery Carousel 2 Columns.
+-- Added: Single Sticky Titles.
+-- Added: Single Sticky Add to Cart.
+-- Added: Product Comments by stars.
+-- Added: Mini Cart Color Settings.
+-- Added: Product Detail Color Settings.
+-- Added: Mega Menu by Elementor template.
+-- Added: Typography Settings.
+-- Added: Maintenance Mode.
+-- Updated: Wishlist.
+-- Updated: Compare.
+-- Added: Back to Top.
+-- Added: 404 Page template option.
+-- Updated : The language file.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.3.7
+-- Updated: Clotya Core plugin.
+
+v1.3.6
+-- Updated: Clotya Core language file.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.3.5
+-- Fixed: Elementor v3.26.0 issue.
+
+v1.3.4
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.3.3
+-- Added: KLB Wishlist shortcode. [klbwl_list]
+-- Updated: Wishlist plugin removed.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.3.2
+-- Updated: Customizer X button.
+-- Updated: File version.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.3.1
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.3.0
+-- Fixed: PHP 8.2 and PHP 8.3 deprecations.
+-- Updated: Load More pagination.
+-- Updated: Infinity Scroll pagination.
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+-- Updated: Envato Market plugin.
+
+v1.2.9
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.2.8
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.2.7
+-- Fixed: Customizer PHP error.
+-- Fixed: PHP 8.2 and PHP 8.3 deprecations.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+
+v1.2.6
+-- Fixed: Mini Cart scroll.
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.2.5
+-- Fixed: Registration Conflict.
+
+v1.2.4
+-- Updated: KlbTheme Register page.
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.2.3
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.2.2
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+-- Updated: Envato Market plugin.
+
+v1.2.1
+-- Fixed: Single Product with video.
+-- Fixed: Sigle Product zoom.
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.2.0
+-- Fixed: Product Gallery.
+-- Updated: WooCommerce.
+
+v1.1.9
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.1.8
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.1.7
+-- Updated: WooCommerce.
+-- Updated: Clotya Core plugin.
+
+v1.1.6
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+
+v1.1.5
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.1.4
+-- Updated: WooCommerce outdated files.
+
+v1.1.3
+-- Added: SKU Search option.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.1.2
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.1.1
+-- Updated: Deprecated functions.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.1.0
+-- Added: Advanced Badge Settings.
+-- Updated: Buy Now button.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce outdated files.
+-- Updated: Envato Market plugin.
+
+v1.0.9
+-- Updated: Ajax search form.
+-- Updated: Deprecated functions.
+-- Updated: Clotya Core plugin.
+
+v1.0.8
+-- Added: Login/Register Form tab.
+-- Added: Ajax Login/Register Form.
+-- Updated: WooCommerce outdated files.
+-- Updated: 404 page.
+-- Updated: Infinite - Load More pagination.
+-- Updated: Ajax add to cart notice.
+-- Updated: Clotya Core plugin.
+
+v1.0.7
+-- Updated: Infinite Scroll pagination.
+-- Updated: Load More pagination.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.0.6
+-- Updated: WooCommerce outdated files.
+-- Updated: Clotya Core plugin.
+-- Updated: Quick Comparison Table.
+
+v1.0.5
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+
+v1.0.4
+-- Updated: Clotya Core plugin.
+-- Updated: Footer Widgets.
+-- Updated: WooCommerce.
+
+v1.0.3
+-- Added: Free Shipping Bar.
+-- Added: Hide Shipping Methods When Free is available.
+-- Updated: The language file.
+-- Updated: Footer Column option.
+-- Updated: Clotya Core plugin.
+
+v1.0.2
+-- Updated: Attribute Swatches.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.
+-- Fixed: Mobile Filter.
+
+v1.0.1
+-- Added: Theme Setup Wizard.
+-- Added: The child theme.
+-- Updated: Clotya Core plugin.
+-- Updated: WooCommerce.

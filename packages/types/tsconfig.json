@@ -1,0 +1,10 @@
+{
+  "extends": "@mirakart/config/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

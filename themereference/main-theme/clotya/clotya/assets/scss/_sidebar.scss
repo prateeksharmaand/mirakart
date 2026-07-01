@@ -1,0 +1,422 @@
+#sidebar {
+  .widget {
+    margin-bottom: 1.25rem;
+    @include min-break(1024) {
+      margin-bottom: 2.5rem;
+    }
+    &:last-child {
+      margin-bottom: 0;
+    }
+    .widget-title {
+      font-size: 1rem;
+      font-weight: 500;
+      border-bottom: 1px solid getColor(border);
+      padding-bottom: .9375rem;
+      margin-bottom: 1.875rem;
+    }
+  }
+  &.shop-sidebar {
+    @include min-break(1024) {
+      padding-right: 1.875rem;
+    }
+    .widget {
+      .widget-title {
+        border-bottom: 0;
+        padding-bottom: 0;
+        margin-bottom: 1.25rem;
+      }
+    }
+  }
+}
+
+// Post list widget
+.post-list-widget {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  .post {
+    display: flex;
+    flex-flow: row wrap;
+    margin-bottom: 1.875rem;
+    @include min-break(1024) {
+      margin-bottom: 2.5rem;
+    }
+    &:last-child {
+      margin-bottom: 0;
+    }
+    .entry-thumbnail {
+      flex: 0 0 5rem;
+      max-width: 5rem;
+      height: 5rem;
+      margin-right: 1.625rem;
+      margin-bottom: 0;
+    }
+    .entry-wrapper {
+      flex: 1;
+      .entry-meta {
+        margin-bottom: .325rem;
+      }
+      .entry-title {
+        font-size: 1rem;
+        line-height: 1.25;
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+// Social Media widget
+.social-media-widget {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  li {
+    & + li {
+      margin-top: 2px;
+    }
+    a {
+      display: flex;
+      align-items: center;
+      height: 2.5rem;
+      text-decoration: none;
+      color: #fff;
+      padding-left: .625rem;
+      padding-right: .625rem;
+      border-radius: 2px;
+      transition: all .2s $bezier;
+      .social-icon {
+        width: 1.875rem;
+        margin-right: .5rem;
+      }
+      .social-name {
+        font-size: .875rem;
+      }
+      .social-label {
+        font-size: .625rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: auto;
+      }
+      &.facebook {
+        background-color: $facebook;
+      }
+      &.forumbee {
+        background-color: $forumbee;
+      }
+      &.instagram {
+        background-color: $instagram;
+      }
+      &.pinterest {
+        background-color: $pinterest;
+      }
+      &.spotify {
+        background-color: $spotify;
+      }
+      &.twitch {
+        background-color: $twitch;
+      }
+      &.whatsapp {
+        background-color: $whatsapp;
+      }
+      &.github {
+        background-color: $github;
+      }
+      &.odnoklassniki {
+        background-color: $odnoklassniki;
+      }
+      &.amazon {
+        background-color: $amazon;
+      }
+      &.dropbox {
+        background-color: $dropbox;
+      }
+      &.snapchat {
+        color: #000;
+        background-color: $snapchat;
+      }
+      &.foursquare {
+        background-color: $foursquare;
+      }
+      &.lastfm {
+        background-color: $lastfm;
+      }
+      &.skype {
+        background-color: $skype;
+      }
+      &.stackoverflow {
+        background-color: $stackoverflow;
+      }
+      &.twitter {
+        background-color: $twitter;
+      }
+      &.xing {
+        color: #000;
+        background-color: $xing;
+      }
+      &.tripadvisor {
+        background-color: $tripadvisor;
+      }
+      &.vimeo {
+        background-color: $vimeo;
+      }
+      &.codeopen {
+        background-color: $codeopen;
+      }
+      &.dribbble {
+        background-color: $dribbble;
+      }
+      &.google {
+        background-color: $google;
+      }
+      &.linkedin {
+        background-color: $linkedin;
+      }
+      &.slack {
+        background-color: $slack;
+      }
+      &.stumbleupon {
+        background-color: $stumbleupon;
+      }
+      &.vine {
+        background-color: $vine;
+      }
+      &.yelp {
+        background-color: $yelp;
+      }
+      &.pocket {
+        background-color: $pocket;
+      }
+      &.quora {
+        background-color: $quora;
+      }
+      &.behance {
+        background-color: $behance;
+      }
+      &.delicious {
+        background-color: $delicious;
+      }
+      &.paypal {
+        background-color: $paypal;
+      }
+      &.soundcloud {
+        background-color: $soundcloud;
+      }
+      &.tumblr {
+        background-color: $tumblr;
+      }
+      &.vkontakte {
+        background-color: $vkontakte;
+      }
+      &.youtube {
+        background-color: $youtube;
+      }
+      &.fivepx {
+        background-color: $fivepx;
+      }
+      &.deviantart {
+        background-color: $deviantart;
+      }
+      &.codiepie {
+        background-color: $codiepie;
+      }
+      &.reddit {
+        background-color: $reddit;
+      }
+      &:hover {
+        opacity: .8;
+      }
+    }
+  }
+}
+
+/* checkbox list */
+.widget-checkbox-list {
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    li {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      flex-flow: row wrap;
+      & + li {
+        margin-top: .5rem;
+      }
+      a {
+        flex: 1;
+        font-size: .8125rem;
+        color: getColor(text);
+        text-decoration: none;
+        input[type="checkbox"] {
+          display: none;
+          &:checked {
+            & + label {
+              color: getColor(primary);
+              font-weight: 500;
+              span {
+                color: #fff;
+                background-color: getColor(primary);
+                border-color: getColor(primary);
+                &::before {
+                  opacity: 1;
+                }
+              }
+            }
+          }
+        }
+        label {
+          display: flex;
+          align-items: center;
+          flex-flow: row wrap;
+          font-size: .875rem;
+          cursor: pointer;
+          margin-bottom: 0;
+          span {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 1rem;
+            max-width: 1rem;
+            width: 100%;
+            height: 1rem;
+            margin-right: .9375rem;
+            top: -1px;
+            border-radius: 2px;
+            border: 1px solid getColor(form-border);
+            &::before {
+              position: relative;
+              content: '✔';
+              font-size: .75rem;
+              line-height: 1;
+              left: .5px;
+              text-shadow: 0px 0px 0px;
+              opacity: 0;
+            }
+          }
+        }
+        &::after {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+/* price filter */
+.price_slider_wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse;
+  .price_slider_amount {
+    display: flex;
+    align-items: center;
+    flex-direction: row-reverse;
+    margin-bottom: 1.875rem;
+    .price_label {
+      font-size: .875rem;
+      color: getColor(text-desc);
+      margin-right: auto;
+      span {
+        color: getColor(text);
+      }
+    }
+    button {
+      font-size: .6875rem;
+      text-transform: uppercase;
+      padding-left: .75rem;
+      padding-right: .75rem;
+      height: 2.125rem;
+      background-color: #f2f3f5;
+      border-color: transparent;
+      color: getColor(text);
+    }
+  }
+}
+.ui-widget-content {
+  position: relative;
+  height: 2px;
+  background-color: getColor(background-light);
+  margin-bottom: 1.5625rem;
+  border-radius: 2px;
+  .ui-slider-range {
+    position: absolute;
+    display: block;
+    width: 100%;
+    height: 2px;
+    border: 0;
+    background-color: getColor(primary);
+    border-radius: 8px;
+    z-index: 1;
+  }
+  .ui-slider-handle {
+    left: 0%;
+    position: absolute;
+    z-index: 2;
+    outline: 0;
+    cursor: pointer;
+    background-color: getColor(primary);
+    border-radius: 100%;
+    border: 0;
+    height: 14px;
+    top: -6px;
+    width: 14px;
+    margin: 0;
+    box-shadow: none;
+    transform: translateX(0px);
+    &:last-child {
+      left: 100%;
+      transform: translateX(-100%);
+    }
+  }
+}
+
+/* filtered sidebar */
+.filtered-sidebar {
+  @include max-break(1024) {
+    position: fixed!important;
+    flex: 0 0 90%;
+    max-width: 90%;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    margin-top: 0;
+    padding: 1.25rem 1.25rem 0;
+    background-color: #fff;
+    transform: translateX(-100%);
+    z-index: 10001;
+    &::before {
+      display: none;
+    }
+  }
+}
+
+// Sidebar Header
+.sidebar-mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.875rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid getColor(border);
+  @include min-break(1024) {
+    display: none;
+  }
+  .entry-title {
+    font-size: .875rem;
+    margin-bottom: 0;
+  }
+  .close-sidebar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .9375rem;
+    width: 1.875rem;
+    height: 1.875rem;
+    color: getColor(text);
+    border: 1px solid getColor(border);
+    border-radius: 50%;
+  }
+}

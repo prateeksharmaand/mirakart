@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Prisma
+apps/api/prisma/migrations/.tmp/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter
+mobile/**/.dart_tool/
+mobile/**/.flutter-plugins
+mobile/**/.flutter-plugins-dependencies
+mobile/**/build/
+mobile/**/.pub-cache/
+mobile/**/ios/Pods/
+
+# MinIO / Postgres local data volumes
+infra/data/
+
+# Theme reference source (vendor archive, kept locally for design extraction only)
+themereference/main-theme/clotya.zip
+themereference/plugins/*.zip
+themereference/demo-data/
+
+# Test output
+coverage/
+test.txt

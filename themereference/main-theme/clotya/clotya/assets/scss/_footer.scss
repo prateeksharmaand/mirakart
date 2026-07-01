@@ -1,0 +1,288 @@
+.site-footer {
+  margin-top: 1.875rem;
+  border-top: 1px solid #dee0ea;
+  @include min-break(1024) {
+    margin-top: 3.75rem;
+  }
+  // Border
+  .footer-row {
+    &.border-boxed {
+      .footer-row-wrapper {
+        border-bottom: 1px solid #dee0ea;
+      }
+    }
+    &.border-full {
+      border-bottom: 1px solid #dee0ea;
+    }
+    &.black {
+      color: #fff;
+      background-color: #000;
+      .newsletter-form {
+        button {
+          border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+      }
+    }
+    &.gray {
+      color: #000;
+      background-color: #f9f9fa;
+      .newsletter-form {
+        button {
+          border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+      }
+    }
+    &.soft-red {
+      background-color: #fdf8f7;
+    }
+  }
+  // Subscribe form
+  .subscribe-row {
+    .footer-row-wrapper {
+      padding: 2.5rem 0;
+      @include min-break(1024) {
+        padding: 5rem 0;
+      }
+    }
+    &.style-1 {
+      .footer-row-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-flow: row wrap;
+        flex-direction: column;
+        @include min-break(1024) {
+          flex-direction: row;
+          justify-content: space-between;
+        }
+        & > * {
+          flex: 0 0 100%;
+          max-width: 100%;
+          @include min-break(1024) {
+            flex: 0 0 40%;
+            max-width: 40%;
+          }
+        }
+      }
+    }
+    .footer-subscribe-wrapper {
+      .entry-title {
+        font-size: 1.5rem;
+        font-weight: 500;
+        @include min-break(1024) {
+          font-size: 1.875rem;
+          max-width: 400px;
+        }
+      }
+      .entry-description {
+        font-size: .875rem;
+        margin-bottom: 1.875rem;
+        @include min-break(1024) {
+          font-size: 1rem;
+        }
+        p {
+          opacity: .6;
+        }
+      }
+      .newsletter-form {
+        form {
+          position: relative;
+          display: flex;
+          flex-flow: row wrap;
+          margin-bottom: .625rem;
+          .subscribe-input {
+            flex: 1;
+            width: auto;
+            height: 3rem;
+          }
+          button {
+            height: 3rem;
+            margin-left: -1px;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+            @include min-break(1024) {
+              padding-left: 1.875rem;
+              padding-right: 1.875rem;
+            }
+          }
+        }
+        .privacy-text {
+          font-size: .75rem;
+          color: #75767c;
+          a {
+            color: currentColor;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+    .footer-contact-wrapper {
+      margin-top: 1.875rem;
+      @include min-break(1024) {
+        margin-top: 0;
+      }
+      .entry-title {
+        font-size: 1.5rem;
+        font-weight: 500;
+        @include min-break(1024) {
+          font-size: 1.875rem;
+          max-width: 400px;
+        }
+      }
+      .entry-description {
+        font-size: .875rem;
+        margin-bottom: 1.875rem;
+        @include min-break(1024) {
+          font-size: 1rem;
+        }
+        p {
+          opacity: .6;
+        }
+      }
+      .download-app {
+        margin-bottom: .625rem;
+      }
+      & > span {
+        font-size: .75rem;
+        color: #75767c;
+      }
+    }
+    &.style-2 {
+      text-align: center;
+      .entry-title {
+        max-width: none;
+      }
+      .newsletter-form {
+        max-width: 31.875rem;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
+  }
+  // Widgets
+  .widgets-row {
+    .footer-row-wrapper {
+      padding: 2.5rem 0;
+      @include min-break(1024) {
+        padding: 3.75rem 0;
+      }
+      .col {
+        & + .col {
+          margin-top: 1.875rem;
+          @include min-break(1024) {
+            margin-top: 0;
+          }
+        }
+      }
+    }
+    .widget {
+      .widget-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: .9375rem;
+      }
+      .widget-nav {
+        ul {
+          margin: 0;
+          padding: 0;
+          list-style: none;
+          li {
+            & + li {
+              margin-top: 3px;
+            }
+            a {
+              font-size: .9375rem;
+              color: currentColor;
+              text-decoration: none;
+              &:hover {
+                text-decoration: underline;
+              }
+            }
+          }
+        }
+      }
+      .brand-info {
+        max-width: 310px;
+        p {
+          font-size: .875rem;
+        }
+      }
+    }
+  }
+  // Footer copyright
+  .footer-copyright {
+    .footer-row-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding-top: 1.875rem;
+      padding-bottom: 1.875rem;
+      @include min-break(1024) {
+        flex-direction: row;
+        justify-content: flex-start;
+        padding-top: 2.5rem;
+        padding-bottom: 3.125rem;
+      }
+      img {
+        margin-bottom: .625rem;
+        @include min-break(1024) {
+          margin-bottom: 0;
+        }
+      }
+    }
+    .footer-menu {
+      @include min-break(1024) {
+        margin-left: auto;
+      }
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        li {
+          display: inline-flex;
+          align-items: center;
+          & + li {
+            &::before {
+              content: '|';
+              font-weight: 100;
+              opacity: .7;
+              margin: 0 6px;
+            }
+          }
+          a {
+            font-size: .8125rem;
+            color: currentColor;
+            text-decoration: none;
+          }
+        }
+      }
+    }
+    .site-copyright {
+      @include min-break(1024) {
+        margin-right: .9375rem;
+      }
+      p {
+        font-size: .8125rem;
+        @include min-break(1024) {
+          margin-bottom: 0;
+        }
+        a {
+          font-weight: 500;
+          color: currentColor;
+          text-decoration: none;
+        }
+      }
+    }
+  }
+}
+
+.single-product-sticky-enable {
+  .site-footer {
+    padding-bottom: 3.5625rem;
+    @include min-break(1024) {
+      padding-bottom: 4.125rem;
+    }
+  }
+}

@@ -1,0 +1,869 @@
+// Mirakart — Multi-vendor ecommerce platform
+// Prisma schema covering: Auth/RBAC, Merchants, Customers, Catalog,
+// Inventory, Cart, Orders, Payments, Returns, Notifications, Media, Settings.
+//
+// Conventions used throughout this schema:
+// - `createdAt` / `updatedAt` on every mutable entity.
+// - `deletedAt` (soft delete) on entities that are ever referenced by
+//   historical records (orders, returns, audit log) so history never
+//   dangles on a hard-deleted row. Repositories must filter `deletedAt: null`
+//   on default reads — this is enforced at the repository layer, not by a
+//   Prisma extension, to keep query plans explicit.
+// - Money fields use `Decimal(12,2)`. Quantities use `Int`.
+// - `Media` stores only object paths/URLs; binary bytes live in MinIO.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AdminStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+  APPROVE
+  REJECT
+  EXPORT
+}
+
+enum MerchantStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum MerchantDocumentType {
+  BUSINESS_LICENSE
+  TAX_CERTIFICATE
+  ID_PROOF
+  BANK_DETAILS
+  OTHER
+}
+
+enum MerchantDocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+  BOTH
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum AttributeType {
+  SELECT
+  COLOR
+  TEXT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderItemStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  NETBANKING
+  WALLET
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum ReturnStatus {
+  REQUESTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  AWAITING_SHIPMENT
+  ITEM_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum ActorType {
+  ADMIN
+  MERCHANT
+  CUSTOMER
+  SYSTEM
+}
+
+enum NotificationRecipientType {
+  CUSTOMER
+  MERCHANT
+  ADMIN
+}
+
+enum BannerPosition {
+  HOME_HERO
+  HOME_SECONDARY
+  CATEGORY_TOP
+  STOREFRONT_TOP
+}
+
+// ---------------------------------------------------------------------------
+// Auth / RBAC
+// ---------------------------------------------------------------------------
+
+model AdminUser {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  status       AdminStatus @default(ACTIVE)
+  isSuperAdmin Boolean     @default(false)
+  roleId       String?
+  role         Role?       @relation(fields: [roleId], references: [id])
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+
+  approvedMerchants  Merchant[]           @relation("MerchantApprovedBy")
+  approvedProducts   Product[]            @relation("ProductApprovedBy")
+  orderStatusChanges OrderStatusHistory[]
+  updatedSettings    Setting[]
+  notifications      Notification[]       @relation("AdminNotifications")
+
+  @@index([status])
+  @@map("admin_users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       AdminUser[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  code        String           @unique // e.g. "product.create"
+  module      String // e.g. "product"
+  action      PermissionAction
+  description String?
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// One row per active/revoked refresh token, scoped to whichever principal
+// (admin/merchant/customer) it belongs to. Enables multi-device sessions
+// (web + mobile concurrently) and per-device revocation.
+model RefreshToken {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  principalType ActorType
+  principalId   String
+  userAgent     String?
+  ipAddress     String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  // principalId intentionally has no enforced FK: it points at whichever
+  // table principalType names (AdminUser | Merchant | Customer). A single
+  // column can't carry three simultaneous FK constraints to different
+  // tables, so this relation is resolved at the repository layer instead.
+
+  @@index([principalType, principalId])
+  @@map("refresh_tokens")
+}
+
+// Single-use, short-lived token for the forgot/reset-password flow.
+// Same polymorphic principalId rationale as RefreshToken above.
+model PasswordResetToken {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  principalType ActorType
+  principalId   String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([principalType, principalId])
+  @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Merchants
+// ---------------------------------------------------------------------------
+
+model Merchant {
+  id                         String         @id @default(cuid())
+  storeName                  String
+  storeSlug                  String         @unique
+  email                      String         @unique
+  passwordHash               String
+  phone                      String
+  status                     MerchantStatus @default(PENDING)
+  description                String?
+  logoMediaId                String?
+  logoMedia                  Media?         @relation("MerchantLogo", fields: [logoMediaId], references: [id])
+  bannerMediaId              String?
+  bannerMedia                Media?         @relation("MerchantBanner", fields: [bannerMediaId], references: [id])
+  businessRegistrationNumber String?
+  taxId                      String?
+  commissionRate             Decimal        @default(10.00) @db.Decimal(5, 2)
+  approvedById               String?
+  approvedBy                 AdminUser?     @relation("MerchantApprovedBy", fields: [approvedById], references: [id])
+  approvedAt                 DateTime?
+  rejectionReason            String?
+  addressLine1               String?
+  addressLine2               String?
+  city                       String?
+  state                      String?
+  postalCode                 String?
+  country                    String?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+  deletedAt                  DateTime?
+
+  documents     MerchantDocument[]
+  products      Product[]
+  orderItems    OrderItem[]
+  returns       Return[]
+  notifications Notification[]     @relation("MerchantNotifications")
+
+  @@index([status])
+  @@map("merchants")
+}
+
+model MerchantDocument {
+  id         String                 @id @default(cuid())
+  merchantId String
+  merchant   Merchant               @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  type       MerchantDocumentType
+  status     MerchantDocumentStatus @default(PENDING)
+  mediaId    String
+  media      Media                  @relation(fields: [mediaId], references: [id])
+  uploadedAt DateTime               @default(now())
+
+  @@index([merchantId])
+  @@map("merchant_documents")
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id              String         @id @default(cuid())
+  email           String         @unique
+  passwordHash    String
+  phone           String?
+  firstName       String
+  lastName        String
+  status          CustomerStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  addresses     Address[]
+  cart          Cart?
+  orders        Order[]
+  returns       Return[]
+  notifications Notification[] @relation("CustomerNotifications")
+
+  @@index([status])
+  @@map("customers")
+}
+
+model Address {
+  id         String      @id @default(cuid())
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String?
+  fullName   String
+  phone      String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  postalCode String
+  country    String
+  type       AddressType @default(BOTH)
+  isDefault  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  shippingOrders Order[] @relation("OrderShippingAddress")
+  billingOrders  Order[] @relation("OrderBillingAddress")
+
+  @@index([customerId])
+  @@map("addresses")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog: Categories, Brands, Attributes, Products
+// ---------------------------------------------------------------------------
+
+model Category {
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  description   String?
+  parentId      String?
+  parent        Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children      Category[] @relation("CategoryTree")
+  iconMediaId   String?
+  iconMedia     Media?     @relation("CategoryIcon", fields: [iconMediaId], references: [id])
+  bannerMediaId String?
+  bannerMedia   Media?     @relation("CategoryBanner", fields: [bannerMediaId], references: [id])
+  isActive      Boolean    @default(true)
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  products Product[]
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Brand {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  logoMediaId String?
+  logoMedia   Media?    @relation("BrandLogo", fields: [logoMediaId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Attribute {
+  id        String        @id @default(cuid())
+  name      String
+  slug      String        @unique
+  type      AttributeType @default(SELECT)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  values       AttributeValue[]
+  productLinks ProductAttribute[]
+
+  @@map("attributes")
+}
+
+model AttributeValue {
+  id          String    @id @default(cuid())
+  attributeId String
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  value       String
+  colorHex    String?
+  sortOrder   Int       @default(0)
+
+  variantLinks ProductVariantAttributeValue[]
+
+  @@unique([attributeId, value])
+  @@map("attribute_values")
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  merchantId      String
+  merchant        Merchant      @relation(fields: [merchantId], references: [id])
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id])
+  brandId         String?
+  brand           Brand?        @relation(fields: [brandId], references: [id])
+  name            String
+  slug            String        @unique
+  description     String
+  status          ProductStatus @default(DRAFT)
+  rejectionReason String?
+  basePrice       Decimal       @db.Decimal(12, 2)
+  compareAtPrice  Decimal?      @db.Decimal(12, 2)
+  sku             String?       @unique
+  barcode         String?
+  weight          Decimal?      @db.Decimal(8, 2)
+  isFeatured      Boolean       @default(false)
+  metaTitle       String?
+  metaDescription String?
+  approvedById    String?
+  approvedBy      AdminUser?    @relation("ProductApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  images     ProductImage[]
+  variants   ProductVariant[]
+  attributes ProductAttribute[]
+  orderItems OrderItem[]
+
+  @@index([merchantId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("products")
+}
+
+model ProductAttribute {
+  productId   String
+  attributeId String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@id([productId, attributeId])
+  @@map("product_attributes")
+}
+
+model ProductImage {
+  id        String          @id @default(cuid())
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media           @relation(fields: [mediaId], references: [id])
+  sortOrder Int             @default(0)
+  isPrimary Boolean         @default(false)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id             String    @id @default(cuid())
+  productId      String
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku            String    @unique
+  barcode        String?
+  price          Decimal   @db.Decimal(12, 2)
+  compareAtPrice Decimal?  @db.Decimal(12, 2)
+  weight         Decimal?  @db.Decimal(8, 2)
+  isDefault      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  attributeValues ProductVariantAttributeValue[]
+  images          ProductImage[]
+  inventory       Inventory?
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model ProductVariantAttributeValue {
+  variantId        String
+  attributeValueId String
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue   AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@id([variantId, attributeValueId])
+  @@map("product_variant_attribute_values")
+}
+
+model Inventory {
+  id                String         @id @default(cuid())
+  variantId         String         @unique
+  variant           ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity          Int            @default(0)
+  reservedQuantity  Int            @default(0)
+  lowStockThreshold Int            @default(5)
+  updatedAt         DateTime       @updatedAt
+
+  @@map("inventory")
+}
+
+// ---------------------------------------------------------------------------
+// Cart
+// ---------------------------------------------------------------------------
+
+model Cart {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id            String         @id @default(cuid())
+  cartId        String
+  cart          Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId     String
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity      Int
+  priceSnapshot Decimal        @db.Decimal(12, 2)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([cartId, variantId])
+  @@map("cart_items")
+}
+
+// ---------------------------------------------------------------------------
+// Orders & Payments
+// ---------------------------------------------------------------------------
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+  customerId        String
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  status            OrderStatus @default(PENDING)
+  subtotal          Decimal     @db.Decimal(12, 2)
+  shippingFee       Decimal     @default(0) @db.Decimal(12, 2)
+  tax               Decimal     @default(0) @db.Decimal(12, 2)
+  discount          Decimal     @default(0) @db.Decimal(12, 2)
+  total             Decimal     @db.Decimal(12, 2)
+  currency          String      @default("INR")
+  shippingAddressId String
+  shippingAddress   Address     @relation("OrderShippingAddress", fields: [shippingAddressId], references: [id])
+  billingAddressId  String
+  billingAddress    Address     @relation("OrderBillingAddress", fields: [billingAddressId], references: [id])
+  placedAt          DateTime    @default(now())
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  deletedAt         DateTime?
+
+  items         OrderItem[]
+  payment       Payment?
+  statusHistory OrderStatusHistory[]
+  returns       Return[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String          @id @default(cuid())
+  orderId             String
+  order               Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  merchantId          String
+  merchant            Merchant        @relation(fields: [merchantId], references: [id])
+  productId           String
+  product             Product         @relation(fields: [productId], references: [id])
+  variantId           String
+  variant             ProductVariant  @relation(fields: [variantId], references: [id])
+  productNameSnapshot String
+  variantSnapshot     Json
+  quantity            Int
+  unitPrice           Decimal         @db.Decimal(12, 2)
+  totalPrice          Decimal         @db.Decimal(12, 2)
+  status              OrderItemStatus @default(PENDING)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  returns Return[]
+
+  @@index([orderId])
+  @@index([merchantId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(cuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      OrderStatus
+  note        String?
+  changedById String?
+  changedBy   AdminUser?  @relation(fields: [changedById], references: [id])
+  changedAt   DateTime    @default(now())
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  order             Order         @relation(fields: [orderId], references: [id])
+  method            PaymentMethod
+  provider          String?
+  providerPaymentId String?
+  status            PaymentStatus @default(PENDING)
+  amount            Decimal       @db.Decimal(12, 2)
+  currency          String        @default("INR")
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Returns
+// ---------------------------------------------------------------------------
+
+model ReturnReason {
+  id        String  @id @default(cuid())
+  label     String  @unique
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  returns Return[]
+
+  @@map("return_reasons")
+}
+
+model Return {
+  id           String       @id @default(cuid())
+  returnNumber String       @unique
+  orderId      String
+  order        Order        @relation(fields: [orderId], references: [id])
+  orderItemId  String
+  orderItem    OrderItem    @relation(fields: [orderItemId], references: [id])
+  customerId   String
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  merchantId   String
+  merchant     Merchant     @relation(fields: [merchantId], references: [id])
+  reasonId     String
+  reason       ReturnReason @relation(fields: [reasonId], references: [id])
+  reasonDetail String?
+  status       ReturnStatus @default(REQUESTED)
+  quantity     Int
+  refundAmount Decimal?     @db.Decimal(12, 2)
+  requestedAt  DateTime     @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  images        ReturnImage[]
+  statusHistory ReturnStatusHistory[]
+
+  @@index([orderId])
+  @@index([merchantId])
+  @@index([status])
+  @@map("returns")
+}
+
+model ReturnImage {
+  id        String @id @default(cuid())
+  returnId  String
+  return    Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media  @relation(fields: [mediaId], references: [id])
+  sortOrder Int    @default(0)
+
+  @@index([returnId])
+  @@map("return_images")
+}
+
+model ReturnStatusHistory {
+  id            String       @id @default(cuid())
+  returnId      String
+  return        Return       @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  status        ReturnStatus
+  note          String?
+  changedByType ActorType
+  changedById   String?
+  // changedById is polymorphic (Customer | Merchant | AdminUser, per
+  // changedByType) — same no-DB-FK rationale as RefreshToken.principalId.
+  changedAt     DateTime     @default(now())
+
+  @@index([returnId])
+  @@map("return_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications, Settings, Media, Banners, Audit Log
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id            String                    @id @default(cuid())
+  recipientType NotificationRecipientType
+  customerId    String?
+  customer      Customer?                 @relation("CustomerNotifications", fields: [customerId], references: [id], onDelete: Cascade)
+  merchantId    String?
+  merchant      Merchant?                 @relation("MerchantNotifications", fields: [merchantId], references: [id], onDelete: Cascade)
+  adminUserId   String?
+  adminUser     AdminUser?                @relation("AdminNotifications", fields: [adminUserId], references: [id], onDelete: Cascade)
+  type          String
+  title         String
+  message       String
+  data          Json?
+  isRead        Boolean                   @default(false)
+  readAt        DateTime?
+  createdAt     DateTime                  @default(now())
+
+  @@index([recipientType, customerId])
+  @@index([recipientType, merchantId])
+  @@index([recipientType, adminUserId])
+  @@map("notifications")
+}
+
+// FCM push-notification target. Same no-DB-FK polymorphic rationale as
+// RefreshToken.principalId — principalId points at whichever table
+// principalType names.
+model DeviceToken {
+  id            String    @id @default(cuid())
+  token         String    @unique
+  principalType ActorType
+  principalId   String
+  platform      String?
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+
+  @@index([principalType, principalId])
+  @@map("device_tokens")
+}
+
+model Setting {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  value       Json
+  group       String
+  updatedById String?
+  updatedBy   AdminUser? @relation(fields: [updatedById], references: [id])
+  updatedAt   DateTime   @updatedAt
+
+  @@index([group])
+  @@map("settings")
+}
+
+model Media {
+  id             String    @id @default(cuid())
+  bucket         String
+  objectKey      String
+  url            String
+  mimeType       String
+  size           Int
+  width          Int?
+  height         Int?
+  uploadedByType ActorType
+  uploadedById   String?
+  createdAt      DateTime  @default(now())
+
+  merchantLogos     Merchant[]         @relation("MerchantLogo")
+  merchantBanners   Merchant[]         @relation("MerchantBanner")
+  merchantDocuments MerchantDocument[]
+  categoryIcons     Category[]         @relation("CategoryIcon")
+  categoryBanners   Category[]         @relation("CategoryBanner")
+  brandLogos        Brand[]            @relation("BrandLogo")
+  productImages     ProductImage[]
+  returnImages      ReturnImage[]
+  banners           Banner[]
+
+  @@map("media")
+}
+
+model Banner {
+  id        String         @id @default(cuid())
+  title     String
+  mediaId   String
+  media     Media          @relation(fields: [mediaId], references: [id])
+  linkUrl   String?
+  position  BannerPosition
+  sortOrder Int            @default(0)
+  isActive  Boolean        @default(true)
+  startAt   DateTime?
+  endAt     DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([position, isActive])
+  @@map("banners")
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  changes    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorType, actorId])
+  @@map("audit_logs")
+}
