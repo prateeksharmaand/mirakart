@@ -16,6 +16,12 @@ RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_MINIO_HOST
+ARG NEXT_PUBLIC_MINIO_USE_SSL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_MINIO_HOST=$NEXT_PUBLIC_MINIO_HOST
+ENV NEXT_PUBLIC_MINIO_USE_SSL=$NEXT_PUBLIC_MINIO_USE_SSL
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
 RUN npx turbo run build --filter=@mirakart/admin

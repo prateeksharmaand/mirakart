@@ -111,6 +111,10 @@ services:
     build:
       context: .
       dockerfile: infra/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_MINIO_HOST: ${NEXT_PUBLIC_MINIO_HOST}
+        NEXT_PUBLIC_MINIO_USE_SSL: ${NEXT_PUBLIC_MINIO_USE_SSL}
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -122,6 +126,10 @@ services:
     build:
       context: .
       dockerfile: infra/docker/admin.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_MINIO_HOST: ${NEXT_PUBLIC_MINIO_HOST}
+        NEXT_PUBLIC_MINIO_USE_SSL: ${NEXT_PUBLIC_MINIO_USE_SSL}
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -133,6 +141,10 @@ services:
     build:
       context: .
       dockerfile: infra/docker/merchant.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_MINIO_HOST: ${NEXT_PUBLIC_MINIO_HOST}
+        NEXT_PUBLIC_MINIO_USE_SSL: ${NEXT_PUBLIC_MINIO_USE_SSL}
     restart: unless-stopped
     env_file: .env
     depends_on:
