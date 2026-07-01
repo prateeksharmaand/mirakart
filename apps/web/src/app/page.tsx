@@ -206,6 +206,38 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Latest Buyers Reviews */}
+      <section className="mx-auto w-full max-w-site px-gutter py-16">
+        <div className="mb-3 text-center">
+          <h2 className="text-2xl font-semibold text-foreground">Latest Buyers Reviews</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-primary">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
+            aliqua. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan lacus vel facilisis.
+          </p>
+        </div>
+
+        <div className="mt-10 grid grid-cols-1 gap-0 divide-x divide-border border border-border sm:grid-cols-3">
+          {[
+            { name: "Teresa Holland", review: "Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan facilisis." },
+            { name: "Scarlett Edwards", review: "Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan facilisis." },
+            { name: "Teresa Holland", review: "Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan facilisis." },
+          ].map((review, i) => (
+            <div key={i} className="flex flex-col items-center gap-4 px-8 py-10 text-center">
+              {/* Stars */}
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, s) => (
+                  <svg key={s} viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-primary">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-sm leading-relaxed text-foreground">{review.review}</p>
+              <p className="text-sm text-foreground-muted">{review.name}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* New Arrivals */}
       {newArrivals.data.length > 0 && (
         <section className="pb-16">
