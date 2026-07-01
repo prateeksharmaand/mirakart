@@ -41,11 +41,9 @@ export default async function HomePage() {
             <div className="absolute inset-0 flex items-center">
               <div className="mx-auto w-full max-w-site px-gutter">
                 <div className="max-w-md">
-                  {hero.subtitle && (
-                    <p className="mb-3 text-sm font-medium uppercase tracking-widest text-foreground-muted">
-                      {hero.subtitle}
-                    </p>
-                  )}
+                  <p className="mb-3 text-sm font-medium uppercase tracking-widest text-foreground-muted">
+                    New Collection
+                  </p>
                   <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
                     {hero.title}
                   </h1>
