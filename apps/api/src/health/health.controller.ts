@@ -17,4 +17,9 @@ export class HealthController {
   check() {
     return this.health.check([() => this.prismaIndicator.pingCheck("database", this.prisma)]);
   }
+
+  @Get("ping")
+  ping() {
+    return { status: "ok", timestamp: new Date().toISOString() };
+  }
 }

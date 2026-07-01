@@ -134,7 +134,7 @@ info "Services started"
 step "Waiting for API to become healthy..."
 ATTEMPTS=0
 MAX=36  # 36 × 5s = 3 minutes
-until $COMPOSE_CMD exec -T api wget -qO- http://localhost:4000/api/health >/dev/null 2>&1; do
+until $COMPOSE_CMD exec -T api wget -qO- http://localhost:4000/api/health/ping >/dev/null 2>&1; do
   ATTEMPTS=$((ATTEMPTS + 1))
   if [[ $ATTEMPTS -ge $MAX ]]; then
     echo ""
