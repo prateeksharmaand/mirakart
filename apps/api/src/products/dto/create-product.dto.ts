@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsIn, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { Type } from "class-transformer";
 
 const CREATABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL"] as const;
 
@@ -24,12 +25,14 @@ export class CreateProductDto {
   description!: string;
 
   @ApiProperty()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   basePrice!: number;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   compareAtPrice?: number;
@@ -41,6 +44,7 @@ export class CreateProductDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   weight?: number;

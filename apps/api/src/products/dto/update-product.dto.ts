@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { Type } from "class-transformer";
 
 export class UpdateProductDto {
   @ApiPropertyOptional()
@@ -26,12 +27,14 @@ export class UpdateProductDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   basePrice?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   compareAtPrice?: number | null;
@@ -43,6 +46,7 @@ export class UpdateProductDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   weight?: number | null;
