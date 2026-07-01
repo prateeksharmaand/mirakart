@@ -206,6 +206,21 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Don't Miss The Last Deals */}
+      <section className="border-y border-border bg-background">
+        <div className="mx-auto flex max-w-site items-center gap-8 px-gutter py-8 sm:gap-16">
+          <h2 className="min-w-fit text-xl font-semibold text-foreground sm:text-2xl">
+            Don't Miss The<br />Last Deals
+          </h2>
+          <div className="h-12 w-px shrink-0 bg-border" />
+          <p className="text-sm leading-relaxed text-primary">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
+            labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas
+            accumsan lacus vel facilisis.
+          </p>
+        </div>
+      </section>
+
       {/* Latest Buyers Reviews */}
       <section className="mx-auto w-full max-w-site px-gutter py-16">
         <div className="mb-3 text-center">
