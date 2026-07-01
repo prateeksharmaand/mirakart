@@ -1,47 +1,92 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Badge } from "@mirakart/ui";
+import { Heart, ShoppingBag } from "lucide-react";
 import { formatPrice } from "../lib/format";
 import type { ProductListItem } from "../types/catalog";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
   const image = product.images[0]?.media;
+  const secondImage = product.images[1]?.media;
   const onSale = product.compareAtPrice && Number(product.compareAtPrice) > Number(product.basePrice);
+  const discount = onSale
+    ? Math.round(((Number(product.compareAtPrice) - Number(product.basePrice)) / Number(product.compareAtPrice)) * 100)
+    : 0;
 
   return (
-    <Link href={`/p/${product.slug}`} className="group flex flex-col gap-3">
-      <div className="relative aspect-square w-full overflow-hidden rounded-md bg-background-light">
+    <div className="group relative flex flex-col">
+      {/* Image Container */}
+      <Link href={`/p/${product.slug}`} className="relative block aspect-[3/4] w-full overflow-hidden rounded-sm bg-background-light">
         {image ? (
-          <Image
-            src={image.url}
-            alt={product.name}
-            fill
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-            className="object-cover transition-transform duration-300 ease-theme group-hover:scale-105"
-          />
+          <>
+            <Image
+              src={image.url}
+              alt={product.name}
+              fill
+              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+              className={`object-cover transition-all duration-500 ease-theme ${secondImage ? "group-hover:opacity-0" : "group-hover:scale-105"}`}
+            />
+            {secondImage && (
+              <Image
+                src={secondImage.url}
+                alt={product.name}
+                fill
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+                className="object-cover opacity-0 transition-all duration-500 ease-theme group-hover:opacity-100"
+              />
+            )}
+          </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-foreground-muted">
-            No image
+          <div className="flex h-full w-full items-center justify-center bg-background-light">
+            <ShoppingBag className="h-8 w-8 text-border" />
           </div>
         )}
-        {onSale ? (
-          <Badge variant="success" className="absolute left-2.5 top-2.5">
-            Sale
-          </Badge>
-        ) : null}
-      </div>
-      <div className="flex flex-col gap-1">
-        {product.brand ? <span className="text-xs text-foreground-muted">{product.brand.name}</span> : null}
-        <h3 className="text-sm font-medium text-foreground line-clamp-2">{product.name}</h3>
+
+        {/* Badges */}
+        {onSale && (
+          <div className="absolute left-2.5 top-2.5">
+            <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+              -{discount}%
+            </span>
+          </div>
+        )}
+
+        {/* Hover Actions */}
+        <div className="absolute right-2.5 top-2.5 flex translate-x-8 flex-col gap-2 opacity-0 transition-all duration-300 ease-theme group-hover:translate-x-0 group-hover:opacity-100">
+          <button
+            type="button"
+            aria-label="Add to wishlist"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-background shadow-soft transition-colors hover:bg-primary hover:text-white"
+          >
+            <Heart className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Quick Add */}
+        <Link
+          href={`/p/${product.slug}`}
+          className="absolute bottom-0 left-0 right-0 translate-y-full bg-foreground py-2.5 text-center text-xs font-medium uppercase tracking-wider text-background opacity-0 transition-all duration-300 ease-theme hover:bg-primary group-hover:translate-y-0 group-hover:opacity-100"
+        >
+          Quick View
+        </Link>
+      </Link>
+
+      {/* Info */}
+      <div className="mt-3 flex flex-col gap-1 px-0.5">
+        {product.brand && (
+          <span className="text-[11px] uppercase tracking-wider text-foreground-muted">{product.brand.name}</span>
+        )}
+        <Link href={`/p/${product.slug}`} className="text-sm font-medium leading-snug text-foreground line-clamp-2 hover:text-primary">
+          {product.name}
+        </Link>
         <div className="flex items-center gap-2">
-          <span className="text-base font-medium text-foreground">{formatPrice(product.basePrice)}</span>
-          {onSale ? (
-            <span className="text-sm text-foreground-muted line-through">
+          <span className="text-sm font-semibold text-foreground">{formatPrice(product.basePrice)}</span>
+          {onSale && (
+            <span className="text-xs text-foreground-muted line-through">
               {formatPrice(product.compareAtPrice!)}
             </span>
-          ) : null}
+          )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
