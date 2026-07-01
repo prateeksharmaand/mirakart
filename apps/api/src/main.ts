@@ -4,7 +4,6 @@ import { BadRequestException, ValidationPipe, VersioningType } from "@nestjs/com
 import type { ValidationError } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
-import { execSync } from "child_process";
 import { AppModule } from "./app.module";
 
 function flattenValidationErrors(errors: ValidationError[]): Record<string, string[]> {
@@ -24,13 +23,6 @@ function flattenValidationErrors(errors: ValidationError[]): Record<string, stri
 }
 
 async function bootstrap() {
-  console.log("Running database migrations...");
-  try {
-    execSync("npx prisma migrate deploy --skip-generate", { stdio: "inherit" });
-    console.log("Database migrations completed successfully");
-  } catch (error) {
-    console.error("Warning: Database migration failed", error);
-  }
   // rawBody: true populates request.rawBody (Buffer) alongside the parsed
   // JSON body, needed to verify the Razorpay webhook's HMAC signature
   // against the exact bytes received (see payments/payments.controller.ts).
