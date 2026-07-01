@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/product-card";
+import { NewsletterForm } from "../components/newsletter-form";
 import { getBanners } from "../lib/api/banners";
 import { getCategories, getProducts } from "../lib/api/catalog";
 import type { Category } from "../types/catalog";
@@ -191,16 +192,7 @@ export default async function HomePage() {
           <p className="mt-3 text-sm text-background/70">
             Sign up for our newsletter and receive an exclusive discount code.
           </p>
-          <form className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="email"
-              placeholder="Enter your email address"
-              className="h-form w-full max-w-xs rounded border-0 bg-white/10 px-4 text-sm text-background placeholder:text-background/50 outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button type="submit" className="btn-primary bg-primary text-white hover:bg-primary/90">
-              Claim Discount
-            </button>
-          </form>
+          <NewsletterForm className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center" />
         </div>
       </section>
 
