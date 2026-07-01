@@ -729,7 +729,7 @@ model Payment {
 
 model ReturnReason {
   id        String  @id @default(cuid())
-  label     String  @unique
+  reason    String  @unique
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
 

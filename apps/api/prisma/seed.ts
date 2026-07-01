@@ -82,11 +82,11 @@ async function seedSuperAdmin() {
 }
 
 async function seedReturnReasons() {
-  for (const [index, label] of RETURN_REASONS.entries()) {
+  for (const [index, reason] of RETURN_REASONS.entries()) {
     await prisma.returnReason.upsert({
-      where: { label },
+      where: { reason },
       update: { sortOrder: index },
-      create: { label, sortOrder: index },
+      create: { reason, sortOrder: index },
     });
   }
   console.log(`Seeded ${RETURN_REASONS.length} return reasons`);
