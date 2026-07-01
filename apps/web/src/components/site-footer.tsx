@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react";
 
 const SHOP_LINKS = [
@@ -53,8 +54,8 @@ export function SiteFooter() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
           {/* Brand Column */}
           <div className="col-span-2 lg:col-span-2">
-            <Link href="/" className="text-2xl font-bold tracking-tight text-foreground">
-              Mirakart
+            <Link href="/">
+              <Image src="/logo.png" alt="Mirakart" width={130} height={40} className="h-10 w-auto object-contain" />
             </Link>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground-muted">
               Your trusted multi-vendor marketplace for fashion, lifestyle, and more. Shop from thousands of verified sellers.
@@ -158,15 +159,15 @@ export function SiteFooter() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 sm:flex-row">
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
           <p className="text-xs text-foreground-muted">
             © {new Date().getFullYear()} Mirakart. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="text-xs text-foreground-muted hover:text-foreground">Privacy Policy</Link>
             <Link href="/terms" className="text-xs text-foreground-muted hover:text-foreground">Terms of Service</Link>
-            <Link href="/sitemap" className="text-xs text-foreground-muted hover:text-foreground">Sitemap</Link>
           </div>
+          <Image src="/payment-cards.png" alt="Accepted payment methods" width={220} height={24} className="h-6 w-auto object-contain opacity-70" />
         </div>
       </div>
     </footer>

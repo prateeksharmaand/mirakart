@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Heart, Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
+import { ChevronDown, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { useAuthStore } from "../stores/auth-store";
 import { useCart } from "../hooks/use-cart";
 import type { Category } from "../types/catalog";
@@ -49,8 +50,8 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="shrink-0 text-2xl font-bold tracking-tight text-foreground">
-            Mirakart
+          <Link href="/" className="shrink-0">
+            <Image src="/logo.png" alt="Mirakart" width={120} height={36} className="h-9 w-auto object-contain" priority />
           </Link>
 
           {/* Desktop Category Nav */}
@@ -187,7 +188,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
         <div className="fixed inset-0 z-50 flex">
           <div className="w-72 overflow-y-auto bg-background">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <span className="text-lg font-bold text-foreground">Menu</span>
+              <Image src="/logo.png" alt="Mirakart" width={100} height={30} className="h-7 w-auto" />
               <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close menu">
                 <X className="h-5 w-5" />
               </button>

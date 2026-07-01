@@ -111,43 +111,56 @@ export default async function HomePage() {
 
       {/* Shop by Category */}
       {categories.length > 0 && (
-        <section className="mx-auto w-full max-w-site px-gutter pb-12">
-          <h2 className="section-title">Shop by Category</h2>
-          <div className="mt-10 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-            {categories.slice(0, 8).map((category) => (
-              <Link
-                key={category.id}
-                href={`/c/${category.slug}`}
-                className="group flex flex-col items-center gap-3"
-              >
-                <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-border bg-background-light transition-all duration-300 group-hover:border-primary group-hover:shadow-soft">
-                  {category.iconMedia ? (
-                    <Image
-                      src={category.iconMedia.url}
-                      alt={category.name}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-lg">
-                      👗
-                    </div>
-                  )}
-                </div>
-                <span className="text-center text-xs font-medium text-foreground transition-colors group-hover:text-primary">
-                  {category.name}
-                </span>
-              </Link>
-            ))}
+        <section className="mx-auto w-full max-w-site px-gutter pb-14">
+          <div className="mb-8 flex items-end justify-between">
+            <h2 className="section-title text-left after:left-0 after:translate-x-0">Shop by Category</h2>
+            <Link href="/search" className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+              All categories <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
 
-          {categories.length > 8 && (
-            <div className="mt-6 text-center">
-              <Link href="/search" className="btn-outline">
-                View All Categories
-              </Link>
-            </div>
-          )}
+          {/* Horizontal scrollable category cards — Clotya style */}
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none]">
+            {categories.slice(0, 10).map((category, i) => {
+              // Alternating muted background colours when no image — matches Clotya's demo palette
+              const bgColors = [
+                "bg-[#f5f0eb]", "bg-[#edf0f5]", "bg-[#f0f5ed]",
+                "bg-[#f5edf5]", "bg-[#f5f5ed]", "bg-[#edf5f5]",
+                "bg-[#f5edee]", "bg-[#ededf5]", "bg-[#f0edf5]", "bg-[#edf5ef]",
+              ];
+              return (
+                <Link
+                  key={category.id}
+                  href={`/c/${category.slug}`}
+                  className="group relative flex w-36 shrink-0 flex-col overflow-hidden rounded-sm sm:w-44"
+                >
+                  <div className={`relative aspect-[3/4] w-full overflow-hidden ${bgColors[i % bgColors.length]}`}>
+                    {category.iconMedia ? (
+                      <Image
+                        src={category.iconMedia.url}
+                        alt={category.name}
+                        fill
+                        className="object-cover transition-transform duration-500 ease-theme group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
+                        <span className="text-4xl">
+                          {["👗","👔","👟","👜","💍","🧴","🏠","🎮","📚","🌿"][i % 10]}
+                        </span>
+                      </div>
+                    )}
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-foreground/0 transition-colors duration-300 group-hover:bg-foreground/10" />
+                  </div>
+                  <div className="border border-t-0 border-border bg-background p-3 text-center">
+                    <span className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                      {category.name}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </section>
       )}
 
