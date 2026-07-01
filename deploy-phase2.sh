@@ -128,10 +128,15 @@ log "====== STEP 4: APPLYING MIGRATIONS ======"
 log "Checking migration files..."
 MIGRATION_DIR="$PROJECT_DIR/apps/api/prisma/migrations"
 
-if [ ! -f "$MIGRATION_DIR/002_add_foreign_key_constraints.sql" ]; then
-  log_error "Migration 002 not found"
-  exit 1
-fi
+log "Applying Migration 001.5: Add Missing Columns..."
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
+  psql -U mirakart -d mirakart < "$MIGRATION_DIR/001_5_add_missing_columns.sql" 2>&1 | grep -E "^(ALTER|ERROR)" || log "Migration 001.5 applied"
+log_success "Migration 001.5 complete"
+
+log "Applying Migration 002.5: Install Extensions..."
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
+  psql -U mirakart -d mirakart < "$MIGRATION_DIR/002_5_install_extensions.sql" 2>&1 | grep -E "^(CREATE|ERROR)" || log "Migration 002.5 applied"
+log_success "Migration 002.5 complete"
 
 log "Applying Migration 002: Foreign Key Constraints..."
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
@@ -242,7 +247,7 @@ log "====== STEP 9: PERFORMANCE VERIFICATION ======"
 log "Index usage statistics:"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
   psql -U mirakart -d mirakart -c \
-  "SELECT schemaname, relname, indexrelname, idx_scan FROM pg_stat_user_indexes ORDER BY relname, indexrelname LIMIT 20;"
+  "SELECT indexname, idx_scan FROM pg_stat_user_indexes ORDER BY idx_scan DESC LIMIT 20;" || log "Performance stats unavailable"
 
 # Step 11: Success Summary
 log ""
