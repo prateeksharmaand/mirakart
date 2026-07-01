@@ -33,4 +33,18 @@ export class PaymentsRepository {
       return payment;
     });
   }
+
+  findByIdempotencyKey(idempotencyKey: string) {
+    return this.prisma.payment.findUnique({
+      where: { idempotencyKey },
+      include: { order: true },
+    });
+  }
+
+  updateIdempotencyMetadata(
+    id: string,
+    data: { wasIdempotent?: boolean; attemptCount?: { increment: number } },
+  ) {
+    return this.prisma.payment.update({ where: { id }, data });
+  }
 }

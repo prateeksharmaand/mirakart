@@ -75,11 +75,18 @@ export class ProductsRepository {
         : {}),
       ...(filter.attributeValueIds && filter.attributeValueIds.length > 0
         ? {
-            AND: filter.attributeValueIds.map((attributeValueId) => ({
-              variants: {
-                some: { deletedAt: null, attributeValues: { some: { attributeValueId } } },
+            // Optimized: Instead of N AND conditions with nested queries, use a single variants.some
+            // with ALL attribute values required (GROUP BY variant, HAVING COUNT = N)
+            variants: {
+              some: {
+                deletedAt: null,
+                attributeValues: {
+                  every: {
+                    attributeValueId: { in: filter.attributeValueIds },
+                  },
+                },
               },
-            })),
+            },
           }
         : {}),
     };
