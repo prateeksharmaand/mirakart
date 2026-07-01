@@ -34,7 +34,12 @@ echo -e "${CYAN}║       Mirakart — deploying to VPS           ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 
-# ── 1. Docker check ───────────────────────────────────────────────────────────
+# ── 1. Git pull ───────────────────────────────────────────────────────────────
+step "Pulling latest code from origin/main..."
+git pull origin main
+info "Code up to date"
+
+# ── 2. Docker check ───────────────────────────────────────────────────────────
 step "Checking Docker..."
 command -v docker >/dev/null 2>&1 || {
   warn "Docker not found — installing..."
@@ -44,7 +49,7 @@ command -v docker >/dev/null 2>&1 || {
 docker compose version >/dev/null 2>&1 || abort "Docker Compose v2 not found. Update Docker to >= 23.0"
 info "Docker OK"
 
-# ── 2. .env guard ─────────────────────────────────────────────────────────────
+# ── 3. .env guard ─────────────────────────────────────────────────────────────
 step "Checking .env..."
 if [[ ! -f "$APP_DIR/.env" ]]; then
   cp "$APP_DIR/.env.example" "$APP_DIR/.env"
@@ -72,12 +77,7 @@ if grep -q 'NODE_ENV=development' "$APP_DIR/.env"; then
   info "NODE_ENV=production"
 fi
 
-# ── 4. Git pull ───────────────────────────────────────────────────────────────
-step "Pulling latest code from origin/main..."
-git pull origin main
-info "Code up to date"
-
-# ── 5. SSL certificate ────────────────────────────────────────────────────────
+# ── 4. SSL certificate ────────────────────────────────────────────────────────
 step "Checking SSL certificate..."
 
 cert_exists() {
@@ -134,17 +134,17 @@ else
   info "Nginx reloaded with real cert"
 fi
 
-# ── 6. Build Docker images ────────────────────────────────────────────────────
+# ── 5. Build Docker images ────────────────────────────────────────────────────
 step "Building Docker images (this may take several minutes on first run)..."
 $COMPOSE_CMD build --parallel
 info "Images built"
 
-# ── 7. Start / recreate all services ─────────────────────────────────────────
+# ── 6. Start / recreate all services ─────────────────────────────────────────
 step "Starting all services..."
 $COMPOSE_CMD up -d --remove-orphans
 info "Services started"
 
-# ── 8. Wait for API health ────────────────────────────────────────────────────
+# ── 7. Wait for API health ────────────────────────────────────────────────────
 step "Waiting for API to become healthy..."
 ATTEMPTS=0
 MAX=36  # 36 × 5s = 3 minutes
@@ -162,12 +162,12 @@ done
 echo ""
 info "API is healthy"
 
-# ── 9. Database migrations ────────────────────────────────────────────────────
+# ── 8. Database migrations ────────────────────────────────────────────────────
 step "Running database migrations..."
 $COMPOSE_CMD exec -T api pnpm --filter @mirakart/api db:migrate
 info "Migrations applied"
 
-# ── 10. Nginx config test + reload ───────────────────────────────────────────
+# ── 9. Nginx config test + reload ────────────────────────────────────────────
 step "Testing and reloading nginx..."
 $COMPOSE_CMD exec -T nginx nginx -t
 $COMPOSE_CMD exec -T nginx nginx -s reload
