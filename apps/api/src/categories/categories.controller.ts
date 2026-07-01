@@ -1,8 +1,9 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
-import { ApiCreatedResponse, ApiOkResponse, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { CategoriesService } from "./categories.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
+import { ListCategoriesDto } from "./dto/list-categories.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 
 @ApiTags("categories")
@@ -11,10 +12,9 @@ export class CategoriesController {
   constructor(private readonly service: CategoriesService) {}
 
   @Get()
-  @ApiQuery({ name: "flat", required: false, type: Boolean })
   @ApiOkResponse()
-  list(@Query("flat") flat?: string) {
-    return this.service.list(flat === "true");
+  list(@Query() query: ListCategoriesDto) {
+    return this.service.list(query.flat === "true");
   }
 
   @Get("admin/all")
