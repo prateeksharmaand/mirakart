@@ -40,7 +40,7 @@ export class CategoriesRepository {
     bannerMediaId?: string;
     sortOrder?: number;
   }) {
-    return this.prisma.category.create({ data });
+    return this.prisma.category.create({ data, include: categoryMediaInclude });
   }
 
   update(
