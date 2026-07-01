@@ -242,7 +242,7 @@ log "====== STEP 9: PERFORMANCE VERIFICATION ======"
 log "Index usage statistics:"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
   psql -U mirakart -d mirakart -c \
-  "SELECT schemaname, tablename, indexname, idx_scan FROM pg_stat_user_indexes ORDER BY tablename, indexname LIMIT 20;"
+  "SELECT schemaname, relname, indexrelname, idx_scan FROM pg_stat_user_indexes ORDER BY relname, indexrelname LIMIT 20;"
 
 # Step 11: Success Summary
 log ""
