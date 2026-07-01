@@ -12,7 +12,7 @@ RUN turbo prune @mirakart/api --docker
 FROM base AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 COPY --from=pruner /app/out/full/apps/api/prisma ./apps/api/prisma
 RUN pnpm --filter @mirakart/api run db:generate
 
