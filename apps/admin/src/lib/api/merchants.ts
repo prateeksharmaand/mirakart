@@ -1,12 +1,16 @@
 import { apiClient } from "../api-client";
 
+export type MerchantStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+export type MerchantDocumentType = "BUSINESS_LICENSE" | "TAX_CERTIFICATE" | "ID_PROOF" | "BANK_DETAILS" | "OTHER";
+export type MerchantDocumentStatus = "PENDING" | "VERIFIED" | "REJECTED";
+
 export interface Merchant {
   id: string;
   email: string;
   storeName: string;
   storeSlug: string;
   phone: string;
-  status: string;
+  status: MerchantStatus;
   rejectionReason?: string | null;
   createdAt: string;
   logoMedia?: { url: string } | null;
@@ -14,8 +18,8 @@ export interface Merchant {
 
 export interface MerchantDocument {
   id: string;
-  type: string;
-  status: string;
+  type: MerchantDocumentType;
+  status: MerchantDocumentStatus;
   url: string;
   rejectionReason?: string | null;
 }

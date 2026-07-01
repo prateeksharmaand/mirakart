@@ -29,6 +29,8 @@ enum AdminStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+
+  @@map("admin_status")
 }
 
 enum PermissionAction {
@@ -39,6 +41,8 @@ enum PermissionAction {
   APPROVE
   REJECT
   EXPORT
+
+  @@map("permission_action")
 }
 
 enum MerchantStatus {
@@ -46,6 +50,8 @@ enum MerchantStatus {
   APPROVED
   REJECTED
   SUSPENDED
+
+  @@map("merchant_status")
 }
 
 enum MerchantDocumentType {
@@ -54,24 +60,32 @@ enum MerchantDocumentType {
   ID_PROOF
   BANK_DETAILS
   OTHER
+
+  @@map("merchant_document_type")
 }
 
 enum MerchantDocumentStatus {
   PENDING
   VERIFIED
   REJECTED
+
+  @@map("merchant_document_status")
 }
 
 enum CustomerStatus {
   ACTIVE
   INACTIVE
   BLOCKED
+
+  @@map("customer_status")
 }
 
 enum AddressType {
   SHIPPING
   BILLING
   BOTH
+
+  @@map("address_type")
 }
 
 enum ProductStatus {
@@ -80,12 +94,16 @@ enum ProductStatus {
   APPROVED
   REJECTED
   ARCHIVED
+
+  @@map("product_status")
 }
 
 enum AttributeType {
   SELECT
   COLOR
   TEXT
+
+  @@map("attribute_type")
 }
 
 enum OrderStatus {
@@ -96,6 +114,8 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+
+  @@map("order_status")
 }
 
 enum OrderItemStatus {
@@ -106,6 +126,8 @@ enum OrderItemStatus {
   DELIVERED
   CANCELLED
   RETURNED
+
+  @@map("order_item_status")
 }
 
 enum PaymentMethod {
@@ -114,6 +136,8 @@ enum PaymentMethod {
   NETBANKING
   WALLET
   COD
+
+  @@map("payment_method")
 }
 
 enum PaymentStatus {
@@ -122,6 +146,8 @@ enum PaymentStatus {
   CAPTURED
   FAILED
   REFUNDED
+
+  @@map("payment_status")
 }
 
 enum ReturnStatus {
@@ -133,6 +159,8 @@ enum ReturnStatus {
   ITEM_RECEIVED
   COMPLETED
   CANCELLED
+
+  @@map("return_status")
 }
 
 enum ActorType {
@@ -140,12 +168,16 @@ enum ActorType {
   MERCHANT
   CUSTOMER
   SYSTEM
+
+  @@map("actor_type")
 }
 
 enum NotificationRecipientType {
   CUSTOMER
   MERCHANT
   ADMIN
+
+  @@map("notification_recipient_type")
 }
 
 enum BannerPosition {
@@ -153,6 +185,8 @@ enum BannerPosition {
   HOME_SECONDARY
   CATEGORY_TOP
   STOREFRONT_TOP
+
+  @@map("banner_position")
 }
 
 // ---------------------------------------------------------------------------

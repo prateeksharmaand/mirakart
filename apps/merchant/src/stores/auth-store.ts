@@ -3,13 +3,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type MerchantStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+
 export interface MerchantProfile {
   id: string;
   email: string;
   storeName: string;
   storeSlug: string;
   phone: string;
-  status: string;
+  status: MerchantStatus;
 }
 
 interface AuthState {
