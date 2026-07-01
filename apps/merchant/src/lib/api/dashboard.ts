@@ -13,11 +13,11 @@ export interface TopProduct {
 }
 
 export async function getMerchantSalesSummary(params: { dateFrom?: string; dateTo?: string } = {}): Promise<MerchantSalesSummary> {
-  const res = await apiClient.get("/reports/merchant/summary", { params });
+  const res = await apiClient.get("/merchants/me/reports/sales-summary", { params });
   return res.data.data as MerchantSalesSummary;
 }
 
 export async function getMerchantTopProducts(params: { dateFrom?: string; dateTo?: string; limit?: number } = {}): Promise<TopProduct[]> {
-  const res = await apiClient.get("/reports/merchant/top-products", { params });
+  const res = await apiClient.get("/merchants/me/reports/top-products", { params });
   return res.data.data as TopProduct[];
 }
