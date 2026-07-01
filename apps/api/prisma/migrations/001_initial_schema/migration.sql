@@ -1,21 +1,21 @@
 -- Create enums
-CREATE TYPE admin_status AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED');
-CREATE TYPE permission_action AS ENUM ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'REJECT', 'EXPORT');
-CREATE TYPE merchant_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED');
-CREATE TYPE merchant_document_type AS ENUM ('BUSINESS_LICENSE', 'TAX_CERTIFICATE', 'ID_PROOF', 'BANK_DETAILS', 'OTHER');
-CREATE TYPE merchant_document_status AS ENUM ('PENDING', 'VERIFIED', 'REJECTED');
-CREATE TYPE customer_status AS ENUM ('ACTIVE', 'INACTIVE', 'BLOCKED');
-CREATE TYPE address_type AS ENUM ('SHIPPING', 'BILLING', 'BOTH');
-CREATE TYPE product_status AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ARCHIVED');
-CREATE TYPE attribute_type AS ENUM ('SELECT', 'COLOR', 'TEXT');
-CREATE TYPE order_status AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED');
-CREATE TYPE order_item_status AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED');
-CREATE TYPE payment_method AS ENUM ('CARD', 'UPI', 'NETBANKING', 'WALLET', 'COD');
-CREATE TYPE payment_status AS ENUM ('PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED');
-CREATE TYPE return_status AS ENUM ('REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'AWAITING_SHIPMENT', 'ITEM_RECEIVED', 'COMPLETED', 'CANCELLED');
-CREATE TYPE actor_type AS ENUM ('ADMIN', 'MERCHANT', 'CUSTOMER', 'SYSTEM');
-CREATE TYPE notification_recipient_type AS ENUM ('CUSTOMER', 'MERCHANT', 'ADMIN');
-CREATE TYPE banner_position AS ENUM ('HOME_HERO', 'HOME_SECONDARY', 'CATEGORY_TOP', 'STOREFRONT_TOP');
+CREATE TYPE "AdminStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED');
+CREATE TYPE "PermissionAction" AS ENUM ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'REJECT', 'EXPORT');
+CREATE TYPE "MerchantStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED');
+CREATE TYPE "MerchantDocumentType" AS ENUM ('BUSINESS_LICENSE', 'TAX_CERTIFICATE', 'ID_PROOF', 'BANK_DETAILS', 'OTHER');
+CREATE TYPE "MerchantDocumentStatus" AS ENUM ('PENDING', 'VERIFIED', 'REJECTED');
+CREATE TYPE "CustomerStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'BLOCKED');
+CREATE TYPE "AddressType" AS ENUM ('SHIPPING', 'BILLING', 'BOTH');
+CREATE TYPE "ProductStatus" AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ARCHIVED');
+CREATE TYPE "AttributeType" AS ENUM ('SELECT', 'COLOR', 'TEXT');
+CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED');
+CREATE TYPE "OrderItemStatus" AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED');
+CREATE TYPE "PaymentMethod" AS ENUM ('CARD', 'UPI', 'NETBANKING', 'WALLET', 'COD');
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED');
+CREATE TYPE "ReturnStatus" AS ENUM ('REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'AWAITING_SHIPMENT', 'ITEM_RECEIVED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE "ActorType" AS ENUM ('ADMIN', 'MERCHANT', 'CUSTOMER', 'SYSTEM');
+CREATE TYPE "NotificationRecipientType" AS ENUM ('CUSTOMER', 'MERCHANT', 'ADMIN');
+CREATE TYPE "BannerPosition" AS ENUM ('HOME_HERO', 'HOME_SECONDARY', 'CATEGORY_TOP', 'STOREFRONT_TOP');
 
 -- Roles
 CREATE TABLE IF NOT EXISTS roles (
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS permissions (
   "id" VARCHAR(255) PRIMARY KEY,
   "code" VARCHAR(255) NOT NULL UNIQUE,
   "module" VARCHAR(255) NOT NULL,
-  "action" permission_action NOT NULL,
+  "action" "PermissionAction" NOT NULL,
   "description" TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_permissions_module ON permissions("module");
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
   "firstName" VARCHAR(255) NOT NULL,
   "lastName" VARCHAR(255) NOT NULL,
   "phone" VARCHAR(20),
-  "status" admin_status DEFAULT 'ACTIVE',
+  "status" "AdminStatus" DEFAULT 'ACTIVE',
   "isSuperAdmin" BOOLEAN DEFAULT FALSE,
   "roleId" VARCHAR(255) REFERENCES roles("id"),
   "lastLoginAt" TIMESTAMP,
@@ -66,7 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_users_status ON admin_users("status");
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   "id" VARCHAR(255) PRIMARY KEY,
   "tokenHash" VARCHAR(255) NOT NULL UNIQUE,
-  "principalType" actor_type NOT NULL,
+  "principalType" "ActorType" NOT NULL,
   "principalId" VARCHAR(255) NOT NULL,
   "userAgent" TEXT,
   "ipAddress" VARCHAR(45),
@@ -80,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_principal ON refresh_tokens("princ
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
   "id" VARCHAR(255) PRIMARY KEY,
   "tokenHash" VARCHAR(255) NOT NULL UNIQUE,
-  "principalType" actor_type NOT NULL,
+  "principalType" "ActorType" NOT NULL,
   "principalId" VARCHAR(255) NOT NULL,
   "expiresAt" TIMESTAMP NOT NULL,
   "usedAt" TIMESTAMP,
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS merchants (
   "email" VARCHAR(255) NOT NULL UNIQUE,
   "passwordHash" VARCHAR(255) NOT NULL,
   "phone" VARCHAR(20) NOT NULL,
-  "status" merchant_status DEFAULT 'PENDING',
+  "status" "MerchantStatus" DEFAULT 'PENDING',
   "description" TEXT,
   "logoMediaId" VARCHAR(255) REFERENCES media("id"),
   "bannerMediaId" VARCHAR(255) REFERENCES media("id"),
@@ -131,8 +131,8 @@ CREATE INDEX IF NOT EXISTS idx_merchants_status ON merchants("status");
 CREATE TABLE IF NOT EXISTS merchant_documents (
   "id" VARCHAR(255) PRIMARY KEY,
   "merchantId" VARCHAR(255) NOT NULL REFERENCES merchants("id") ON DELETE CASCADE,
-  "type" merchant_document_type NOT NULL,
-  "status" merchant_document_status DEFAULT 'PENDING',
+  "type" "MerchantDocumentType" NOT NULL,
+  "status" "MerchantDocumentStatus" DEFAULT 'PENDING',
   "mediaId" VARCHAR(255) NOT NULL REFERENCES media("id"),
   "uploadedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS customers (
   "phone" VARCHAR(20),
   "firstName" VARCHAR(255) NOT NULL,
   "lastName" VARCHAR(255) NOT NULL,
-  "status" customer_status DEFAULT 'ACTIVE',
+  "status" "CustomerStatus" DEFAULT 'ACTIVE',
   "emailVerifiedAt" TIMESTAMP,
   "phoneVerifiedAt" TIMESTAMP,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS addresses (
   "state" VARCHAR(255) NOT NULL,
   "postalCode" VARCHAR(20) NOT NULL,
   "country" VARCHAR(255) NOT NULL,
-  "type" address_type DEFAULT 'BOTH',
+  "type" "AddressType" DEFAULT 'BOTH',
   "isDefault" BOOLEAN DEFAULT FALSE,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS attributes (
   "id" VARCHAR(255) PRIMARY KEY,
   "name" VARCHAR(255) NOT NULL,
   "slug" VARCHAR(255) NOT NULL UNIQUE,
-  "type" attribute_type DEFAULT 'SELECT',
+  "type" "AttributeType" DEFAULT 'SELECT',
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS products (
   "name" VARCHAR(255) NOT NULL,
   "slug" VARCHAR(255) NOT NULL UNIQUE,
   "description" TEXT NOT NULL,
-  "status" product_status DEFAULT 'DRAFT',
+  "status" "ProductStatus" DEFAULT 'DRAFT',
   "rejectionReason" TEXT,
   "basePrice" DECIMAL(12, 2) NOT NULL,
   "compareAtPrice" DECIMAL(12, 2),
@@ -328,7 +328,7 @@ CREATE TABLE IF NOT EXISTS orders (
   "customerId" VARCHAR(255) NOT NULL REFERENCES customers("id"),
   "shippingAddressId" VARCHAR(255) REFERENCES addresses("id"),
   "billingAddressId" VARCHAR(255) REFERENCES addresses("id"),
-  "status" order_status DEFAULT 'PENDING',
+  "status" "OrderStatus" DEFAULT 'PENDING',
   "subtotal" DECIMAL(12, 2) NOT NULL,
   "shippingCost" DECIMAL(12, 2),
   "taxAmount" DECIMAL(12, 2),
@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   "quantity" INT NOT NULL,
   "unitPrice" DECIMAL(12, 2) NOT NULL,
   "discountAmount" DECIMAL(12, 2),
-  "status" order_item_status DEFAULT 'PENDING',
+  "status" "OrderItemStatus" DEFAULT 'PENDING',
   "productSnapshot" JSONB,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -363,8 +363,8 @@ CREATE INDEX IF NOT EXISTS idx_order_items_merchantId ON order_items("merchantId
 CREATE TABLE IF NOT EXISTS order_status_history (
   "id" VARCHAR(255) PRIMARY KEY,
   "orderId" VARCHAR(255) NOT NULL REFERENCES orders("id") ON DELETE CASCADE,
-  "fromStatus" order_status,
-  "toStatus" order_status NOT NULL,
+  "fromStatus" "OrderStatus",
+  "toStatus" "OrderStatus" NOT NULL,
   "changedById" VARCHAR(255) REFERENCES admin_users("id"),
   "notes" TEXT,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -376,8 +376,8 @@ CREATE TABLE IF NOT EXISTS payments (
   "id" VARCHAR(255) PRIMARY KEY,
   "orderId" VARCHAR(255) NOT NULL UNIQUE REFERENCES orders("id"),
   "amount" DECIMAL(12, 2) NOT NULL,
-  "method" payment_method NOT NULL,
-  "status" payment_status DEFAULT 'PENDING',
+  "method" "PaymentMethod" NOT NULL,
+  "status" "PaymentStatus" DEFAULT 'PENDING',
   "transactionId" VARCHAR(255),
   "failureReason" TEXT,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -398,7 +398,7 @@ CREATE TABLE IF NOT EXISTS returns (
   "orderId" VARCHAR(255) NOT NULL REFERENCES orders("id"),
   "merchantId" VARCHAR(255) NOT NULL REFERENCES merchants("id"),
   "customerId" VARCHAR(255) NOT NULL REFERENCES customers("id"),
-  "status" return_status DEFAULT 'REQUESTED',
+  "status" "ReturnStatus" DEFAULT 'REQUESTED',
   "reasonId" VARCHAR(255) REFERENCES return_reasons("id"),
   "customReason" TEXT,
   "description" TEXT,
@@ -425,8 +425,8 @@ CREATE INDEX IF NOT EXISTS idx_return_images_returnId ON return_images("returnId
 CREATE TABLE IF NOT EXISTS return_status_history (
   "id" VARCHAR(255) PRIMARY KEY,
   "returnId" VARCHAR(255) NOT NULL REFERENCES returns("id") ON DELETE CASCADE,
-  "fromStatus" return_status,
-  "toStatus" return_status NOT NULL,
+  "fromStatus" "ReturnStatus",
+  "toStatus" "ReturnStatus" NOT NULL,
   "notes" TEXT,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -435,7 +435,7 @@ CREATE INDEX IF NOT EXISTS idx_return_status_history_returnId ON return_status_h
 -- Notifications
 CREATE TABLE IF NOT EXISTS notifications (
   "id" VARCHAR(255) PRIMARY KEY,
-  "recipientType" notification_recipient_type NOT NULL,
+  "recipientType" "NotificationRecipientType" NOT NULL,
   "recipientId" VARCHAR(255) NOT NULL,
   "title" VARCHAR(255) NOT NULL,
   "message" TEXT NOT NULL,
@@ -448,7 +448,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- Device Tokens
 CREATE TABLE IF NOT EXISTS device_tokens (
   "id" VARCHAR(255) PRIMARY KEY,
-  "principalType" actor_type NOT NULL,
+  "principalType" "ActorType" NOT NULL,
   "principalId" VARCHAR(255) NOT NULL,
   "token" VARCHAR(500) NOT NULL UNIQUE,
   "platform" VARCHAR(50),
@@ -475,7 +475,7 @@ CREATE INDEX IF NOT EXISTS idx_settings_group ON settings("group");
 CREATE TABLE IF NOT EXISTS banners (
   "id" VARCHAR(255) PRIMARY KEY,
   "mediaId" VARCHAR(255) NOT NULL REFERENCES media("id"),
-  "position" banner_position NOT NULL,
+  "position" "BannerPosition" NOT NULL,
   "title" VARCHAR(255),
   "targetUrl" VARCHAR(500),
   "isActive" BOOLEAN DEFAULT TRUE,
@@ -489,7 +489,7 @@ CREATE TABLE IF NOT EXISTS banners (
 -- Audit Logs
 CREATE TABLE IF NOT EXISTS audit_logs (
   "id" VARCHAR(255) PRIMARY KEY,
-  "actorType" actor_type NOT NULL,
+  "actorType" "ActorType" NOT NULL,
   "actorId" VARCHAR(255) NOT NULL,
   "entityType" VARCHAR(255) NOT NULL,
   "entityId" VARCHAR(255) NOT NULL,
