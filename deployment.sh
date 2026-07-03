@@ -150,7 +150,33 @@ info "API is healthy"
 
 # ── 9. Database migrations ────────────────────────────────────────────────────
 step "Running database migrations..."
-$COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart < "$APP_DIR/apps/api/prisma/migrations/001_initial_schema/migration.sql"
+MIGRATIONS_DIR="$APP_DIR/apps/api/prisma/migrations"
+
+# Tracking table so each SQL file is only ever applied once
+$COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart -c \
+  "CREATE TABLE IF NOT EXISTS _schema_migrations (id TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW());" \
+  >/dev/null 2>&1 || true
+
+# Collect all .sql files (sorted alphabetically = chronological order)
+mapfile -t SQL_FILES < <(find "$MIGRATIONS_DIR" -name "*.sql" | sort)
+
+for filepath in "${SQL_FILES[@]}"; do
+  rel="${filepath#$MIGRATIONS_DIR/}"
+  applied=$($COMPOSE_CMD exec -T postgres \
+    psql -U mirakart -d mirakart -tAc \
+    "SELECT COUNT(*) FROM _schema_migrations WHERE id='$rel';" 2>/dev/null | tr -d '[:space:]')
+  if [[ "$applied" == "0" ]] || [[ -z "$applied" ]]; then
+    echo "  → Applying: $rel"
+    if $COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart < "$filepath"; then
+      $COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart -c \
+        "INSERT INTO _schema_migrations(id) VALUES ('$rel') ON CONFLICT DO NOTHING;" >/dev/null 2>&1
+    else
+      abort "Migration failed: $rel — check logs above."
+    fi
+  else
+    echo "  ✓ Already applied: $rel"
+  fi
+done
 info "Migrations applied"
 
 # ── 10. Nginx config test + reload ───────────────────────────────────────────
