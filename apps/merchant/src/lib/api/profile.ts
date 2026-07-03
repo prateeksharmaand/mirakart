@@ -43,3 +43,8 @@ export async function listBrands() {
   const res = await apiClient.get("/brands", { params: { limit: 200 } });
   return res.data.data as Array<{ id: string; name: string }>;
 }
+
+export async function listActiveTags() {
+  const res = await apiClient.get("/tags");
+  return res.data.data as Array<{ id: string; name: string; slug: string }>;
+}

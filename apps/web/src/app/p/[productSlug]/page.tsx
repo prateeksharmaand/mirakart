@@ -75,6 +75,20 @@ export default async function ProductPage({ params }: PageProps) {
             <h2 className="mb-2 text-sm font-medium text-foreground">Description</h2>
             <p className="whitespace-pre-line text-sm text-foreground-muted">{product.description}</p>
           </div>
+
+          {product.tags && product.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {product.tags.map(({ tag }) => (
+                <Link
+                  key={tag.id}
+                  href={`/products?tag=${tag.slug}`}
+                  className="rounded-full border border-border px-3 py-1 text-xs text-foreground-muted hover:border-primary hover:text-primary transition-colors"
+                >
+                  {tag.name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

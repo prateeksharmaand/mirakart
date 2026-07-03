@@ -29,6 +29,7 @@ export class ProductsService {
       search: query.search,
       isFeatured: query.isFeatured,
       attributeValueIds: query.attributeValueIds,
+      tagSlug: query.tagSlug,
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
@@ -67,30 +68,40 @@ export class ProductsService {
       throw new BadRequestException("compareAtPrice must be greater than basePrice");
     }
     const slug = await this.generateUniqueSlug(dto.name);
-    return this.repo.create({
+    const { tagIds, ...productData } = dto;
+    const product = await this.repo.create({
       merchantId,
-      categoryId: dto.categoryId,
-      brandId: dto.brandId,
-      name: dto.name,
+      categoryId: productData.categoryId,
+      brandId: productData.brandId,
+      name: productData.name,
       slug,
-      description: dto.description,
-      basePrice: dto.basePrice,
-      compareAtPrice: dto.compareAtPrice,
-      sku: dto.sku,
-      weight: dto.weight,
-      metaTitle: dto.metaTitle,
-      metaDescription: dto.metaDescription,
-      status: dto.status ?? "DRAFT",
+      description: productData.description,
+      basePrice: productData.basePrice,
+      compareAtPrice: productData.compareAtPrice,
+      sku: productData.sku,
+      weight: productData.weight,
+      metaTitle: productData.metaTitle,
+      metaDescription: productData.metaDescription,
+      status: productData.status ?? "DRAFT",
     });
+    if (tagIds && tagIds.length > 0) {
+      await this.repo.syncTags(product.id, tagIds);
+    }
+    return product;
   }
 
   async update(id: string, merchantId: string, dto: UpdateProductDto) {
     const product = await this.assertOwnedProduct(id, merchantId);
     const wasRejected = product.status === "REJECTED";
-    return this.repo.update(id, {
-      ...dto,
+    const { tagIds, ...updateData } = dto;
+    const updated = await this.repo.update(id, {
+      ...updateData,
       ...(wasRejected ? { status: "PENDING_APPROVAL", rejectionReason: null } : {}),
     });
+    if (tagIds !== undefined) {
+      await this.repo.syncTags(id, tagIds);
+    }
+    return updated;
   }
 
   async remove(id: string, merchantId: string): Promise<void> {

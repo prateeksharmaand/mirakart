@@ -22,6 +22,7 @@ export interface Product {
   brand?: { id: string; name: string } | null;
   images?: Array<{ id: string; media: { url: string } }>;
   variants?: ProductVariant[];
+  tags?: Array<{ tag: { id: string; name: string; slug: string } }>;
 }
 
 export async function listMerchantProducts(params: { page?: number; limit?: number; search?: string; status?: string } = {}) {
@@ -43,6 +44,7 @@ export async function createProduct(data: {
   compareAtPrice?: number;
   sku?: string;
   status?: string;
+  tagIds?: string[];
 }): Promise<Product> {
   const res = await apiClient.post("/merchants/me/products", data);
   return res.data.data as Product;
@@ -66,6 +68,7 @@ export async function updateProduct(id: string, data: Partial<{
   basePrice: number;
   compareAtPrice: number;
   status: string;
+  tagIds: string[];
 }>): Promise<Product> {
   const res = await apiClient.patch(`/merchants/me/products/${id}`, data);
   return res.data.data as Product;

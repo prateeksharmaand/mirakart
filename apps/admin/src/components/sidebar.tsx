@@ -34,6 +34,7 @@ const NAV: NavItem[] = [
       { href: "/categories", label: "Categories" },
       { href: "/brands", label: "Brands" },
       { href: "/attributes", label: "Attributes" },
+      { href: "/tags", label: "Tags" },
     ],
   },
   { href: "/products", label: "Products", icon: Package },

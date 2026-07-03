@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
 import { getMerchantProduct, updateProduct } from "../../../../../lib/api/products";
-import { listCategories, listBrands } from "../../../../../lib/api/profile";
+import { listCategories, listBrands, listActiveTags } from "../../../../../lib/api/profile";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -19,6 +19,7 @@ const schema = z.object({
   price: z.coerce.number().positive(),
   comparePrice: z.coerce.number().optional(),
   status: z.enum(["ACTIVE", "DRAFT", "ARCHIVED"]),
+  tagIds: z.array(z.string()).default([]),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -28,8 +29,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const { data: product, isLoading } = useQuery({ queryKey: ["merchant-product", params.id], queryFn: () => getMerchantProduct(params.id) });
   const { data: categories } = useQuery({ queryKey: ["merchant-categories"], queryFn: listCategories });
   const { data: brands } = useQuery({ queryKey: ["merchant-brands"], queryFn: listBrands });
+  const { data: tags } = useQuery({ queryKey: ["merchant-tags"], queryFn: listActiveTags });
 
-  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  const selectedTagIds = watch("tagIds") ?? [];
 
   React.useEffect(() => {
     if (product) {
@@ -38,15 +42,25 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         description: product.description ?? "",
         categoryId: product.category?.id,
         brandId: product.brand?.id,
-        price: product.price,
-        comparePrice: product.comparePrice ?? undefined,
+        price: product.basePrice,
+        comparePrice: product.compareAtPrice ?? undefined,
         status: (product.status as "ACTIVE" | "DRAFT" | "ARCHIVED") ?? "DRAFT",
+        tagIds: product.tags?.map((pt) => pt.tag.id) ?? [],
       });
     }
   }, [product, reset]);
 
   const mutation = useMutation({
-    mutationFn: (v: FormValues) => updateProduct(params.id, v),
+    mutationFn: (v: FormValues) => updateProduct(params.id, {
+      name: v.name,
+      description: v.description,
+      categoryId: v.categoryId,
+      brandId: v.brandId,
+      basePrice: v.price,
+      compareAtPrice: v.comparePrice,
+      status: v.status,
+      tagIds: v.tagIds,
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["merchant-products"] });
       toast({ title: "Product updated", variant: "success" });
@@ -101,6 +115,39 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </Select>
           </FormField>
         </div>
+
+        {/* Tags */}
+        {tags && tags.length > 0 && (
+          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3">
+            <h2 className="text-sm font-semibold">Tags</h2>
+            <p className="text-xs text-foreground-muted">Select tags that describe this product.</p>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => {
+                const isSelected = selectedTagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => {
+                      const next = isSelected
+                        ? selectedTagIds.filter((id) => id !== tag.id)
+                        : [...selectedTagIds, tag.id];
+                      setValue("tagIds", next);
+                    }}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-background hover:border-primary hover:text-primary"
+                    }`}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
           <Button type="submit" isLoading={mutation.isPending}>Save Changes</Button>

@@ -112,3 +112,39 @@ export async function updateAttribute(id: string, data: { name?: string; values?
 export async function deleteAttribute(id: string): Promise<void> {
   await apiClient.delete(`/attributes/${id}`);
 }
+
+// ---------- Tags ----------
+
+export interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export async function listTags(params: { page?: number; limit?: number; search?: string; isActive?: boolean } = {}) {
+  const res = await apiClient.get("/tags/admin/all", { params });
+  return res.data as { data: Tag[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
+}
+
+export async function getTag(id: string): Promise<Tag> {
+  const res = await apiClient.get(`/tags/${id}`);
+  return res.data.data as Tag;
+}
+
+export async function createTag(data: { name: string; description?: string; isActive?: boolean; sortOrder?: number }): Promise<Tag> {
+  const res = await apiClient.post("/tags", data);
+  return res.data.data as Tag;
+}
+
+export async function updateTag(id: string, data: { name?: string; description?: string; isActive?: boolean; sortOrder?: number }): Promise<Tag> {
+  const res = await apiClient.patch(`/tags/${id}`, data);
+  return res.data.data as Tag;
+}
+
+export async function deleteTag(id: string): Promise<void> {
+  await apiClient.delete(`/tags/${id}`);
+}

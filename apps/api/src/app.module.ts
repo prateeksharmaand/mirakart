@@ -27,6 +27,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { SettingsModule } from "./settings/settings.module";
 import { BannersModule } from "./banners/banners.module";
 import { ReportsModule } from "./reports/reports.module";
+import { TagsModule } from "./tags/tags.module";
 
 // All modules from the docs/architecture.md build order are now
 // registered. Future modules (Wallet, Coupons, etc.) are explicitly out
@@ -58,6 +59,7 @@ import { ReportsModule } from "./reports/reports.module";
     SettingsModule,
     BannersModule,
     ReportsModule,
+    TagsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

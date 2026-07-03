@@ -45,4 +45,9 @@ export class ProductQueryDto extends PaginationQueryDto {
   @IsArray()
   @IsString({ each: true })
   attributeValueIds?: string[];
+
+  @ApiPropertyOptional({ description: "Filter products by tag slug" })
+  @IsOptional()
+  @IsString()
+  tagSlug?: string;
 }

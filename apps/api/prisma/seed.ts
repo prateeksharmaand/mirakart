@@ -22,6 +22,7 @@ const PERMISSION_MODULES: Record<string, PermissionAction[]> = {
   setting: ["VIEW", "EDIT"],
   banner: ["VIEW", "CREATE", "EDIT", "DELETE"],
   report: ["VIEW", "EXPORT"],
+  tag: ["VIEW", "CREATE", "EDIT", "DELETE"],
 };
 
 const RETURN_REASONS = [

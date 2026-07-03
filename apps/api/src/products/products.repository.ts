@@ -18,6 +18,7 @@ export interface PublicProductFilter extends SortableFilter {
   search?: string;
   isFeatured?: boolean;
   attributeValueIds?: string[];
+  tagSlug?: string;
   page: number;
   limit: number;
 }
@@ -48,6 +49,7 @@ const productDetailInclude = {
   },
   brand: true,
   category: true,
+  tags: { include: { tag: true }, where: { tag: { isActive: true, deletedAt: null } } },
 };
 
 @Injectable()
@@ -88,6 +90,9 @@ export class ProductsRepository {
               },
             },
           }
+        : {}),
+      ...(filter.tagSlug
+        ? { tags: { some: { tag: { slug: filter.tagSlug, isActive: true, deletedAt: null } } } }
         : {}),
     };
 
@@ -296,5 +301,16 @@ export class ProductsRepository {
 
   countImages(productId: string): Promise<number> {
     return this.prisma.productImage.count({ where: { productId } });
+  }
+
+  // --- Tags ---
+
+  syncTags(productId: string, tagIds: string[]) {
+    return this.prisma.$transaction([
+      this.prisma.productTag.deleteMany({ where: { productId } }),
+      ...(tagIds.length > 0
+        ? [this.prisma.productTag.createMany({ data: tagIds.map((tagId) => ({ productId, tagId })) })]
+        : []),
+    ]);
   }
 }

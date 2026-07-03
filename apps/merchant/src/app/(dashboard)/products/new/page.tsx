@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { createProduct, addVariant } from "../../../../lib/api/products";
-import { listCategories, listBrands } from "../../../../lib/api/profile";
+import { listCategories, listBrands, listActiveTags } from "../../../../lib/api/profile";
 import { Plus, Trash2 } from "lucide-react";
 
 const variantSchema = z.object({
@@ -27,6 +27,7 @@ const schema = z.object({
   compareAtPrice: z.coerce.number().optional(),
   sku: z.string().optional(),
   status: z.enum(["DRAFT", "PENDING_APPROVAL"]).default("DRAFT"),
+  tagIds: z.array(z.string()).default([]),
   variants: z.array(variantSchema).min(1, "Add at least one variant"),
 });
 
@@ -36,14 +37,18 @@ export default function NewProductPage() {
   const router = useRouter();
   const { data: categories } = useQuery({ queryKey: ["merchant-categories"], queryFn: listCategories });
   const { data: brands } = useQuery({ queryKey: ["merchant-brands"], queryFn: listBrands });
+  const { data: tags } = useQuery({ queryKey: ["merchant-tags"], queryFn: listActiveTags });
 
   const { register, handleSubmit, setValue, watch, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       status: "DRAFT",
+      tagIds: [],
       variants: [{ sku: "", price: 0, stock: 0 }],
     },
   });
+
+  const selectedTagIds = watch("tagIds");
 
   const { fields, append, remove } = useFieldArray({ control, name: "variants" });
 
@@ -59,6 +64,7 @@ export default function NewProductPage() {
         compareAtPrice: values.compareAtPrice || undefined,
         sku: values.sku || undefined,
         status: values.status,
+        tagIds: values.tagIds.length > 0 ? values.tagIds : undefined,
       });
 
       // Step 2: Add each variant (attributeValueIds defaults to [] since the form
@@ -124,6 +130,38 @@ export default function NewProductPage() {
             </FormField>
           </div>
         </div>
+
+        {/* Tags */}
+        {tags && tags.length > 0 && (
+          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3">
+            <h2 className="text-sm font-semibold">Tags</h2>
+            <p className="text-xs text-foreground-muted">Select tags that describe this product.</p>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => {
+                const isSelected = selectedTagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => {
+                      const next = isSelected
+                        ? selectedTagIds.filter((id) => id !== tag.id)
+                        : [...selectedTagIds, tag.id];
+                      setValue("tagIds", next);
+                    }}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-background hover:border-primary hover:text-primary"
+                    }`}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Pricing */}
         <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">

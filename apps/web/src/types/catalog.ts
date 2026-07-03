@@ -66,6 +66,16 @@ export interface ProductImage {
   media: Media;
 }
 
+export interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface ProductTag {
+  tag: Tag;
+}
+
 export interface ProductListItem {
   id: string;
   name: string;
@@ -82,6 +92,7 @@ export interface ProductDetail extends ProductListItem {
   sku: string | null;
   category: Category;
   variants: ProductVariant[];
+  tags: ProductTag[];
 }
 
 export interface PaginatedResult<T> {

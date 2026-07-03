@@ -16,6 +16,7 @@ export interface ProductListParams {
   search?: string;
   isFeatured?: boolean;
   attributeValueIds?: string[];
+  tagSlug?: string;
   page?: number;
   limit?: number;
 }
@@ -38,6 +39,7 @@ export async function getProducts(params: ProductListParams = {}): Promise<Pagin
     search: params.search,
     isFeatured: params.isFeatured,
     attributeValueIds: params.attributeValueIds?.join(","),
+    tagSlug: params.tagSlug,
     page: params.page,
     limit: params.limit,
   });

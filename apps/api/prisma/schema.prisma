@@ -478,6 +478,33 @@ model AttributeValue {
   @@map("attribute_values")
 }
 
+model Tag {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  products ProductTag[]
+
+  @@index([isActive])
+  @@map("tags")
+}
+
+model ProductTag {
+  productId String
+  tagId     String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@map("product_tags")
+}
+
 model Product {
   id              String        @id @default(cuid())
   merchantId      String
@@ -510,6 +537,7 @@ model Product {
   variants   ProductVariant[]
   attributes ProductAttribute[]
   orderItems OrderItem[]
+  tags       ProductTag[]
 
   @@index([merchantId])
   @@index([categoryId])

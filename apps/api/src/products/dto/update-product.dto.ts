@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { IsArray, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
 import { Type } from "class-transformer";
 
 export class UpdateProductDto {
@@ -60,4 +60,10 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   metaDescription?: string;
+
+  @ApiPropertyOptional({ type: [String], description: "Tag IDs to sync (replaces existing tags)" })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tagIds?: string[];
 }
