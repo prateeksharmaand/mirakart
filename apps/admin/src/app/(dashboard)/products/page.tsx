@@ -48,8 +48,8 @@ export default function ProductsPage() {
       header: "Price",
       cell: (r) => (
         <div>
-          <p className="font-medium">{formatPrice(r.price)}</p>
-          {r.comparePrice && <p className="text-xs text-muted-foreground line-through">{formatPrice(r.comparePrice)}</p>}
+          <p className="font-medium">{formatPrice(r.basePrice)}</p>
+          {r.compareAtPrice && <p className="text-xs text-muted-foreground line-through">{formatPrice(r.compareAtPrice)}</p>}
         </div>
       ),
     },

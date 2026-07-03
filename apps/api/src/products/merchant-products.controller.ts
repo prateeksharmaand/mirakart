@@ -4,6 +4,7 @@ import { MerchantAuth } from "../auth/decorators/auth.decorators";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AuthenticatedPrincipal } from "../auth/types/jwt-payload.interface";
 import { AddProductImageDto } from "./dto/add-product-image.dto";
+import { ReorderImagesDto } from "./dto/reorder-images.dto";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { CreateVariantDto } from "./dto/create-variant.dto";
 import { MerchantProductQueryDto } from "./dto/merchant-product-query.dto";
@@ -90,6 +91,12 @@ export class MerchantProductsController {
     return this.service.updateInventory(id, variantId, user.id, dto);
   }
 
+  @Get(":id/images")
+  @ApiOkResponse()
+  listImages(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.listImages(id, user.id);
+  }
+
   @Post(":id/images")
   @ApiCreatedResponse()
   addImage(
@@ -98,6 +105,28 @@ export class MerchantProductsController {
     @CurrentUser() user: AuthenticatedPrincipal,
   ) {
     return this.service.addImage(id, user.id, dto);
+  }
+
+  @Patch(":id/images/reorder")
+  @ApiOkResponse()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  reorderImages(
+    @Param("id") id: string,
+    @Body() dto: ReorderImagesDto,
+    @CurrentUser() user: AuthenticatedPrincipal,
+  ) {
+    return this.service.reorderImages(id, user.id, dto.items);
+  }
+
+  @Patch(":id/images/:imageId/primary")
+  @ApiOkResponse()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  setPrimaryImage(
+    @Param("id") id: string,
+    @Param("imageId") imageId: string,
+    @CurrentUser() user: AuthenticatedPrincipal,
+  ) {
+    return this.service.setPrimaryImage(id, imageId, user.id);
   }
 
   @Delete(":id/images/:imageId")

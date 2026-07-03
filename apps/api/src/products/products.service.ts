@@ -180,16 +180,22 @@ export class ProductsService {
 
   // --- Images ---
 
+  async listImages(productId: string, merchantId: string) {
+    await this.assertOwnedProduct(productId, merchantId);
+    return this.repo.listImages(productId);
+  }
+
   async addImage(productId: string, merchantId: string, dto: AddProductImageDto) {
     await this.assertOwnedProduct(productId, merchantId);
     if (dto.variantId) await this.assertOwnedVariant(productId, dto.variantId, merchantId);
-    const sortOrder = await this.repo.countImages(productId);
+    const count = await this.repo.countImages(productId);
+    if (count >= 5) throw new BadRequestException("Maximum 5 images allowed per product");
     return this.repo.addImage({
       productId,
       mediaId: dto.mediaId,
       variantId: dto.variantId,
-      isPrimary: dto.isPrimary ?? false,
-      sortOrder,
+      isPrimary: count === 0 || (dto.isPrimary ?? false),
+      sortOrder: count,
     });
   }
 
@@ -197,7 +203,72 @@ export class ProductsService {
     await this.assertOwnedProduct(productId, merchantId);
     const image = await this.repo.findImageById(imageId);
     if (!image || image.productId !== productId) throw new NotFoundException("Image not found");
+    const count = await this.repo.countImages(productId);
+    if (count <= 1) throw new BadRequestException("At least one image is required");
     await this.repo.removeImage(imageId);
+    if (image.isPrimary) {
+      const remaining = await this.repo.listImages(productId);
+      const first = remaining[0];
+      if (first) await this.repo.setPrimary(productId, first.id);
+    }
+  }
+
+  async setPrimaryImage(productId: string, imageId: string, merchantId: string) {
+    await this.assertOwnedProduct(productId, merchantId);
+    const image = await this.repo.findImageById(imageId);
+    if (!image || image.productId !== productId) throw new NotFoundException("Image not found");
+    await this.repo.setPrimary(productId, imageId);
+  }
+
+  async reorderImages(productId: string, merchantId: string, items: { id: string; sortOrder: number }[]) {
+    await this.assertOwnedProduct(productId, merchantId);
+    await this.repo.reorderImages(items);
+  }
+
+  // --- Admin Images ---
+
+  async listImagesAdmin(productId: string) {
+    await this.findAdminProduct(productId);
+    return this.repo.listImages(productId);
+  }
+
+  async addImageAdmin(productId: string, dto: AddProductImageDto) {
+    await this.findAdminProduct(productId);
+    const count = await this.repo.countImages(productId);
+    if (count >= 5) throw new BadRequestException("Maximum 5 images allowed per product");
+    return this.repo.addImage({
+      productId,
+      mediaId: dto.mediaId,
+      variantId: dto.variantId,
+      isPrimary: count === 0 || (dto.isPrimary ?? false),
+      sortOrder: count,
+    });
+  }
+
+  async removeImageAdmin(productId: string, imageId: string): Promise<void> {
+    await this.findAdminProduct(productId);
+    const image = await this.repo.findImageById(imageId);
+    if (!image || image.productId !== productId) throw new NotFoundException("Image not found");
+    const count = await this.repo.countImages(productId);
+    if (count <= 1) throw new BadRequestException("At least one image is required");
+    await this.repo.removeImage(imageId);
+    if (image.isPrimary) {
+      const remaining = await this.repo.listImages(productId);
+      const first = remaining[0];
+      if (first) await this.repo.setPrimary(productId, first.id);
+    }
+  }
+
+  async setPrimaryImageAdmin(productId: string, imageId: string) {
+    await this.findAdminProduct(productId);
+    const image = await this.repo.findImageById(imageId);
+    if (!image || image.productId !== productId) throw new NotFoundException("Image not found");
+    await this.repo.setPrimary(productId, imageId);
+  }
+
+  async reorderImagesAdmin(productId: string, items: { id: string; sortOrder: number }[]) {
+    await this.findAdminProduct(productId);
+    await this.repo.reorderImages(items);
   }
 
   // --- Internal helpers ---

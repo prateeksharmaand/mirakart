@@ -79,9 +79,9 @@ export default function NewProductPage() {
 
       return product;
     },
-    onSuccess: () => {
-      toast({ title: "Product created successfully", variant: "success" });
-      router.push("/products");
+    onSuccess: (product) => {
+      toast({ title: "Product created — now add images", variant: "success" });
+      router.push(`/products/${product.id}/edit`);
     },
     onError: (e: Error) => toast({ title: "Failed to create product", description: e.message, variant: "danger" }),
   });

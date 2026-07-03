@@ -282,12 +282,20 @@ export class ProductsRepository {
 
   // --- Images ---
 
+  listImages(productId: string) {
+    return this.prisma.productImage.findMany({
+      where: { productId },
+      include: { media: true },
+      orderBy: { sortOrder: "asc" },
+    });
+  }
+
   async addImage(data: { productId: string; mediaId: string; variantId?: string; isPrimary: boolean; sortOrder: number }) {
     return this.prisma.$transaction(async (tx) => {
       if (data.isPrimary) {
         await tx.productImage.updateMany({ where: { productId: data.productId }, data: { isPrimary: false } });
       }
-      return tx.productImage.create({ data });
+      return tx.productImage.create({ data, include: { media: true } });
     });
   }
 
@@ -301,6 +309,19 @@ export class ProductsRepository {
 
   countImages(productId: string): Promise<number> {
     return this.prisma.productImage.count({ where: { productId } });
+  }
+
+  setPrimary(productId: string, imageId: string) {
+    return this.prisma.$transaction([
+      this.prisma.productImage.updateMany({ where: { productId }, data: { isPrimary: false } }),
+      this.prisma.productImage.update({ where: { id: imageId }, data: { isPrimary: true } }),
+    ]);
+  }
+
+  async reorderImages(items: { id: string; sortOrder: number }[]) {
+    await this.prisma.$transaction(
+      items.map((item) => this.prisma.productImage.update({ where: { id: item.id }, data: { sortOrder: item.sortOrder } })),
+    );
   }
 
   // --- Tags ---

@@ -24,7 +24,7 @@ export const UPLOAD_PURPOSE_CONFIG: Record<UploadPurpose, PurposeConfig> = {
     bucket: "product-images",
     allowedMimeTypes: IMAGE_MIME_TYPES,
     maxSizeBytes: 5 * 1024 * 1024,
-    allowedPrincipalTypes: ["MERCHANT"],
+    allowedPrincipalTypes: ["MERCHANT", "ADMIN"],
   },
   MERCHANT_DOCUMENTS: {
     bucket: "merchant-documents",

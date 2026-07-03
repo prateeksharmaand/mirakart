@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductPurchasePanel } from "../../../components/product-purchase-panel";
+import { ProductGallery } from "../../../components/product-gallery";
 import { getProductBySlug } from "../../../lib/api/catalog";
 
 interface PageProps {
@@ -22,8 +22,6 @@ export default async function ProductPage({ params }: PageProps) {
   const product = await getProductBySlug(params.productSlug).catch(() => null);
   if (!product) notFound();
 
-  const images = product.images.length > 0 ? product.images : [];
-
   return (
     <div className="mx-auto max-w-site px-gutter py-10">
       <nav className="mb-6 text-sm text-foreground-muted">
@@ -39,29 +37,7 @@ export default async function ProductPage({ params }: PageProps) {
       </nav>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        <div className="flex flex-col gap-3">
-          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-background-light">
-            {images[0] ? (
-              <Image
-                src={images[0].media.url}
-                alt={product.name}
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-cover"
-              />
-            ) : null}
-          </div>
-          {images.length > 1 ? (
-            <div className="grid grid-cols-5 gap-3">
-              {images.slice(1, 6).map((image) => (
-                <div key={image.id} className="relative aspect-square overflow-hidden rounded-sm bg-background-light">
-                  <Image src={image.media.url} alt={product.name} fill sizes="10vw" className="object-cover" />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <ProductGallery images={product.images} productName={product.name} />
 
         <div className="flex flex-col gap-6">
           <div>

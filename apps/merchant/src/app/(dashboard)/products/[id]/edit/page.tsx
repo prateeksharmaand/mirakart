@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
+import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags } from "../../../../../lib/api/profile";
 
@@ -74,6 +75,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <PageHeader title="Edit Product" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: product?.name ?? "" }]} />
+
+      <ProductImageManager productId={params.id} />
+
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-6">
         <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
           <FormField label="Product Name" htmlFor="name" error={errors.name?.message} required>
