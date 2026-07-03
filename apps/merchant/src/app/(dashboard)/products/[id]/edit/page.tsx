@@ -6,24 +6,29 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, toast } from "@mirakart/ui";
+import { Badge, Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags } from "../../../../../lib/api/profile";
 
-const PRODUCT_STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "ARCHIVED"] as const;
-type ProductStatus = typeof PRODUCT_STATUSES[number];
+type ProductStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "ARCHIVED";
 
 const STATUS_LABELS: Record<ProductStatus, string> = {
   DRAFT: "Draft",
-  PENDING_APPROVAL: "Submit for Approval",
+  PENDING_APPROVAL: "Pending Review",
   APPROVED: "Approved",
   REJECTED: "Rejected",
   ARCHIVED: "Archived",
 };
 
-const MERCHANT_EDITABLE_STATUSES: ProductStatus[] = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"];
+const STATUS_VARIANT: Record<ProductStatus, "default" | "success" | "warning" | "danger"> = {
+  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
+};
+
+// Only the statuses a merchant is allowed to set
+const MERCHANT_EDITABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"] as const;
+type MerchantStatus = typeof MERCHANT_EDITABLE_STATUSES[number];
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -32,7 +37,8 @@ const schema = z.object({
   brandId: z.string().optional(),
   price: z.coerce.number().positive(),
   comparePrice: z.coerce.number().optional(),
-  status: z.enum(["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "ARCHIVED"]),
+  // Optional — omitted when the current status is admin-controlled (APPROVED/REJECTED)
+  status: z.enum(["DRAFT", "PENDING_APPROVAL", "ARCHIVED"]).optional(),
   tagIds: z.array(z.string()).default([]),
 });
 type FormValues = z.infer<typeof schema>;
@@ -52,6 +58,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const selectedTagIds = watch("tagIds") ?? [];
 
+  const isAdminControlled = product?.status === "APPROVED" || product?.status === "REJECTED";
+
   React.useEffect(() => {
     if (product) {
       reset({
@@ -61,7 +69,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         brandId: product.brand?.id,
         price: product.basePrice,
         comparePrice: product.compareAtPrice ?? undefined,
-        status: (product.status as ProductStatus) ?? "DRAFT",
+        // Only pre-fill status for merchant-editable states; leave undefined for APPROVED/REJECTED
+        status: (MERCHANT_EDITABLE_STATUSES as readonly string[]).includes(product.status)
+          ? (product.status as MerchantStatus)
+          : undefined,
         tagIds: product.tags?.map((pt) => pt.tag.id) ?? [],
       });
     }
@@ -133,20 +144,28 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </FormField>
           </div>
           <FormField label="Status">
-            <Select value={watch("status") ?? "DRAFT"} onValueChange={(v) => setValue("status", v as ProductStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MERCHANT_EDITABLE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                ))}
-                {/* Show current status read-only if it's admin-controlled */}
-                {(["APPROVED", "REJECTED"] as ProductStatus[]).includes(watch("status")) && (
-                  <SelectItem value={watch("status")} disabled>
-                    {STATUS_LABELS[watch("status")]} (set by admin)
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            {isAdminControlled ? (
+              // Admin has set this status — show read-only badge, merchant cannot override
+              <div className="flex items-center gap-2 h-9">
+                <Badge variant={STATUS_VARIANT[product!.status as ProductStatus]}>
+                  {STATUS_LABELS[product!.status as ProductStatus]}
+                </Badge>
+                <span className="text-xs text-foreground-muted">(set by admin)</span>
+              </div>
+            ) : (
+              <Select
+                key={`status-${watch("status")}`}
+                value={watch("status") ?? "DRAFT"}
+                onValueChange={(v) => setValue("status", v as MerchantStatus)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MERCHANT_EDITABLE_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </FormField>
         </div>
 

@@ -101,12 +101,27 @@ export class ProductsService {
 
   async update(id: string, merchantId: string, dto: UpdateProductDto) {
     const product = await this.assertOwnedProduct(id, merchantId);
+
+    // Validate compareAtPrice vs basePrice for partial updates
+    const effectiveBase = dto.basePrice ?? Number(product.basePrice);
+    const effectiveCompare = dto.compareAtPrice !== undefined ? dto.compareAtPrice : (product.compareAtPrice ? Number(product.compareAtPrice) : undefined);
+    if (effectiveCompare !== undefined && effectiveCompare !== null && effectiveCompare <= effectiveBase) {
+      throw new BadRequestException("compareAtPrice must be greater than basePrice");
+    }
+
+    const { tagIds, status, ...updateData } = dto;
+
+    // Status transition rules:
+    // - REJECTED → any merchant action auto-promotes to PENDING_APPROVAL + clears rejection
+    // - Otherwise respect the merchant's explicit status choice (DRAFT / PENDING_APPROVAL / ARCHIVED)
     const wasRejected = product.status === "REJECTED";
-    const { tagIds, ...updateData } = dto;
+    const resolvedStatus = wasRejected ? "PENDING_APPROVAL" : status;
+
     const updated = await this.repo.update(id, {
       ...updateData,
-      ...(wasRejected ? { status: "PENDING_APPROVAL", rejectionReason: null } : {}),
+      ...(resolvedStatus ? { status: resolvedStatus, ...(wasRejected ? { rejectionReason: null } : {}) } : {}),
     });
+
     if (tagIds !== undefined) {
       await this.repo.syncTags(id, tagIds);
     }
@@ -124,6 +139,7 @@ export class ProductsService {
     const { items, totalItems } = await this.repo.findAdminList({
       status: query.status,
       merchantId: query.merchantId,
+      search: query.search,
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,

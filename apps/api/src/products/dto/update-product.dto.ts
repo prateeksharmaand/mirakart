@@ -1,8 +1,14 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsArray, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { IsArray, IsIn, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
 import { Type } from "class-transformer";
 
+const MERCHANT_SETTABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"] as const;
+
 export class UpdateProductDto {
+  @ApiPropertyOptional({ enum: MERCHANT_SETTABLE_STATUSES })
+  @IsOptional()
+  @IsIn(MERCHANT_SETTABLE_STATUSES)
+  status?: "DRAFT" | "PENDING_APPROVAL" | "ARCHIVED";
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

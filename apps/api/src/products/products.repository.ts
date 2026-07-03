@@ -34,6 +34,7 @@ export interface MerchantProductFilter extends SortableFilter {
 export interface AdminProductFilter extends SortableFilter {
   status?: ProductStatus;
   merchantId?: string;
+  search?: string;
   page: number;
   limit: number;
 }
@@ -77,18 +78,10 @@ export class ProductsRepository {
         : {}),
       ...(filter.attributeValueIds && filter.attributeValueIds.length > 0
         ? {
-            // Optimized: Instead of N AND conditions with nested queries, use a single variants.some
-            // with ALL attribute values required (GROUP BY variant, HAVING COUNT = N)
-            variants: {
-              some: {
-                deletedAt: null,
-                attributeValues: {
-                  every: {
-                    attributeValueId: { in: filter.attributeValueIds },
-                  },
-                },
-              },
-            },
+            // AND semantics: product must have at least one variant possessing EACH requested value
+            AND: filter.attributeValueIds.map((avId) => ({
+              variants: { some: { deletedAt: null, attributeValues: { some: { attributeValueId: avId } } } },
+            })),
           }
         : {}),
       ...(filter.tagSlug
@@ -144,6 +137,7 @@ export class ProductsRepository {
       deletedAt: null,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.merchantId ? { merchantId: filter.merchantId } : {}),
+      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" } } : {}),
     };
 
     const [items, totalItems] = await Promise.all([

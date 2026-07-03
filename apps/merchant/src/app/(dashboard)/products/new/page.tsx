@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { createProduct, addVariant } from "../../../../lib/api/products";
+import { createProduct, addVariant, updateVariantInventory } from "../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags } from "../../../../lib/api/profile";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -67,14 +67,16 @@ export default function NewProductPage() {
         tagIds: values.tagIds.length > 0 ? values.tagIds : undefined,
       });
 
-      // Step 2: Add each variant (attributeValueIds defaults to [] since the form
-      // doesn't collect attributes yet — merchants can edit these later)
+      // Step 2: Add each variant and persist stock quantity
       for (const variant of values.variants) {
-        await addVariant(product.id, {
+        const created = await addVariant(product.id, {
           sku: variant.sku,
           price: variant.price,
           attributeValueIds: [],
         });
+        if (variant.stock > 0) {
+          await updateVariantInventory(product.id, created.id, variant.stock);
+        }
       }
 
       return product;

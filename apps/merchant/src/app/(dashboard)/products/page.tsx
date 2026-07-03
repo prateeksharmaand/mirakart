@@ -12,7 +12,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
-  ACTIVE: "success", DRAFT: "warning", SUSPENDED: "danger", ARCHIVED: "default",
+  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  APPROVED: "Approved", PENDING_APPROVAL: "Pending Review", REJECTED: "Rejected",
+  DRAFT: "Draft", ARCHIVED: "Archived",
 };
 
 function formatCurrency(n: number) {
@@ -52,7 +57,7 @@ export default function MerchantProductsPage() {
     },
     { key: "price", header: "Price", cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
     { key: "variants", header: "Variants", cell: (r) => r.variants?.length ?? 0 },
-    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge> },
+    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{STATUS_LABELS[r.status] ?? r.status}</Badge> },
     {
       key: "actions",
       header: "",
@@ -88,8 +93,10 @@ export default function MerchantProductsPage() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
             <SelectItem value="DRAFT">Draft</SelectItem>
+            <SelectItem value="PENDING_APPROVAL">Pending Review</SelectItem>
+            <SelectItem value="APPROVED">Approved</SelectItem>
+            <SelectItem value="REJECTED">Rejected</SelectItem>
             <SelectItem value="ARCHIVED">Archived</SelectItem>
           </SelectContent>
         </Select>

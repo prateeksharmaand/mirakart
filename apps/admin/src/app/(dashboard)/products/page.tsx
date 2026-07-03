@@ -9,7 +9,12 @@ import { TableActions } from "../../../components/table-actions";
 import { listProducts, type Product } from "../../../lib/api/products";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
-  ACTIVE: "success", DRAFT: "warning", SUSPENDED: "danger", ARCHIVED: "default",
+  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  APPROVED: "Approved", PENDING_APPROVAL: "Pending Review", REJECTED: "Rejected",
+  DRAFT: "Draft", ARCHIVED: "Archived",
 };
 
 function formatPrice(n: number) {
@@ -53,7 +58,7 @@ export default function ProductsPage() {
         </div>
       ),
     },
-    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge> },
+    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{STATUS_LABELS[r.status] ?? r.status}</Badge> },
     {
       key: "actions", header: "", className: "w-16",
       cell: (r) => <TableActions viewHref={`/products/${r.id}`} />,
@@ -69,9 +74,10 @@ export default function ProductsPage() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="PENDING_APPROVAL">Pending Review</SelectItem>
+            <SelectItem value="APPROVED">Approved</SelectItem>
+            <SelectItem value="REJECTED">Rejected</SelectItem>
             <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="SUSPENDED">Suspended</SelectItem>
             <SelectItem value="ARCHIVED">Archived</SelectItem>
           </SelectContent>
         </Select>

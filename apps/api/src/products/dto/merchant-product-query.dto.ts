@@ -27,4 +27,9 @@ export class AdminProductQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   merchantId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
