@@ -10,7 +10,7 @@ import { Badge, Button, FormField, Input, Select, SelectContent, SelectItem, Sel
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
-import { listCategories, listBrands, listActiveTags } from "../../../../../lib/api/profile";
+import { listCategories, listBrands, listActiveTags, listAttributes, type AttributeWithValues } from "../../../../../lib/api/profile";
 import { Plus, Trash2, Check, X } from "lucide-react";
 
 type ProductStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "ARCHIVED";
@@ -233,6 +233,11 @@ function VariantsManager({ productId }: { productId: string }) {
     queryFn: () => getMerchantProduct(productId),
   });
 
+  const { data: attributes = [] } = useQuery<AttributeWithValues[]>({
+    queryKey: ["attributes"],
+    queryFn: listAttributes,
+  });
+
   const variants: ProductVariant[] = product?.variants ?? [];
 
   // Stock input values keyed by variant id — synced from API, locally editable
@@ -245,6 +250,7 @@ function VariantsManager({ productId }: { productId: string }) {
   const [newSku, setNewSku] = React.useState("");
   const [newPrice, setNewPrice] = React.useState("");
   const [newStock, setNewStock] = React.useState("0");
+  const [newAttrs, setNewAttrs] = React.useState<Record<string, string>>({});
   const [adding, setAdding] = React.useState(false);
 
   // Sync stock inputs whenever the API returns fresh variants
@@ -298,15 +304,16 @@ function VariantsManager({ productId }: { productId: string }) {
     if (!newSku.trim() || !newPrice) return;
     setAdding(true);
     try {
+      const attributeValueIds = Object.values(newAttrs).filter(Boolean);
       const created = await addVariant(productId, {
         sku: newSku.trim(),
         price: parseFloat(newPrice),
-        attributeValueIds: [],
+        attributeValueIds,
       });
       const stock = parseInt(newStock, 10);
       if (stock > 0) await updateVariantInventory(productId, created.id, stock);
       await qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
-      setNewSku(""); setNewPrice(""); setNewStock("0");
+      setNewSku(""); setNewPrice(""); setNewStock("0"); setNewAttrs({});
       setShowAddRow(false);
       toast({ title: "Variant added", variant: "success" });
     } catch (e: unknown) {
@@ -352,84 +359,109 @@ function VariantsManager({ productId }: { productId: string }) {
         const localQty = stockInputs[v.id] ?? String(serverQty);
         const isDirty = parseInt(localQty, 10) !== serverQty;
         const isSaving = savingStock[v.id] ?? false;
+        const attrChips = v.attributeValues?.map((av) => ({
+          name: av.attributeValue.attribute.name,
+          value: av.attributeValue.value,
+          colorHex: (av.attributeValue as { colorHex?: string | null }).colorHex ?? null,
+        })) ?? [];
         return (
-          <div key={v.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-            {/* SKU — read-only styled box */}
-            <div className="h-form flex items-center px-3 rounded-sm border border-border bg-background-light text-sm font-mono truncate">
-              {v.sku}
+          <div key={v.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+              {/* SKU */}
+              <div className="h-form flex items-center px-3 rounded-sm border border-border bg-background-light text-sm font-mono truncate">
+                {v.sku}
+              </div>
+              {/* Price */}
+              <div className="h-form flex items-center px-3 rounded-sm border border-border bg-background-light text-sm">
+                ₹{Number(v.price).toFixed(2)}
+              </div>
+              {/* Stock */}
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min="0"
+                  value={localQty}
+                  onChange={(e) => setStockInputs((s) => ({ ...s, [v.id]: e.target.value }))}
+                  onBlur={() => handleSaveStock(v.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSaveStock(v.id); } }}
+                  className={isDirty ? "border-primary" : ""}
+                />
+                {isSaving && (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent shrink-0" />
+                )}
+              </div>
+              {/* Delete */}
+              <button
+                type="button"
+                disabled={deletingId === v.id}
+                onClick={() => handleDelete(v.id)}
+                className="rounded p-1.5 hover:bg-danger/10 text-danger/50 hover:text-danger transition-colors disabled:opacity-40"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
-            {/* Price — read-only */}
-            <div className="h-form flex items-center px-3 rounded-sm border border-border bg-background-light text-sm">
-              {Number(v.price).toFixed(2)}
-            </div>
-            {/* Stock — always editable, auto-saves on blur */}
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="number"
-                min="0"
-                value={localQty}
-                onChange={(e) => setStockInputs((s) => ({ ...s, [v.id]: e.target.value }))}
-                onBlur={() => handleSaveStock(v.id)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSaveStock(v.id); } }}
-                className={isDirty ? "border-primary" : ""}
-              />
-              {isSaving && (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent shrink-0" />
-              )}
-            </div>
-            {/* Delete */}
-            <button
-              type="button"
-              disabled={deletingId === v.id}
-              onClick={() => handleDelete(v.id)}
-              className="rounded p-1.5 hover:bg-danger/10 text-danger/50 hover:text-danger transition-colors disabled:opacity-40"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            {/* Attribute chips */}
+            {attrChips.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pl-1">
+                {attrChips.map((chip) => (
+                  <span key={chip.name} className="flex items-center gap-1 rounded-full bg-background-light border border-border px-2 py-0.5 text-xs text-foreground-muted">
+                    {chip.colorHex && (
+                      <span className="h-3 w-3 rounded-full border border-border shrink-0" style={{ backgroundColor: chip.colorHex }} />
+                    )}
+                    {chip.name}: <strong className="text-foreground">{chip.value}</strong>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
 
       {/* Add-variant inline row */}
       {showAddRow && (
-        <form onSubmit={handleAddVariant}>
+        <form onSubmit={handleAddVariant} className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex flex-col gap-3">
           <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-            <Input
-              placeholder="SKU-001"
-              value={newSku}
-              onChange={(e) => setNewSku(e.target.value)}
-              autoFocus
-              required
-            />
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-              required
-            />
-            <Input
-              type="number"
-              min="0"
-              placeholder="0"
-              value={newStock}
-              onChange={(e) => setNewStock(e.target.value)}
-            />
+            <Input placeholder="SKU-001" value={newSku} onChange={(e) => setNewSku(e.target.value)} autoFocus required />
+            <Input type="number" step="0.01" min="0" placeholder="0.00" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+            <Input type="number" min="0" placeholder="0" value={newStock} onChange={(e) => setNewStock(e.target.value)} />
             <div className="flex items-center gap-1">
               <Button type="submit" size="icon" variant="ghost" isLoading={adding} className="h-form w-9 shrink-0">
                 {!adding && <Check className="h-4 w-4 text-success" />}
               </Button>
-              <button
-                type="button"
-                onClick={() => setShowAddRow(false)}
-                className="rounded p-1.5 text-foreground-muted hover:text-foreground transition-colors"
-              >
+              <button type="button" onClick={() => { setShowAddRow(false); setNewAttrs({}); }} className="rounded p-1.5 text-foreground-muted hover:text-foreground transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
+          {/* Attribute selects for new variant */}
+          {attributes.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {attributes.map((attr) => (
+                <FormField key={attr.id} label={attr.name}>
+                  <Select
+                    value={newAttrs[attr.id] ?? ""}
+                    onValueChange={(v) => setNewAttrs((s) => ({ ...s, [attr.id]: v }))}
+                  >
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder={`Select ${attr.name}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {attr.values.map((val) => (
+                        <SelectItem key={val.id} value={val.id}>
+                          <span className="flex items-center gap-2">
+                            {attr.type === "COLOR" && val.colorHex && (
+                              <span className="inline-block h-3.5 w-3.5 rounded-full border border-border" style={{ backgroundColor: val.colorHex }} />
+                            )}
+                            {val.value}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              ))}
+            </div>
+          )}
         </form>
       )}
 

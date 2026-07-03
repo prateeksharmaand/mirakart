@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PriceFilter } from "../../components/price-filter";
+import { AttributeFilterPanel } from "../../components/attribute-filter";
 import { ProductGrid } from "../../components/product-grid";
-import { getProducts } from "../../lib/api/catalog";
+import { getProducts, getAttributes } from "../../lib/api/catalog";
 
 interface PageProps {
-  searchParams: { tag?: string; page?: string; minPrice?: string; maxPrice?: string };
+  searchParams: {
+    tag?: string;
+    page?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    av?: string;
+    search?: string;
+  };
 }
 
 export function generateMetadata({ searchParams }: PageProps): Metadata {
@@ -17,12 +25,19 @@ export function generateMetadata({ searchParams }: PageProps): Metadata {
 
 export default async function ProductsPage({ searchParams }: PageProps) {
   const page = Number(searchParams.page ?? 1);
-  const result = await getProducts({
-    tagSlug: searchParams.tag,
-    page,
-    minPrice: searchParams.minPrice ? Number(searchParams.minPrice) : undefined,
-    maxPrice: searchParams.maxPrice ? Number(searchParams.maxPrice) : undefined,
-  }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } }));
+  const attributeValueIds = searchParams.av ? searchParams.av.split(",").filter(Boolean) : undefined;
+
+  const [result, attributes] = await Promise.all([
+    getProducts({
+      tagSlug: searchParams.tag,
+      page,
+      minPrice: searchParams.minPrice ? Number(searchParams.minPrice) : undefined,
+      maxPrice: searchParams.maxPrice ? Number(searchParams.maxPrice) : undefined,
+      search: searchParams.search || undefined,
+      attributeValueIds,
+    }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } })),
+    getAttributes().catch(() => []),
+  ]);
 
   return (
     <div className="mx-auto max-w-site px-gutter py-10">
@@ -45,13 +60,20 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       </h1>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
-        <aside>
+        <aside className="flex flex-col gap-4">
           <PriceFilter />
+          <AttributeFilterPanel attributes={attributes} />
         </aside>
         <ProductGrid
           result={result}
           basePath="/products"
-          searchParams={{ tag: searchParams.tag, minPrice: searchParams.minPrice, maxPrice: searchParams.maxPrice }}
+          searchParams={{
+            tag: searchParams.tag,
+            minPrice: searchParams.minPrice,
+            maxPrice: searchParams.maxPrice,
+            av: searchParams.av,
+            search: searchParams.search,
+          }}
         />
       </div>
     </div>

@@ -78,13 +78,15 @@ export async function deleteBrand(id: string): Promise<void> {
 export interface AttributeValue {
   id: string;
   value: string;
+  colorHex: string | null;
   sortOrder: number;
 }
 
 export interface Attribute {
   id: string;
   name: string;
-  type: string;
+  slug: string;
+  type: "SELECT" | "COLOR" | "TEXT";
   values: AttributeValue[];
   createdAt: string;
 }
@@ -99,14 +101,30 @@ export async function getAttribute(id: string): Promise<Attribute> {
   return res.data.data as Attribute;
 }
 
-export async function createAttribute(data: { name: string; type: string; values?: string[] }): Promise<Attribute> {
+export async function createAttribute(data: {
+  name: string;
+  type: string;
+  values: Array<{ value: string; colorHex?: string }>;
+}): Promise<Attribute> {
   const res = await apiClient.post("/attributes", data);
   return res.data.data as Attribute;
 }
 
-export async function updateAttribute(id: string, data: { name?: string; values?: string[] }): Promise<Attribute> {
+export async function updateAttribute(id: string, data: { name?: string; type?: string }): Promise<Attribute> {
   const res = await apiClient.patch(`/attributes/${id}`, data);
   return res.data.data as Attribute;
+}
+
+export async function addAttributeValue(
+  attributeId: string,
+  data: { value: string; colorHex?: string },
+): Promise<AttributeValue> {
+  const res = await apiClient.post(`/attributes/${attributeId}/values`, data);
+  return res.data.data as AttributeValue;
+}
+
+export async function deleteAttributeValue(attributeId: string, valueId: string): Promise<void> {
+  await apiClient.delete(`/attributes/${attributeId}/values/${valueId}`);
 }
 
 export async function deleteAttribute(id: string): Promise<void> {

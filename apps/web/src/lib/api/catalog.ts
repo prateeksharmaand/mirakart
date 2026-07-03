@@ -8,6 +8,21 @@ import type {
   ProductListItem,
 } from "../../types/catalog";
 
+export interface AttributeOption {
+  id: string;
+  value: string;
+  colorHex: string | null;
+  sortOrder: number;
+}
+
+export interface AttributeFilter {
+  id: string;
+  name: string;
+  slug: string;
+  type: "SELECT" | "COLOR" | "TEXT";
+  values: AttributeOption[];
+}
+
 export interface ProductListParams {
   categoryId?: string;
   brandId?: string;
@@ -68,4 +83,8 @@ export function getBrands(): Promise<Brand[]> {
 
 export function getBrandBySlug(slug: string): Promise<Brand> {
   return fetchPublic<Brand>(`/brands/${slug}`);
+}
+
+export function getAttributes(): Promise<AttributeFilter[]> {
+  return fetchPublic<AttributeFilter[]>("/attributes");
 }

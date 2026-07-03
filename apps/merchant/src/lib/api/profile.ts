@@ -48,3 +48,23 @@ export async function listActiveTags() {
   const res = await apiClient.get("/tags");
   return res.data.data as Array<{ id: string; name: string; slug: string }>;
 }
+
+export interface AttributeValue {
+  id: string;
+  value: string;
+  colorHex: string | null;
+  sortOrder: number;
+}
+
+export interface AttributeWithValues {
+  id: string;
+  name: string;
+  slug: string;
+  type: "SELECT" | "COLOR" | "TEXT";
+  values: AttributeValue[];
+}
+
+export async function listAttributes(): Promise<AttributeWithValues[]> {
+  const res = await apiClient.get("/attributes");
+  return (res.data as { data: AttributeWithValues[] }).data;
+}
