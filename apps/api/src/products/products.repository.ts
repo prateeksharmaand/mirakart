@@ -232,7 +232,8 @@ export class ProductsRepository {
   }
 
   findVariantBySku(sku: string) {
-    return this.prisma.productVariant.findUnique({ where: { sku } });
+    if (!sku) return Promise.resolve(null);
+    return this.prisma.productVariant.findFirst({ where: { sku, deletedAt: null } });
   }
 
   async createVariant(data: {

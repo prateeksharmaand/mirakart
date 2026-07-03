@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { slugify } from "../common/utils/slugify.util";
 import { ProductsRepository } from "./products.repository";
 import type { AddProductImageDto } from "./dto/add-product-image.dto";
@@ -69,21 +70,29 @@ export class ProductsService {
     }
     const slug = await this.generateUniqueSlug(dto.name);
     const { tagIds, ...productData } = dto;
-    const product = await this.repo.create({
-      merchantId,
-      categoryId: productData.categoryId,
-      brandId: productData.brandId,
-      name: productData.name,
-      slug,
-      description: productData.description,
-      basePrice: productData.basePrice,
-      compareAtPrice: productData.compareAtPrice,
-      sku: productData.sku,
-      weight: productData.weight,
-      metaTitle: productData.metaTitle,
-      metaDescription: productData.metaDescription,
-      status: productData.status ?? "DRAFT",
-    });
+    let product;
+    try {
+      product = await this.repo.create({
+        merchantId,
+        categoryId: productData.categoryId,
+        brandId: productData.brandId,
+        name: productData.name,
+        slug,
+        description: productData.description,
+        basePrice: productData.basePrice,
+        compareAtPrice: productData.compareAtPrice,
+        sku: productData.sku,
+        weight: productData.weight,
+        metaTitle: productData.metaTitle,
+        metaDescription: productData.metaDescription,
+        status: productData.status ?? "DRAFT",
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        throw new ConflictException("A product with this name already exists");
+      }
+      throw e;
+    }
     if (tagIds && tagIds.length > 0) {
       await this.repo.syncTags(product.id, tagIds);
     }

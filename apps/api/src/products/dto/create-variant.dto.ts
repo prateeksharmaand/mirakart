@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ArrayMinSize, IsArray, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { ArrayMinSize, IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
 import { Type } from "class-transformer";
 
 export class CreateVariantDto {
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   @MinLength(1)
   sku!: string;
 
