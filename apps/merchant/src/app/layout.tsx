@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={jost.variable}>
-      <body className="font-sans bg-gray-50 text-foreground overflow-hidden">
+      <body className="font-sans bg-gray-50 text-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>
