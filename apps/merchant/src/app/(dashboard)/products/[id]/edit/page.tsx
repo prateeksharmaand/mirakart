@@ -11,7 +11,7 @@ import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags } from "../../../../../lib/api/profile";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Check, X } from "lucide-react";
 
 type ProductStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "ARCHIVED";
 
@@ -228,7 +228,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 function VariantsManager({ productId }: { productId: string }) {
   const qc = useQueryClient();
 
-  // Re-use the same query the parent already fetched — no extra network call
   const { data: product } = useQuery({
     queryKey: ["merchant-product", productId],
     queryFn: () => getMerchantProduct(productId),
@@ -236,38 +235,47 @@ function VariantsManager({ productId }: { productId: string }) {
 
   const variants: ProductVariant[] = product?.variants ?? [];
 
-  // Per-variant inline stock edit state
-  const [editingStock, setEditingStock] = React.useState<Record<string, string>>({});
+  // Stock input values keyed by variant id — synced from API, locally editable
+  const [stockInputs, setStockInputs] = React.useState<Record<string, string>>({});
   const [savingStock, setSavingStock] = React.useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  // Add-variant form state
+  // Add-variant inline row state
+  const [showAddRow, setShowAddRow] = React.useState(false);
   const [newSku, setNewSku] = React.useState("");
   const [newPrice, setNewPrice] = React.useState("");
   const [newStock, setNewStock] = React.useState("0");
   const [adding, setAdding] = React.useState(false);
 
-  function startEditStock(variantId: string, current: number) {
-    setEditingStock((s) => ({ ...s, [variantId]: String(current) }));
-  }
+  // Sync stock inputs whenever the API returns fresh variants
+  React.useEffect(() => {
+    setStockInputs((prev) => {
+      const next: Record<string, string> = {};
+      variants.forEach((v) => {
+        // Keep local value if user is currently typing, otherwise use server value
+        next[v.id] = prev[v.id] ?? String(v.inventory?.quantity ?? 0);
+      });
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variants.length, product]);
 
-  function cancelEditStock(variantId: string) {
-    setEditingStock((s) => { const n = { ...s }; delete n[variantId]; return n; });
-  }
-
-  async function saveStock(variant: ProductVariant) {
-    const qty = parseInt(editingStock[variant.id] ?? "", 10);
+  async function handleSaveStock(variantId: string) {
+    const qty = parseInt(stockInputs[variantId] ?? "", 10);
     if (isNaN(qty) || qty < 0) return;
-    setSavingStock((s) => ({ ...s, [variant.id]: true }));
+    const variant = variants.find((v) => v.id === variantId);
+    if (!variant) return;
+    const serverQty = variant.inventory?.quantity ?? 0;
+    if (qty === serverQty) return; // nothing changed
+    setSavingStock((s) => ({ ...s, [variantId]: true }));
     try {
-      await updateVariantInventory(productId, variant.id, qty);
-      cancelEditStock(variant.id);
+      await updateVariantInventory(productId, variantId, qty);
       await qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
       toast({ title: "Stock updated", variant: "success" });
     } catch (e: unknown) {
       toast({ title: "Failed to update stock", description: (e as Error).message, variant: "danger" });
     } finally {
-      setSavingStock((s) => ({ ...s, [variant.id]: false }));
+      setSavingStock((s) => ({ ...s, [variantId]: false }));
     }
   }
 
@@ -299,6 +307,7 @@ function VariantsManager({ productId }: { productId: string }) {
       if (stock > 0) await updateVariantInventory(productId, created.id, stock);
       await qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
       setNewSku(""); setNewPrice(""); setNewStock("0");
+      setShowAddRow(false);
       toast({ title: "Variant added", variant: "success" });
     } catch (e: unknown) {
       toast({ title: "Failed to add variant", description: (e as Error).message, variant: "danger" });
@@ -307,121 +316,92 @@ function VariantsManager({ productId }: { productId: string }) {
     }
   }
 
+  const hasRows = variants.length > 0 || showAddRow;
+
   return (
-    <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-5">
-      <div>
-        <h2 className="text-sm font-semibold">Variants / Inventory</h2>
-        <p className="text-xs text-foreground-muted mt-0.5">Manage SKUs, prices, and stock quantities.</p>
+    <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+      {/* Header — matches new-product page format */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">Variants / Inventory</h2>
+          <p className="text-xs text-foreground-muted mt-0.5">Add at least one SKU with price and stock quantity.</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => { setShowAddRow(true); setNewSku(""); setNewPrice(""); setNewStock("0"); }}
+        >
+          <Plus className="mr-1 h-3 w-3" /> Add Variant
+        </Button>
       </div>
 
-      {/* Existing variants table */}
-      {variants.length > 0 ? (
-        <div className="overflow-x-auto -mx-1">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-foreground-muted">
-                <th className="pb-2 pl-1 text-left font-medium">SKU</th>
-                <th className="pb-2 text-left font-medium">Price</th>
-                <th className="pb-2 text-left font-medium">Stock Qty</th>
-                <th className="pb-2 w-10" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {variants.map((v) => {
-                const isEditing = v.id in editingStock;
-                const currentStock = v.inventory?.quantity ?? 0;
-                const isSaving = savingStock[v.id] ?? false;
-                return (
-                  <tr key={v.id}>
-                    <td className="py-3 pl-1 pr-4 font-mono text-xs">{v.sku}</td>
-                    <td className="py-3 pr-4">₹{Number(v.price).toFixed(2)}</td>
-                    <td className="py-3 pr-2">
-                      {isEditing ? (
-                        <div className="flex items-center gap-1.5">
-                          <Input
-                            type="number"
-                            min="0"
-                            className="h-8 w-24 text-sm"
-                            value={editingStock[v.id]}
-                            onChange={(e) => setEditingStock((s) => ({ ...s, [v.id]: e.target.value }))}
-                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveStock(v); } if (e.key === "Escape") cancelEditStock(v.id); }}
-                            autoFocus
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 shrink-0"
-                            isLoading={isSaving}
-                            onClick={() => saveStock(v)}
-                          >
-                            {!isSaving && <Check className="h-4 w-4 text-success" />}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 shrink-0"
-                            onClick={() => cancelEditStock(v.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium ${currentStock === 0 ? "text-danger" : ""}`}>
-                            {currentStock}
-                          </span>
-                          <button
-                            type="button"
-                            title="Edit stock"
-                            onClick={() => startEditStock(v.id, currentStock)}
-                            className="rounded p-1 hover:bg-background-light text-foreground-muted hover:text-foreground transition-colors"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 text-right">
-                      <button
-                        type="button"
-                        title="Delete variant"
-                        disabled={deletingId === v.id}
-                        onClick={() => handleDelete(v.id)}
-                        className="rounded p-1 hover:bg-danger/10 text-danger/60 hover:text-danger transition-colors disabled:opacity-40"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Column labels */}
+      {hasRows && (
+        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3">
+          <p className="text-xs font-medium text-foreground-muted">SKU</p>
+          <p className="text-xs font-medium text-foreground-muted">Price (₹)</p>
+          <p className="text-xs font-medium text-foreground-muted">Stock</p>
+          <div />
         </div>
-      ) : (
-        <p className="text-sm text-foreground-muted text-center py-4 border border-dashed border-border rounded-lg">
-          No variants yet — add one below.
-        </p>
       )}
 
-      {/* Add variant form */}
-      <form onSubmit={handleAddVariant} className="border-t border-border pt-4">
-        <p className="text-xs font-semibold mb-3 text-foreground">Add New Variant</p>
-        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
-          <FormField label="SKU" htmlFor="nv-sku">
+      {/* Existing variant rows */}
+      {variants.map((v) => {
+        const serverQty = v.inventory?.quantity ?? 0;
+        const localQty = stockInputs[v.id] ?? String(serverQty);
+        const isDirty = parseInt(localQty, 10) !== serverQty;
+        const isSaving = savingStock[v.id] ?? false;
+        return (
+          <div key={v.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+            {/* SKU — read-only styled box */}
+            <div className="h-form flex items-center px-3 rounded-sm border border-border bg-background-light text-sm font-mono truncate">
+              {v.sku}
+            </div>
+            {/* Price — read-only */}
+            <div className="h-form flex items-center px-3 rounded-sm border border-border bg-background-light text-sm">
+              {Number(v.price).toFixed(2)}
+            </div>
+            {/* Stock — always editable, auto-saves on blur */}
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                min="0"
+                value={localQty}
+                onChange={(e) => setStockInputs((s) => ({ ...s, [v.id]: e.target.value }))}
+                onBlur={() => handleSaveStock(v.id)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSaveStock(v.id); } }}
+                className={isDirty ? "border-primary" : ""}
+              />
+              {isSaving && (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent shrink-0" />
+              )}
+            </div>
+            {/* Delete */}
+            <button
+              type="button"
+              disabled={deletingId === v.id}
+              onClick={() => handleDelete(v.id)}
+              className="rounded p-1.5 hover:bg-danger/10 text-danger/50 hover:text-danger transition-colors disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        );
+      })}
+
+      {/* Add-variant inline row */}
+      {showAddRow && (
+        <form onSubmit={handleAddVariant}>
+          <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
             <Input
-              id="nv-sku"
-              placeholder="e.g. RED-M"
+              placeholder="SKU-001"
               value={newSku}
               onChange={(e) => setNewSku(e.target.value)}
+              autoFocus
               required
             />
-          </FormField>
-          <FormField label="Price (₹)" htmlFor="nv-price">
             <Input
-              id="nv-price"
               type="number"
               step="0.01"
               min="0"
@@ -430,21 +410,35 @@ function VariantsManager({ productId }: { productId: string }) {
               onChange={(e) => setNewPrice(e.target.value)}
               required
             />
-          </FormField>
-          <FormField label="Stock Qty" htmlFor="nv-stock">
             <Input
-              id="nv-stock"
               type="number"
               min="0"
+              placeholder="0"
               value={newStock}
               onChange={(e) => setNewStock(e.target.value)}
             />
-          </FormField>
-          <Button type="submit" variant="outline" size="sm" isLoading={adding} className="h-form">
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add
-          </Button>
-        </div>
-      </form>
+            <div className="flex items-center gap-1">
+              <Button type="submit" size="icon" variant="ghost" isLoading={adding} className="h-form w-9 shrink-0">
+                {!adding && <Check className="h-4 w-4 text-success" />}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setShowAddRow(false)}
+                className="rounded p-1.5 text-foreground-muted hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Empty state */}
+      {!hasRows && (
+        <p className="text-sm text-foreground-muted text-center py-4 border border-dashed border-border rounded-lg">
+          No variants yet — click "+ Add Variant" to add one.
+        </p>
+      )}
     </div>
   );
 }
