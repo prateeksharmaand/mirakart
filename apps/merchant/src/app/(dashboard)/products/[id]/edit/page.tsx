@@ -27,7 +27,6 @@ const STATUS_VARIANT: Record<ProductStatus, "default" | "success" | "warning" | 
   APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
 };
 
-// Only the statuses a merchant is allowed to set
 const MERCHANT_EDITABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"] as const;
 type MerchantStatus = typeof MERCHANT_EDITABLE_STATUSES[number];
 
@@ -38,7 +37,6 @@ const schema = z.object({
   brandId: z.string().optional(),
   price: z.coerce.number().positive(),
   comparePrice: z.coerce.number().optional(),
-  // Optional — omitted when the current status is admin-controlled (APPROVED/REJECTED)
   status: z.enum(["DRAFT", "PENDING_APPROVAL", "ARCHIVED"]).optional(),
   tagIds: z.array(z.string()).default([]),
 });
@@ -47,7 +45,10 @@ type FormValues = z.infer<typeof schema>;
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data: product, isLoading } = useQuery({ queryKey: ["merchant-product", params.id], queryFn: () => getMerchantProduct(params.id) });
+  const { data: product, isLoading } = useQuery({
+    queryKey: ["merchant-product", params.id],
+    queryFn: () => getMerchantProduct(params.id),
+  });
   const { data: categories } = useQuery({ queryKey: ["merchant-categories"], queryFn: listCategories });
   const { data: brands } = useQuery({ queryKey: ["merchant-brands"], queryFn: listBrands });
   const { data: tags } = useQuery({ queryKey: ["merchant-tags"], queryFn: listActiveTags });
@@ -58,7 +59,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   });
 
   const selectedTagIds = watch("tagIds") ?? [];
-
   const isAdminControlled = product?.status === "APPROVED" || product?.status === "REJECTED";
 
   React.useEffect(() => {
@@ -70,7 +70,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         brandId: product.brand?.id,
         price: product.basePrice,
         comparePrice: product.compareAtPrice ?? undefined,
-        // Only pre-fill status for merchant-editable states; leave undefined for APPROVED/REJECTED
         status: (MERCHANT_EDITABLE_STATUSES as readonly string[]).includes(product.status)
           ? (product.status as MerchantStatus)
           : undefined,
@@ -102,11 +101,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
-      <PageHeader title="Edit Product" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: product?.name ?? "" }]} />
+      <PageHeader
+        title="Edit Product"
+        crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: product?.name ?? "" }]}
+      />
 
       <ProductImageManager productId={params.id} />
 
-      <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-6">
+      {/* Main form — id lets the submit button live outside the form element */}
+      <form id="product-form" onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-6">
         <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
           <FormField label="Product Name" htmlFor="name" error={errors.name?.message} required>
             <Input id="name" {...register("name")} />
@@ -122,7 +125,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 onValueChange={(v) => setValue("categoryId", v)}
               >
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>{categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </FormField>
             <FormField label="Brand">
@@ -132,7 +137,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 onValueChange={(v) => setValue("brandId", v)}
               >
                 <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
-                <SelectContent>{brands?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {brands?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </FormField>
           </div>
@@ -146,7 +153,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </div>
           <FormField label="Status">
             {isAdminControlled ? (
-              // Admin has set this status — show read-only badge, merchant cannot override
               <div className="flex items-center gap-2 h-9">
                 <Badge variant={STATUS_VARIANT[product!.status as ProductStatus]}>
                   {STATUS_LABELS[product!.status as ProductStatus]}
@@ -201,45 +207,63 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
           </div>
         )}
-
-        <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-          <Button type="submit" isLoading={mutation.isPending}>Save Changes</Button>
-        </div>
       </form>
 
-      <VariantsManager productId={params.id} variants={product?.variants ?? []} />
+      {/* Variants / Inventory — between Tags and action buttons */}
+      <VariantsManager productId={params.id} />
+
+      {/* Action buttons — linked to the form via form="product-form" */}
+      <div className="flex gap-3">
+        <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+        <Button type="submit" form="product-form" isLoading={mutation.isPending}>Save Changes</Button>
+      </div>
     </div>
   );
 }
 
-// --- Variants Manager (outside the form so it has independent state) ---
+// ---------------------------------------------------------------------------
+// Variants Manager — reads from the same TanStack Query cache as the parent
+// ---------------------------------------------------------------------------
 
-function VariantsManager({ productId, variants: initialVariants }: { productId: string; variants: ProductVariant[] }) {
+function VariantsManager({ productId }: { productId: string }) {
   const qc = useQueryClient();
-  const [variants, setVariants] = React.useState<ProductVariant[]>(initialVariants);
+
+  // Re-use the same query the parent already fetched — no extra network call
+  const { data: product } = useQuery({
+    queryKey: ["merchant-product", productId],
+    queryFn: () => getMerchantProduct(productId),
+  });
+
+  const variants: ProductVariant[] = product?.variants ?? [];
+
+  // Per-variant inline stock edit state
   const [editingStock, setEditingStock] = React.useState<Record<string, string>>({});
   const [savingStock, setSavingStock] = React.useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  // Sync when product reloads
-  React.useEffect(() => { setVariants(initialVariants); }, [initialVariants]);
-
-  // Add variant form state
+  // Add-variant form state
   const [newSku, setNewSku] = React.useState("");
   const [newPrice, setNewPrice] = React.useState("");
   const [newStock, setNewStock] = React.useState("0");
   const [adding, setAdding] = React.useState(false);
 
-  async function handleSaveStock(variant: ProductVariant) {
+  function startEditStock(variantId: string, current: number) {
+    setEditingStock((s) => ({ ...s, [variantId]: String(current) }));
+  }
+
+  function cancelEditStock(variantId: string) {
+    setEditingStock((s) => { const n = { ...s }; delete n[variantId]; return n; });
+  }
+
+  async function saveStock(variant: ProductVariant) {
     const qty = parseInt(editingStock[variant.id] ?? "", 10);
     if (isNaN(qty) || qty < 0) return;
     setSavingStock((s) => ({ ...s, [variant.id]: true }));
     try {
       await updateVariantInventory(productId, variant.id, qty);
-      setVariants((vs) => vs.map((v) => v.id === variant.id ? { ...v, inventory: { quantity: qty } } : v));
-      setEditingStock((s) => { const n = { ...s }; delete n[variant.id]; return n; });
-      qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
+      cancelEditStock(variant.id);
+      await qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
+      toast({ title: "Stock updated", variant: "success" });
     } catch (e: unknown) {
       toast({ title: "Failed to update stock", description: (e as Error).message, variant: "danger" });
     } finally {
@@ -248,11 +272,12 @@ function VariantsManager({ productId, variants: initialVariants }: { productId: 
   }
 
   async function handleDelete(variantId: string) {
+    if (!confirm("Delete this variant? This cannot be undone.")) return;
     setDeletingId(variantId);
     try {
       await deleteVariant(productId, variantId);
-      setVariants((vs) => vs.filter((v) => v.id !== variantId));
-      qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
+      await qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
+      toast({ title: "Variant deleted", variant: "success" });
     } catch (e: unknown) {
       toast({ title: "Failed to delete variant", description: (e as Error).message, variant: "danger" });
     } finally {
@@ -265,12 +290,15 @@ function VariantsManager({ productId, variants: initialVariants }: { productId: 
     if (!newSku.trim() || !newPrice) return;
     setAdding(true);
     try {
-      const created = await addVariant(productId, { sku: newSku.trim(), price: parseFloat(newPrice), attributeValueIds: [] });
+      const created = await addVariant(productId, {
+        sku: newSku.trim(),
+        price: parseFloat(newPrice),
+        attributeValueIds: [],
+      });
       const stock = parseInt(newStock, 10);
       if (stock > 0) await updateVariantInventory(productId, created.id, stock);
-      setVariants((vs) => [...vs, { ...created, inventory: { quantity: stock > 0 ? stock : 0 } }]);
+      await qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
       setNewSku(""); setNewPrice(""); setNewStock("0");
-      qc.invalidateQueries({ queryKey: ["merchant-product", productId] });
       toast({ title: "Variant added", variant: "success" });
     } catch (e: unknown) {
       toast({ title: "Failed to add variant", description: (e as Error).message, variant: "danger" });
@@ -280,66 +308,91 @@ function VariantsManager({ productId, variants: initialVariants }: { productId: 
   }
 
   return (
-    <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold">Variants / Inventory</h2>
-          <p className="text-xs text-foreground-muted mt-0.5">Manage SKUs, prices, and stock quantities.</p>
-        </div>
+    <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-5">
+      <div>
+        <h2 className="text-sm font-semibold">Variants / Inventory</h2>
+        <p className="text-xs text-foreground-muted mt-0.5">Manage SKUs, prices, and stock quantities.</p>
       </div>
 
+      {/* Existing variants table */}
       {variants.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-1">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-foreground-muted">
-                <th className="pb-2 text-left font-medium">SKU</th>
+                <th className="pb-2 pl-1 text-left font-medium">SKU</th>
                 <th className="pb-2 text-left font-medium">Price</th>
-                <th className="pb-2 text-left font-medium">Stock</th>
-                <th className="pb-2 w-20" />
+                <th className="pb-2 text-left font-medium">Stock Qty</th>
+                <th className="pb-2 w-10" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {variants.map((v) => {
                 const isEditing = v.id in editingStock;
                 const currentStock = v.inventory?.quantity ?? 0;
+                const isSaving = savingStock[v.id] ?? false;
                 return (
-                  <tr key={v.id} className="group">
-                    <td className="py-2.5 pr-4 font-mono text-xs">{v.sku}</td>
-                    <td className="py-2.5 pr-4">₹{Number(v.price).toFixed(2)}</td>
-                    <td className="py-2.5 pr-2">
+                  <tr key={v.id}>
+                    <td className="py-3 pl-1 pr-4 font-mono text-xs">{v.sku}</td>
+                    <td className="py-3 pr-4">₹{Number(v.price).toFixed(2)}</td>
+                    <td className="py-3 pr-2">
                       {isEditing ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <Input
                             type="number"
                             min="0"
-                            className="h-7 w-20 text-xs"
+                            className="h-8 w-24 text-sm"
                             value={editingStock[v.id]}
                             onChange={(e) => setEditingStock((s) => ({ ...s, [v.id]: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveStock(v); } if (e.key === "Escape") cancelEditStock(v.id); }}
+                            autoFocus
                           />
-                          <Button size="icon" variant="ghost" className="h-7 w-7" isLoading={savingStock[v.id]} onClick={() => handleSaveStock(v)}>
-                            {!savingStock[v.id] && <Check className="h-3.5 w-3.5 text-success" />}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 shrink-0"
+                            isLoading={isSaving}
+                            onClick={() => saveStock(v)}
+                          >
+                            {!isSaving && <Check className="h-4 w-4 text-success" />}
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingStock((s) => { const n = { ...s }; delete n[v.id]; return n; })}>
-                            <X className="h-3.5 w-3.5" />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => cancelEditStock(v.id)}
+                          >
+                            <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className={currentStock === 0 ? "text-danger" : ""}>{currentStock}</span>
-                          <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => setEditingStock((s) => ({ ...s, [v.id]: String(currentStock) }))}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
+                          <span className={`font-medium ${currentStock === 0 ? "text-danger" : ""}`}>
+                            {currentStock}
+                          </span>
+                          <button
+                            type="button"
+                            title="Edit stock"
+                            onClick={() => startEditStock(v.id, currentStock)}
+                            className="rounded p-1 hover:bg-background-light text-foreground-muted hover:text-foreground transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       )}
                     </td>
-                    <td className="py-2.5 text-right">
-                      <Button size="icon" variant="ghost" className="h-7 w-7"
-                        isLoading={deletingId === v.id}
-                        onClick={() => handleDelete(v.id)}>
-                        {deletingId !== v.id && <Trash2 className="h-3.5 w-3.5 text-danger" />}
-                      </Button>
+                    <td className="py-3 text-right">
+                      <button
+                        type="button"
+                        title="Delete variant"
+                        disabled={deletingId === v.id}
+                        onClick={() => handleDelete(v.id)}
+                        className="rounded p-1 hover:bg-danger/10 text-danger/60 hover:text-danger transition-colors disabled:opacity-40"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -348,22 +401,46 @@ function VariantsManager({ productId, variants: initialVariants }: { productId: 
           </table>
         </div>
       ) : (
-        <p className="text-xs text-foreground-muted text-center py-4">No variants yet. Add one below.</p>
+        <p className="text-sm text-foreground-muted text-center py-4 border border-dashed border-border rounded-lg">
+          No variants yet — add one below.
+        </p>
       )}
 
+      {/* Add variant form */}
       <form onSubmit={handleAddVariant} className="border-t border-border pt-4">
-        <p className="text-xs font-medium mb-3">Add Variant</p>
+        <p className="text-xs font-semibold mb-3 text-foreground">Add New Variant</p>
         <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
           <FormField label="SKU" htmlFor="nv-sku">
-            <Input id="nv-sku" placeholder="SKU-001" value={newSku} onChange={(e) => setNewSku(e.target.value)} required />
+            <Input
+              id="nv-sku"
+              placeholder="e.g. RED-M"
+              value={newSku}
+              onChange={(e) => setNewSku(e.target.value)}
+              required
+            />
           </FormField>
           <FormField label="Price (₹)" htmlFor="nv-price">
-            <Input id="nv-price" type="number" step="0.01" min="0" placeholder="0.00" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+            <Input
+              id="nv-price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={newPrice}
+              onChange={(e) => setNewPrice(e.target.value)}
+              required
+            />
           </FormField>
-          <FormField label="Stock" htmlFor="nv-stock">
-            <Input id="nv-stock" type="number" min="0" value={newStock} onChange={(e) => setNewStock(e.target.value)} />
+          <FormField label="Stock Qty" htmlFor="nv-stock">
+            <Input
+              id="nv-stock"
+              type="number"
+              min="0"
+              value={newStock}
+              onChange={(e) => setNewStock(e.target.value)}
+            />
           </FormField>
-          <Button type="submit" variant="outline" size="sm" isLoading={adding} className="mb-0.5">
+          <Button type="submit" variant="outline" size="sm" isLoading={adding} className="h-form">
             <Plus className="mr-1 h-3.5 w-3.5" /> Add
           </Button>
         </div>
