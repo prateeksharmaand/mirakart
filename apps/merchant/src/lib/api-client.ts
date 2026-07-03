@@ -44,11 +44,9 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
     }
-    const message =
-      error.response?.data?.error?.message ??
-      error.response?.data?.message ??
-      error.message ??
-      "Something went wrong";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = error.response?.data as any;
+    const message = data?.error?.message ?? data?.message ?? error.message ?? "Something went wrong";
     return Promise.reject(new Error(message));
   },
 );
