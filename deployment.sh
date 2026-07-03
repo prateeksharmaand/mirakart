@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Mirakart — production deployment script
-# Usage:  sudo bash deployment.sh
-# Runs on the VPS. Handles first-time SSL cert issuance and subsequent redeployments.
+# Usage:  sudo bash deployment.sh               → full deploy (build + start + migrate)
+#         sudo bash deployment.sh --migrate-only → apply pending SQL migrations only (fast)
 set -euo pipefail
+
+MIGRATE_ONLY=false
+for arg in "$@"; do
+  [[ "$arg" == "--migrate-only" ]] && MIGRATE_ONLY=true
+done
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DOMAIN="astrovaak.online"
@@ -38,6 +43,44 @@ echo ""
 step "Pulling latest code from origin/main..."
 git pull origin main
 info "Code up to date"
+
+if [[ "$MIGRATE_ONLY" == "true" ]]; then
+  echo ""
+  echo -e "${CYAN}╔══════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║       Mirakart — migrations only            ║${NC}"
+  echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
+  echo ""
+  step "Running database migrations (migrate-only mode)..."
+  MIGRATIONS_DIR="$APP_DIR/apps/api/prisma/migrations"
+  $COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart -c \
+    "CREATE TABLE IF NOT EXISTS _schema_migrations (id TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW());" \
+    >/dev/null 2>&1 || true
+  mapfile -t SQL_FILES < <(find "$MIGRATIONS_DIR" -name "*.sql" | sort)
+  for filepath in "${SQL_FILES[@]}"; do
+    rel="${filepath#$MIGRATIONS_DIR/}"
+    applied=$($COMPOSE_CMD exec -T postgres \
+      psql -U mirakart -d mirakart -tAc \
+      "SELECT COUNT(*) FROM _schema_migrations WHERE id='$rel';" 2>/dev/null | tr -d '[:space:]')
+    if [[ "$applied" == "0" ]] || [[ -z "$applied" ]]; then
+      echo "  → Applying: $rel"
+      if $COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart < "$filepath"; then
+        $COMPOSE_CMD exec -T postgres psql -U mirakart -d mirakart -c \
+          "INSERT INTO _schema_migrations(id) VALUES ('$rel') ON CONFLICT DO NOTHING;" >/dev/null 2>&1
+      else
+        abort "Migration failed: $rel — check logs above."
+      fi
+    else
+      echo "  ✓ Already applied: $rel"
+    fi
+  done
+  info "Migrations applied"
+  echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║   Migrations applied successfully  ✓        ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
+  echo ""
+  exit 0
+fi
 
 # ── 2. Docker check ───────────────────────────────────────────────────────────
 step "Checking Docker..."
