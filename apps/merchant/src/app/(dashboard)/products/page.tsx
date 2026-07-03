@@ -50,7 +50,7 @@ export default function MerchantProductsPage() {
         </div>
       ),
     },
-    { key: "price", header: "Price", cell: (r) => <span className="font-medium">{formatCurrency(r.price)}</span> },
+    { key: "price", header: "Price", cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
     { key: "variants", header: "Variants", cell: (r) => r.variants?.length ?? 0 },
     { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge> },
     {
