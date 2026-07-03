@@ -104,13 +104,21 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Category">
-              <Select value={watch("categoryId") ?? ""} onValueChange={(v) => setValue("categoryId", v)}>
+              <Select
+                key={`cat-${watch("categoryId")}-${categories?.length ?? 0}`}
+                value={watch("categoryId") ?? ""}
+                onValueChange={(v) => setValue("categoryId", v)}
+              >
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>{categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </FormField>
             <FormField label="Brand">
-              <Select value={watch("brandId") ?? ""} onValueChange={(v) => setValue("brandId", v)}>
+              <Select
+                key={`brand-${watch("brandId")}-${brands?.length ?? 0}`}
+                value={watch("brandId") ?? ""}
+                onValueChange={(v) => setValue("brandId", v)}
+              >
                 <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
                 <SelectContent>{brands?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
               </Select>
