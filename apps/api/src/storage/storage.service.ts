@@ -27,6 +27,7 @@ export class StorageService implements OnModuleInit {
   private useSSL!: boolean;
   private endPoint!: string;
   private port!: number;
+  private publicUrl!: string;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -41,6 +42,16 @@ export class StorageService implements OnModuleInit {
       accessKey: this.config.get<string>("MINIO_ROOT_USER"),
       secretKey: this.config.get<string>("MINIO_ROOT_PASSWORD"),
     });
+    // Public base URL for browser-accessible links (no trailing slash)
+    const protocol = this.useSSL ? "https" : "http";
+    const portSuffix =
+      (this.useSSL && this.port === 443) || (!this.useSSL && this.port === 80)
+        ? ""
+        : `:${this.port}`;
+    const defaultPublicUrl = `${protocol}://${this.endPoint}${portSuffix}`;
+    this.publicUrl = (
+      this.config.get<string>("MINIO_PUBLIC_URL", defaultPublicUrl) ?? defaultPublicUrl
+    ).replace(/\/$/, "");
   }
 
   async upload(
@@ -61,11 +72,7 @@ export class StorageService implements OnModuleInit {
 
   async getUrl(bucket: StorageBucket, objectKey: string): Promise<string> {
     if (PUBLIC_BUCKETS.has(bucket)) {
-      const protocol = this.useSSL ? "https" : "http";
-      const portSuffix = (this.useSSL && this.port === 443) || (!this.useSSL && this.port === 80)
-        ? ""
-        : `:${this.port}`;
-      return `${protocol}://${this.endPoint}${portSuffix}/${bucket}/${objectKey}`;
+      return `${this.publicUrl}/${bucket}/${objectKey}`;
     }
     return this.client.presignedGetObject(bucket, objectKey, PRESIGNED_URL_EXPIRY_SECONDS);
   }
