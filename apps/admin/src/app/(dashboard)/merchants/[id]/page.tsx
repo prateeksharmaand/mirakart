@@ -95,7 +95,7 @@ export default function MerchantDetailPage({ params }: { params: { id: string } 
               <div key={doc.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
                 <div>
                   <p className="text-sm font-medium capitalize">{doc.type.toLowerCase().replace("_", " ")}</p>
-                  <Badge variant={doc.status === "APPROVED" ? "success" : doc.status === "REJECTED" ? "danger" : "warning"} className="mt-1">{doc.status}</Badge>
+                  <Badge variant={doc.status === "VERIFIED" ? "success" : doc.status === "REJECTED" ? "danger" : "warning"} className="mt-1">{doc.status}</Badge>
                 </div>
                 <a href={doc.url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">View</a>
               </div>
