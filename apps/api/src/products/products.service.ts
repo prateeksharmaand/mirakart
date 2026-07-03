@@ -156,7 +156,7 @@ export class ProductsService {
     await this.assertOwnedProduct(productId, merchantId);
     const existing = await this.repo.findVariantBySku(dto.sku);
     if (existing) throw new ConflictException("SKU is already in use");
-    return this.repo.createVariant({ productId, ...dto });
+    return this.repo.createVariant({ productId, ...dto, attributeValueIds: dto.attributeValueIds ?? [] });
   }
 
   async updateVariant(productId: string, variantId: string, merchantId: string, dto: UpdateVariantDto) {
