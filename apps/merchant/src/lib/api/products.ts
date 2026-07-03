@@ -67,6 +67,19 @@ export async function addVariant(productId: string, data: {
   return res.data.data as ProductVariant;
 }
 
+export async function updateVariant(productId: string, variantId: string, data: {
+  sku?: string;
+  price?: number;
+  compareAtPrice?: number | null;
+}): Promise<ProductVariant> {
+  const res = await apiClient.patch(`/merchants/me/products/${productId}/variants/${variantId}`, data);
+  return res.data.data as ProductVariant;
+}
+
+export async function deleteVariant(productId: string, variantId: string): Promise<void> {
+  await apiClient.delete(`/merchants/me/products/${productId}/variants/${variantId}`);
+}
+
 export async function updateProduct(id: string, data: Partial<{
   name: string;
   description: string;

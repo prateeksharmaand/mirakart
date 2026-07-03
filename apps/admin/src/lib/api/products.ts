@@ -7,10 +7,20 @@ export interface ProductImage {
   media: { url: string };
 }
 
+export interface ProductVariant {
+  id: string;
+  sku: string;
+  price: number;
+  compareAtPrice?: number | null;
+  inventory?: { quantity: number } | null;
+  attributeValues?: Array<{ attributeValue: { value: string; attribute: { name: string } } }>;
+}
+
 export interface Product {
   id: string;
   name: string;
   slug: string;
+  description?: string | null;
   status: string;
   basePrice: number;
   compareAtPrice?: number | null;
@@ -19,6 +29,7 @@ export interface Product {
   category?: { id: string; name: string } | null;
   brand?: { id: string; name: string } | null;
   images?: ProductImage[];
+  variants?: ProductVariant[];
   rejectionReason?: string | null;
 }
 

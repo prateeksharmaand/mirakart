@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge, Button, FormField, Skeleton, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { ProductImageManager } from "../../../../components/product-image-manager";
-import { getProduct, approveProduct, rejectProduct, type Product } from "../../../../lib/api/products";
+import { getProduct, approveProduct, rejectProduct, type Product, type ProductVariant } from "../../../../lib/api/products";
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -85,6 +85,51 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
           <div className="col-span-2"><p className="text-xs text-muted-foreground">Rejection Reason</p><p className="text-sm text-danger">{product.rejectionReason}</p></div>
         )}
       </div>
+
+      {/* Description */}
+      {product.description && (
+        <div className="rounded-xl border border-border bg-white p-6">
+          <p className="text-xs text-muted-foreground mb-1">Description</p>
+          <p className="text-sm whitespace-pre-wrap">{product.description}</p>
+        </div>
+      )}
+
+      {/* Variants */}
+      {product.variants && product.variants.length > 0 && (
+        <div className="rounded-xl border border-border bg-white p-6">
+          <h2 className="text-sm font-semibold mb-4">Variants / Inventory</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="pb-2 text-left font-medium">SKU</th>
+                  <th className="pb-2 text-left font-medium">Price</th>
+                  <th className="pb-2 text-left font-medium">Stock</th>
+                  <th className="pb-2 text-left font-medium">Attributes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {product.variants.map((v: ProductVariant) => {
+                  const attrs = v.attributeValues
+                    ?.map((av) => `${av.attributeValue.attribute.name}: ${av.attributeValue.value}`)
+                    .join(", ");
+                  const stock = v.inventory?.quantity ?? 0;
+                  return (
+                    <tr key={v.id}>
+                      <td className="py-2.5 pr-4 font-mono text-xs">{v.sku}</td>
+                      <td className="py-2.5 pr-4">{formatPrice(Number(v.price))}</td>
+                      <td className="py-2.5 pr-4">
+                        <span className={stock === 0 ? "text-red-500" : ""}>{stock}</span>
+                      </td>
+                      <td className="py-2.5 text-xs text-muted-foreground">{attrs || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Image management */}
       <ProductImageManager productId={params.id} />

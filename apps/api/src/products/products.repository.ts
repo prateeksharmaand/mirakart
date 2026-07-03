@@ -146,6 +146,8 @@ export class ProductsRepository {
         include: {
           images: { where: { isPrimary: true }, take: 1, include: { media: true } },
           merchant: { select: { id: true, storeName: true } },
+          category: { select: { id: true, name: true } },
+          brand: { select: { id: true, name: true } },
         },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
