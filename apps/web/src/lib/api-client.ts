@@ -57,7 +57,11 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const message = error.response?.data?.error?.message ?? error.message ?? "Something went wrong";
+    const message =
+      error.response?.data?.error?.message ??
+      error.response?.data?.message ??
+      error.message ??
+      "Something went wrong";
     return Promise.reject(new Error(message));
   },
 );

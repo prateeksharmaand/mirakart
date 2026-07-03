@@ -12,6 +12,19 @@ import { ProductImageManager } from "../../../../../components/product-image-man
 import { getMerchantProduct, updateProduct } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags } from "../../../../../lib/api/profile";
 
+const PRODUCT_STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "ARCHIVED"] as const;
+type ProductStatus = typeof PRODUCT_STATUSES[number];
+
+const STATUS_LABELS: Record<ProductStatus, string> = {
+  DRAFT: "Draft",
+  PENDING_APPROVAL: "Submit for Approval",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  ARCHIVED: "Archived",
+};
+
+const MERCHANT_EDITABLE_STATUSES: ProductStatus[] = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"];
+
 const schema = z.object({
   name: z.string().min(1, "Required"),
   description: z.string().optional(),
@@ -19,7 +32,7 @@ const schema = z.object({
   brandId: z.string().optional(),
   price: z.coerce.number().positive(),
   comparePrice: z.coerce.number().optional(),
-  status: z.enum(["ACTIVE", "DRAFT", "ARCHIVED"]),
+  status: z.enum(["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "ARCHIVED"]),
   tagIds: z.array(z.string()).default([]),
 });
 type FormValues = z.infer<typeof schema>;
@@ -32,7 +45,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const { data: brands } = useQuery({ queryKey: ["merchant-brands"], queryFn: listBrands });
   const { data: tags } = useQuery({ queryKey: ["merchant-tags"], queryFn: listActiveTags });
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { status: "DRAFT", tagIds: [] },
+  });
 
   const selectedTagIds = watch("tagIds") ?? [];
 
@@ -45,7 +61,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         brandId: product.brand?.id,
         price: product.basePrice,
         comparePrice: product.compareAtPrice ?? undefined,
-        status: (product.status as "ACTIVE" | "DRAFT" | "ARCHIVED") ?? "DRAFT",
+        status: (product.status as ProductStatus) ?? "DRAFT",
         tagIds: product.tags?.map((pt) => pt.tag.id) ?? [],
       });
     }
@@ -88,13 +104,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Category">
-              <Select value={product?.category?.id} onValueChange={(v) => setValue("categoryId", v)}>
+              <Select value={watch("categoryId") ?? ""} onValueChange={(v) => setValue("categoryId", v)}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>{categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </FormField>
             <FormField label="Brand">
-              <Select value={product?.brand?.id} onValueChange={(v) => setValue("brandId", v)}>
+              <Select value={watch("brandId") ?? ""} onValueChange={(v) => setValue("brandId", v)}>
                 <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
                 <SelectContent>{brands?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -109,12 +125,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </FormField>
           </div>
           <FormField label="Status">
-            <Select value={product?.status} onValueChange={(v) => setValue("status", v as "ACTIVE" | "DRAFT" | "ARCHIVED")}>
+            <Select value={watch("status") ?? "DRAFT"} onValueChange={(v) => setValue("status", v as ProductStatus)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
+                {MERCHANT_EDITABLE_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                ))}
+                {/* Show current status read-only if it's admin-controlled */}
+                {(["APPROVED", "REJECTED"] as ProductStatus[]).includes(watch("status")) && (
+                  <SelectItem value={watch("status")} disabled>
+                    {STATUS_LABELS[watch("status")]} (set by admin)
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </FormField>
