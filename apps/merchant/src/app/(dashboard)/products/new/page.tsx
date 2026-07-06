@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { createProduct, addVariant, updateVariantInventory } from "../../../../lib/api/products";
-import { listCategories, listBrands, listActiveTags, listAttributes } from "../../../../lib/api/profile";
+import { listCategories, listBrands, listActiveTags, listCategoryAttributes } from "../../../../lib/api/profile";
 import { Plus, Trash2 } from "lucide-react";
 
 const variantSchema = z.object({
@@ -40,7 +40,6 @@ export default function NewProductPage() {
   const { data: categories } = useQuery({ queryKey: ["merchant-categories"], queryFn: listCategories });
   const { data: brands } = useQuery({ queryKey: ["merchant-brands"], queryFn: listBrands });
   const { data: tags } = useQuery({ queryKey: ["merchant-tags"], queryFn: listActiveTags });
-  const { data: attributes = [] } = useQuery({ queryKey: ["attributes"], queryFn: listAttributes });
 
   const { register, handleSubmit, setValue, watch, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -52,7 +51,15 @@ export default function NewProductPage() {
   });
 
   const selectedTagIds = watch("tagIds");
+  const selectedCategoryId = watch("categoryId");
   const { fields, append, remove } = useFieldArray({ control, name: "variants" });
+
+  const { data: attributes = [] } = useQuery({
+    queryKey: ["category-attributes-merchant", selectedCategoryId],
+    queryFn: () => listCategoryAttributes(selectedCategoryId!),
+    enabled: !!selectedCategoryId,
+    staleTime: 60_000,
+  });
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -108,7 +115,11 @@ export default function NewProductPage() {
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Category" htmlFor="categoryId" error={errors.categoryId?.message} required>
-              <Select onValueChange={(v) => setValue("categoryId", v)}>
+              <Select onValueChange={(v) => {
+                setValue("categoryId", v);
+                // Clear variant attrs when category changes
+                fields.forEach((_, i) => setValue(`variants.${i}.attrs`, {}));
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
                   {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -190,7 +201,13 @@ export default function NewProductPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold">Variants / Inventory</h2>
-              <p className="text-xs text-foreground-muted mt-0.5">Add at least one SKU with price and stock quantity.</p>
+              <p className="text-xs text-foreground-muted mt-0.5">
+                {selectedCategoryId
+                  ? attributes.length > 0
+                    ? `Showing ${attributes.length} attribute${attributes.length !== 1 ? "s" : ""} for this category.`
+                    : "This category has no specific attributes."
+                  : "Select a category above to load relevant attributes."}
+              </p>
             </div>
             <Button
               type="button"

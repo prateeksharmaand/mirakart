@@ -69,4 +69,46 @@ export class CategoriesRepository {
   countActiveProducts(id: string): Promise<number> {
     return this.prisma.product.count({ where: { categoryId: id, deletedAt: null } });
   }
+
+  // ── Category-Attribute assignment ──────────────────────────────────────────
+
+  findAttributesByCategoryId(categoryId: string) {
+    return this.prisma.categoryAttribute.findMany({
+      where: { categoryId },
+      include: {
+        attribute: { include: { values: { orderBy: { sortOrder: "asc" } } } },
+      },
+      orderBy: { sortOrder: "asc" },
+    });
+  }
+
+  findCategoryAttribute(categoryId: string, attributeId: string) {
+    return this.prisma.categoryAttribute.findUnique({
+      where: { categoryId_attributeId: { categoryId, attributeId } },
+    });
+  }
+
+  assignAttribute(data: {
+    id: string;
+    categoryId: string;
+    attributeId: string;
+    sortOrder?: number;
+    isRequired?: boolean;
+  }) {
+    return this.prisma.categoryAttribute.create({ data });
+  }
+
+  updateCategoryAttribute(id: string, data: Partial<{ sortOrder: number; isRequired: boolean }>) {
+    return this.prisma.categoryAttribute.update({ where: { id }, data });
+  }
+
+  unassignAttribute(categoryId: string, attributeId: string) {
+    return this.prisma.categoryAttribute.delete({
+      where: { categoryId_attributeId: { categoryId, attributeId } },
+    });
+  }
+
+  countCategoryAttributes(categoryId: string): Promise<number> {
+    return this.prisma.categoryAttribute.count({ where: { categoryId } });
+  }
 }

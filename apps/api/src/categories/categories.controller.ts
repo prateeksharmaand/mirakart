@@ -5,6 +5,22 @@ import { CategoriesService } from "./categories.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { ListCategoriesDto } from "./dto/list-categories.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
+import { IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
+import { Transform } from "class-transformer";
+
+class AssignAttributeDto {
+  @IsString()
+  attributeId!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Transform(({ value }) => Number(value))
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isRequired?: boolean;
+}
 
 @ApiTags("categories")
 @Controller("categories")
@@ -49,5 +65,27 @@ export class CategoriesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param("id") id: string) {
     return this.service.remove(id);
+  }
+
+  // ── Category-Attribute assignment ──────────────────────────────────────────
+
+  @Get(":id/attributes")
+  @ApiOkResponse()
+  getCategoryAttributes(@Param("id") id: string) {
+    return this.service.getCategoryAttributesById(id);
+  }
+
+  @Post(":id/attributes")
+  @AdminAuth("category.edit")
+  @ApiCreatedResponse()
+  assignAttribute(@Param("id") id: string, @Body() dto: AssignAttributeDto) {
+    return this.service.assignAttribute(id, dto.attributeId, dto.sortOrder, dto.isRequired);
+  }
+
+  @Delete(":id/attributes/:attributeId")
+  @AdminAuth("category.edit")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unassignAttribute(@Param("id") id: string, @Param("attributeId") attributeId: string) {
+    return this.service.unassignAttribute(id, attributeId);
   }
 }

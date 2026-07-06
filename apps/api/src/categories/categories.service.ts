@@ -66,6 +66,41 @@ export class CategoriesService {
     await this.repo.softDelete(id);
   }
 
+  // ── Category-Attribute assignment ──────────────────────────────────────────
+
+  getCategoryAttributes(categoryId: string) {
+    return this.repo.findAttributesByCategoryId(categoryId);
+  }
+
+  async getCategoryAttributesPublic(categorySlug: string) {
+    const category = await this.repo.findBySlug(categorySlug);
+    if (!category) throw new NotFoundException("Category not found");
+    return this.repo.findAttributesByCategoryId(category.id);
+  }
+
+  async getCategoryAttributesById(categoryId: string) {
+    const category = await this.repo.findById(categoryId);
+    if (!category) throw new NotFoundException("Category not found");
+    return this.repo.findAttributesByCategoryId(categoryId);
+  }
+
+  async assignAttribute(categoryId: string, attributeId: string, sortOrder = 0, isRequired = false) {
+    await this.findById(categoryId);
+    const existing = await this.repo.findCategoryAttribute(categoryId, attributeId);
+    if (existing) {
+      return this.repo.updateCategoryAttribute(existing.id, { sortOrder, isRequired });
+    }
+    const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return this.repo.assignAttribute({ id, categoryId, attributeId, sortOrder, isRequired });
+  }
+
+  async unassignAttribute(categoryId: string, attributeId: string) {
+    await this.findById(categoryId);
+    const existing = await this.repo.findCategoryAttribute(categoryId, attributeId);
+    if (!existing) throw new NotFoundException("Attribute not assigned to this category");
+    await this.repo.unassignAttribute(categoryId, attributeId);
+  }
+
   private buildTree(categories: CategoryWithMedia[]): CategoryNode[] {
     const byId = new Map<string, CategoryNode>(categories.map((c) => [c.id, { ...c, children: [] }]));
     const roots: CategoryNode[] = [];

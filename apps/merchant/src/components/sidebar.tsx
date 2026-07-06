@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, Package, ShoppingCart, RotateCcw, User, FileText, LogOut, Menu, X,
+  LayoutDashboard, Package, ShoppingCart, RotateCcw, User, FileText, LogOut, Menu, X, MessageCircle,
 } from "lucide-react";
 import { cn } from "@mirakart/ui";
 import { useAuthStore } from "../stores/auth-store";
@@ -16,6 +16,7 @@ const NAV = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/orders", label: "Orders", icon: ShoppingCart },
   { href: "/returns", label: "Returns", icon: RotateCcw },
+  { href: "/queries", label: "Customer Q&A", icon: MessageCircle },
   { href: "/profile", label: "Store Profile", icon: User },
   { href: "/documents", label: "Documents", icon: FileText },
 ];

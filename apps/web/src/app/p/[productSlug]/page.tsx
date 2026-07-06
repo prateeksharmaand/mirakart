@@ -6,6 +6,10 @@ import { ProductPurchasePanel } from "../../../components/product-purchase-panel
 import { ProductGallery } from "../../../components/product-gallery";
 import { ProductTabs, TagList } from "../../../components/product-tabs";
 import { ProductCard } from "../../../components/product-card";
+import { ProductReviews } from "../../../components/product-reviews";
+import { ProductQueries } from "../../../components/product-queries";
+import { RecentlyViewedTracker, RecentlyViewedSection } from "../../../components/recently-viewed";
+import { WishlistButton } from "../../../components/wishlist-button";
 import { getProductBySlug, getProducts } from "../../../lib/api/catalog";
 
 interface PageProps {
@@ -83,6 +87,8 @@ export default async function ProductPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-site px-gutter py-8">
+      {/* Track this page view for recently viewed */}
+      <RecentlyViewedTracker productId={product.id} />
       {/* Breadcrumb */}
       <nav className="mb-5 flex items-center gap-1.5 text-xs text-foreground-muted">
         <Link href="/" className="hover:text-foreground transition-colors">
@@ -129,9 +135,12 @@ export default async function ProductPage({ params }: PageProps) {
                 </Link>
               )}
             </div>
-            <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
-              {product.name}
-            </h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+                {product.name}
+              </h1>
+              <WishlistButton productId={product.id} productSlug={product.slug} className="shrink-0 mt-1" />
+            </div>
             {!hasVariants && product.sku && (
               <p className="mt-1 text-xs text-foreground-muted">SKU: {product.sku}</p>
             )}
@@ -176,7 +185,7 @@ export default async function ProductPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Tabs: Description + Additional Info */}
+      {/* Tabs: Description + Additional Info + Reviews + Queries */}
       <div className="mt-12 border-t border-border pt-8">
         <ProductTabs
           tabs={[
@@ -184,6 +193,16 @@ export default async function ProductPage({ params }: PageProps) {
             ...(attrRows.length > 0
               ? [{ id: "info", label: "Additional Information", content: additionalContent }]
               : []),
+            {
+              id: "reviews",
+              label: "Reviews",
+              content: <ProductReviews productId={product.id} productSlug={product.slug} />,
+            },
+            {
+              id: "queries",
+              label: "Q&A",
+              content: <ProductQueries productId={product.id} productSlug={product.slug} />,
+            },
           ]}
         />
       </div>
@@ -199,6 +218,9 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
         </div>
       )}
+
+      {/* Recently viewed */}
+      <RecentlyViewedSection excludeProductId={product.id} />
     </div>
   );
 }

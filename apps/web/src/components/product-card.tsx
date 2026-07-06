@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { formatPrice } from "../lib/format";
+import { WishlistButton } from "./wishlist-button";
 import type { ProductListItem } from "../types/catalog";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
@@ -52,13 +53,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
 
         {/* Hover Actions */}
         <div className="absolute right-2.5 top-2.5 flex translate-x-8 flex-col gap-2 opacity-0 transition-all duration-300 ease-theme group-hover:translate-x-0 group-hover:opacity-100">
-          <button
-            type="button"
-            aria-label="Add to wishlist"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-background shadow-soft transition-colors hover:bg-primary hover:text-white"
-          >
-            <Heart className="h-3.5 w-3.5" />
-          </button>
+          <WishlistButton productId={product.id} productSlug={product.slug} />
         </div>
 
         {/* Quick Add */}

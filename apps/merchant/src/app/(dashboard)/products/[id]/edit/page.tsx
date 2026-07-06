@@ -10,7 +10,7 @@ import { Badge, Button, FormField, Input, Select, SelectContent, SelectItem, Sel
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
-import { listCategories, listBrands, listActiveTags, listAttributes, type AttributeWithValues } from "../../../../../lib/api/profile";
+import { listCategories, listBrands, listActiveTags, listCategoryAttributes, type AttributeWithValues } from "../../../../../lib/api/profile";
 import { Plus, Trash2, Check, X } from "lucide-react";
 
 type ProductStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "ARCHIVED";
@@ -210,7 +210,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       </form>
 
       {/* Variants / Inventory — between Tags and action buttons */}
-      <VariantsManager productId={params.id} />
+      <VariantsManager productId={params.id} categoryId={watch("categoryId") ?? product?.category?.id} />
 
       {/* Action buttons — linked to the form via form="product-form" */}
       <div className="flex gap-3">
@@ -225,7 +225,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 // Variants Manager — reads from the same TanStack Query cache as the parent
 // ---------------------------------------------------------------------------
 
-function VariantsManager({ productId }: { productId: string }) {
+function VariantsManager({ productId, categoryId }: { productId: string; categoryId?: string }) {
   const qc = useQueryClient();
 
   const { data: product } = useQuery({
@@ -233,9 +233,13 @@ function VariantsManager({ productId }: { productId: string }) {
     queryFn: () => getMerchantProduct(productId),
   });
 
+  const effectiveCategoryId = categoryId ?? product?.category?.id;
+
   const { data: attributes = [] } = useQuery<AttributeWithValues[]>({
-    queryKey: ["attributes"],
-    queryFn: listAttributes,
+    queryKey: ["category-attributes-merchant", effectiveCategoryId],
+    queryFn: () => listCategoryAttributes(effectiveCategoryId!),
+    enabled: !!effectiveCategoryId,
+    staleTime: 60_000,
   });
 
   const variants: ProductVariant[] = product?.variants ?? [];

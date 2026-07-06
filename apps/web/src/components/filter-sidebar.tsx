@@ -14,30 +14,91 @@ interface FilterSidebarProps {
   hideCategoryFilter?: boolean;
 }
 
+// Returns true if the hex color is light (use dark icon on top of it)
+function isLightHex(hex: string): boolean {
+  try {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return r * 0.299 + g * 0.587 + b * 0.114 > 186;
+  } catch {
+    return false;
+  }
+}
+
 function Section({
   title,
   children,
   defaultOpen = true,
+  badge,
+  onClear,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  badge?: number;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   return (
-    <div className="border-b border-border py-4">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-wider text-foreground"
-      >
-        {title}
-        <ChevronDown
-          className={`h-4 w-4 text-foreground-muted transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
+    <div className="border-b border-border py-4 last:border-0">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex flex-1 items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground"
+        >
+          {title}
+          {badge ? (
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+              {badge}
+            </span>
+          ) : null}
+          <ChevronDown
+            className={`ml-auto h-4 w-4 text-foreground-muted transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+        {onClear && badge ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-3 text-[11px] text-primary hover:underline"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
       {open && <div className="mt-3">{children}</div>}
     </div>
+  );
+}
+
+// Collapsible list — shows first `limit` items, toggle "Show more/less"
+function CollapsibleList({
+  children,
+  limit = 6,
+  total,
+}: {
+  children: React.ReactNode[];
+  limit?: number;
+  total: number;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const shown = expanded ? children : children.slice(0, limit);
+  return (
+    <>
+      {shown}
+      {total > limit && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-2 text-xs font-medium text-primary hover:underline"
+        >
+          {expanded ? "Show less" : `Show ${total - limit} more`}
+        </button>
+      )}
+    </>
   );
 }
 
@@ -53,7 +114,7 @@ export function FilterSidebar({
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [brandSearch, setBrandSearch] = React.useState("");
 
-  // --- URL state helpers ---
+  // URL state
   const currentCategoryId = searchParams.get("categoryId") ?? "";
   const currentBrandId = searchParams.get("brandId") ?? "";
   const currentTag = searchParams.get("tag") ?? "";
@@ -61,10 +122,26 @@ export function FilterSidebar({
   const currentMaxPrice = searchParams.get("maxPrice") ?? "";
   const [draftMin, setDraftMin] = React.useState(currentMinPrice);
   const [draftMax, setDraftMax] = React.useState(currentMaxPrice);
+
+  // Keep draft in sync when URL changes from outside
+  React.useEffect(() => { setDraftMin(currentMinPrice); }, [currentMinPrice]);
+  React.useEffect(() => { setDraftMax(currentMaxPrice); }, [currentMaxPrice]);
+
   const selectedAvIds = React.useMemo(() => {
     const raw = searchParams.get("av");
     return raw ? raw.split(",").filter(Boolean) : [];
   }, [searchParams]);
+
+  // Build a lookup: valueId → attribute name + value label for chips
+  const avLookup = React.useMemo(() => {
+    const map: Record<string, { attrName: string; label: string; colorHex?: string | null }> = {};
+    for (const attr of attributes) {
+      for (const v of attr.values) {
+        map[v.id] = { attrName: attr.name, label: v.value, colorHex: v.colorHex };
+      }
+    }
+    return map;
+  }, [attributes]);
 
   function buildParams(updates: Record<string, string | null>): URLSearchParams {
     const params = new URLSearchParams(searchParams.toString());
@@ -75,7 +152,6 @@ export function FilterSidebar({
     }
     return params;
   }
-
   function push(updates: Record<string, string | null>) {
     router.push(`?${buildParams(updates).toString()}`);
   }
@@ -84,6 +160,11 @@ export function FilterSidebar({
     const next = selectedAvIds.includes(valueId)
       ? selectedAvIds.filter((id) => id !== valueId)
       : [...selectedAvIds, valueId];
+    push({ av: next.length > 0 ? next.join(",") : null });
+  }
+
+  function removeAv(valueId: string) {
+    const next = selectedAvIds.filter((id) => id !== valueId);
     push({ av: next.length > 0 ? next.join(",") : null });
   }
 
@@ -97,22 +178,57 @@ export function FilterSidebar({
     push({ minPrice: draftMin || null, maxPrice: draftMax || null });
   }
 
-  const colorAttrs = attributes.filter((a) => a.type === "COLOR" && a.values.length > 0);
-  const selectAttrs = attributes.filter((a) => a.type === "SELECT" && a.values.length > 0);
-
-  const activeCount = [
-    currentCategoryId,
-    currentBrandId,
-    currentTag,
-    currentMinPrice || currentMaxPrice,
-    selectedAvIds.length > 0 ? "av" : "",
-  ].filter(Boolean).length;
-
   function clearAll() {
     router.push("?");
     setDraftMin("");
     setDraftMax("");
   }
+
+  const colorAttrs = attributes.filter((a) => a.type === "COLOR" && a.values.length > 0);
+  const selectAttrs = attributes.filter((a) => a.type === "SELECT" && a.values.length > 0);
+  const textAttrs = attributes.filter((a) => a.type === "TEXT" && a.values.length > 0);
+
+  // Active chips data
+  const activeChips: Array<{ key: string; label: string; onRemove: () => void }> = [];
+  if (currentCategoryId) {
+    const cat = categories.find((c) => c.id === currentCategoryId);
+    if (cat) activeChips.push({ key: "cat", label: cat.name, onRemove: () => push({ categoryId: null }) });
+  }
+  if (currentBrandId) {
+    const brand = brands.find((b) => b.id === currentBrandId);
+    if (brand) activeChips.push({ key: "brand", label: brand.name, onRemove: () => push({ brandId: null }) });
+  }
+  if (currentMinPrice || currentMaxPrice) {
+    const label = currentMinPrice && currentMaxPrice
+      ? `₹${currentMinPrice}–₹${currentMaxPrice}`
+      : currentMinPrice ? `≥ ₹${currentMinPrice}` : `≤ ₹${currentMaxPrice}`;
+    activeChips.push({
+      key: "price",
+      label,
+      onRemove: () => { setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null }); },
+    });
+  }
+  if (currentTag) {
+    const tag = tags.find((t) => t.slug === currentTag);
+    if (tag) activeChips.push({ key: "tag", label: tag.name, onRemove: () => push({ tag: null }) });
+  }
+  for (const avId of selectedAvIds) {
+    const info = avLookup[avId];
+    if (info) {
+      activeChips.push({
+        key: avId,
+        label: `${info.attrName}: ${info.label}`,
+        onRemove: () => removeAv(avId),
+      });
+    }
+  }
+
+  const PRICE_PRESETS = [
+    { label: "Under ₹500", min: "", max: "500" },
+    { label: "₹500–₹1,000", min: "500", max: "1000" },
+    { label: "₹1,000–₹2,500", min: "1000", max: "2500" },
+    { label: "₹2,500+", min: "2500", max: "" },
+  ];
 
   const SidebarContent = (
     <div className="flex flex-col">
@@ -121,7 +237,7 @@ export function FilterSidebar({
         <span className="text-sm font-semibold uppercase tracking-wider text-foreground">
           Filters
         </span>
-        {activeCount > 0 && (
+        {activeChips.length > 0 && (
           <button
             type="button"
             onClick={clearAll}
@@ -133,22 +249,84 @@ export function FilterSidebar({
         )}
       </div>
 
+      {/* Active filter chips */}
+      {activeChips.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {activeChips.map((chip) => (
+            <span
+              key={chip.key}
+              className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+            >
+              {chip.label}
+              <button
+                type="button"
+                onClick={chip.onRemove}
+                className="ml-0.5 rounded-full hover:bg-primary/20 p-0.5 transition-colors"
+                aria-label={`Remove ${chip.label}`}
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Price */}
-      <Section title="Price">
+      <Section
+        title="Price"
+        badge={currentMinPrice || currentMaxPrice ? 1 : 0}
+        onClear={() => { setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null }); }}
+      >
+        {/* Quick presets */}
+        <div className="mb-3 flex flex-col gap-1">
+          {PRICE_PRESETS.map((preset) => {
+            const isActive = currentMinPrice === preset.min && currentMaxPrice === preset.max;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  if (isActive) {
+                    setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null });
+                  } else {
+                    setDraftMin(preset.min); setDraftMax(preset.max);
+                    push({ minPrice: preset.min || null, maxPrice: preset.max || null });
+                  }
+                }}
+                className={`flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors ${
+                  isActive
+                    ? "bg-foreground text-background font-medium"
+                    : "text-foreground-muted hover:text-foreground hover:bg-background-light"
+                }`}
+              >
+                {isActive && <Check className="h-3.5 w-3.5 shrink-0" />}
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* Custom range */}
+        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-foreground-muted">
+          Custom Range
+        </p>
         <div className="flex items-center gap-2">
           <input
             type="number"
-            placeholder="Min"
+            placeholder="Min ₹"
             value={draftMin}
+            min={0}
             onChange={(e) => setDraftMin(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
             className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
           />
-          <span className="text-foreground-muted">–</span>
+          <span className="shrink-0 text-foreground-muted">–</span>
           <input
             type="number"
-            placeholder="Max"
+            placeholder="Max ₹"
             value={draftMax}
+            min={0}
             onChange={(e) => setDraftMax(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
             className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
           />
         </div>
@@ -157,62 +335,72 @@ export function FilterSidebar({
           onClick={applyPrice}
           className="mt-2 w-full rounded bg-foreground py-1.5 text-xs font-medium text-background hover:opacity-80 transition-opacity"
         >
-          Apply
+          Apply Price
         </button>
-        {(currentMinPrice || currentMaxPrice) && (
-          <button
-            type="button"
-            onClick={() => { setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null }); }}
-            className="mt-1 text-xs text-primary hover:underline"
-          >
-            Clear price
-          </button>
-        )}
       </Section>
 
       {/* Categories */}
       {!hideCategoryFilter && categories.length > 0 && (
-        <Section title="Categories">
-          <div className="flex flex-col gap-1.5">
-            {categories.map((cat) => {
-              const active = currentCategoryId === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => push({ categoryId: active ? null : cat.id })}
-                  className={`flex items-center justify-between rounded px-2 py-1 text-sm transition-colors ${
-                    active
-                      ? "bg-foreground text-background font-medium"
-                      : "text-foreground-muted hover:text-foreground hover:bg-background-light"
-                  }`}
-                >
-                  <span>{cat.name}</span>
-                  {active && <Check className="h-3.5 w-3.5" />}
-                </button>
-              );
-            })}
+        <Section
+          title="Categories"
+          badge={currentCategoryId ? 1 : 0}
+          onClear={() => push({ categoryId: null })}
+        >
+          <div className="flex flex-col gap-0.5">
+            <CollapsibleList total={categories.length}>
+              {categories.map((cat) => {
+                const active = currentCategoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => push({ categoryId: active ? null : cat.id })}
+                    className={`flex items-center gap-2.5 rounded px-2 py-1.5 text-sm transition-colors ${
+                      active
+                        ? "font-medium text-foreground"
+                        : "text-foreground-muted hover:text-foreground hover:bg-background-light"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground"
+                          : "border-border"
+                      }`}
+                    >
+                      {active && <Check className="h-2.5 w-2.5 text-background" />}
+                    </span>
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </CollapsibleList>
           </div>
         </Section>
       )}
 
       {/* Brands */}
       {brands.length > 0 && (
-        <Section title="Brands">
-          {brands.length > 6 && (
+        <Section
+          title="Brands"
+          badge={currentBrandId ? 1 : 0}
+          onClear={() => push({ brandId: null })}
+        >
+          {brands.length > 5 && (
             <input
               type="text"
-              placeholder="Search brands..."
+              placeholder="Search brands…"
               value={brandSearch}
               onChange={(e) => setBrandSearch(e.target.value)}
-              className="mb-2 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
+              className="mb-2.5 w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
             />
           )}
-          <div className="flex flex-col gap-1.5 max-h-52 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto pr-1 scrollbar-thin">
             {brands
-              .filter((b) =>
-                brandSearch.length === 0 ||
-                b.name.toLowerCase().includes(brandSearch.toLowerCase())
+              .filter(
+                (b) =>
+                  !brandSearch ||
+                  b.name.toLowerCase().includes(brandSearch.toLowerCase()),
               )
               .map((brand) => {
                 const active = currentBrandId === brand.id;
@@ -221,18 +409,18 @@ export function FilterSidebar({
                     key={brand.id}
                     type="button"
                     onClick={() => push({ brandId: active ? null : brand.id })}
-                    className={`flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors ${
+                    className={`flex items-center gap-2.5 rounded px-2 py-1.5 text-sm transition-colors ${
                       active
-                        ? "bg-foreground text-background font-medium"
+                        ? "font-medium text-foreground"
                         : "text-foreground-muted hover:text-foreground hover:bg-background-light"
                     }`}
                   >
                     <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                        active ? "border-background bg-background" : "border-border"
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                        active ? "border-foreground bg-foreground" : "border-border"
                       }`}
                     >
-                      {active && <Check className="h-2.5 w-2.5 text-foreground" />}
+                      {active && <Check className="h-2.5 w-2.5 text-background" />}
                     </span>
                     {brand.name}
                   </button>
@@ -242,99 +430,184 @@ export function FilterSidebar({
         </Section>
       )}
 
-      {/* Color attributes */}
+      {/* COLOR attributes */}
       {colorAttrs.map((attr) => {
-        const hasActive = attr.values.some((v) => selectedAvIds.includes(v.id));
+        const activeIds = attr.values.filter((v) => selectedAvIds.includes(v.id));
         return (
-          <Section key={attr.id} title={attr.name}>
-            <div className="flex flex-wrap gap-2.5">
+          <Section
+            key={attr.id}
+            title={attr.name}
+            badge={activeIds.length || 0}
+            onClear={() => clearAttrGroup(attr.values)}
+          >
+            <div className="flex flex-wrap gap-3">
               {attr.values.map((val) => {
                 const isSelected = selectedAvIds.includes(val.id);
+                const hex = val.colorHex ?? "#cccccc";
+                const light = isLightHex(hex);
                 return (
-                  <button
-                    key={val.id}
-                    type="button"
-                    title={val.value}
-                    onClick={() => toggleAv(val.id)}
-                    className={`relative h-8 w-8 rounded-full border-2 transition-all ${
-                      isSelected
-                        ? "border-primary scale-110 shadow-sm"
-                        : "border-transparent hover:border-foreground-muted"
-                    }`}
-                    style={{ backgroundColor: val.colorHex ?? "#ccc" }}
-                  >
-                    <span className="sr-only">{val.value}</span>
-                    {isSelected && (
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <svg viewBox="0 0 12 12" className="h-3.5 w-3.5 text-white drop-shadow">
-                          <path
-                            d="M2 6l3 3 5-5"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                    )}
-                  </button>
+                  <div key={val.id} className="flex flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      title={val.value}
+                      onClick={() => toggleAv(val.id)}
+                      style={{ backgroundColor: hex }}
+                      className={`relative h-9 w-9 rounded-full border transition-all ${
+                        isSelected
+                          ? "ring-2 ring-primary ring-offset-2 border-transparent scale-105"
+                          : "border-border/60 hover:ring-1 hover:ring-foreground-muted hover:ring-offset-1 hover:scale-105"
+                      }`}
+                    >
+                      {isSelected && (
+                        <span
+                          className="absolute inset-0 flex items-center justify-center"
+                          style={{ color: light ? "#111" : "#fff" }}
+                        >
+                          <svg viewBox="0 0 12 12" className="h-3.5 w-3.5 drop-shadow-sm">
+                            <path
+                              d="M2 6l3 3 5-5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      )}
+                      <span className="sr-only">{val.value}</span>
+                    </button>
+                    <span
+                      className={`max-w-[3rem] truncate text-center text-[10px] leading-tight ${
+                        isSelected ? "font-semibold text-foreground" : "text-foreground-muted"
+                      }`}
+                    >
+                      {val.value}
+                    </span>
+                  </div>
                 );
               })}
             </div>
-            {hasActive && (
-              <button
-                type="button"
-                onClick={() => clearAttrGroup(attr.values)}
-                className="mt-2 text-xs text-primary hover:underline"
-              >
-                Clear {attr.name}
-              </button>
-            )}
           </Section>
         );
       })}
 
-      {/* SELECT attributes (sizes, etc.) */}
+      {/* SELECT attributes (Size, Material, Fit, etc.) */}
       {selectAttrs.map((attr) => {
-        const hasActive = attr.values.some((v) => selectedAvIds.includes(v.id));
+        const activeIds = attr.values.filter((v) => selectedAvIds.includes(v.id));
+        // Heuristic: if most values are short (≤3 chars) treat as size chips
+        const avgLen =
+          attr.values.reduce((sum, v) => sum + v.value.length, 0) /
+          Math.max(attr.values.length, 1);
+        const isSizeLike = avgLen <= 4;
+
         return (
-          <Section key={attr.id} title={attr.name}>
-            <div className="flex flex-wrap gap-1.5">
-              {attr.values.map((val) => {
-                const isSelected = selectedAvIds.includes(val.id);
-                return (
-                  <button
-                    key={val.id}
-                    type="button"
-                    onClick={() => toggleAv(val.id)}
-                    className={`min-w-[2.25rem] rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
-                      isSelected
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border text-foreground-muted hover:border-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {val.value}
-                  </button>
-                );
-              })}
+          <Section
+            key={attr.id}
+            title={attr.name}
+            badge={activeIds.length || 0}
+            onClear={() => clearAttrGroup(attr.values)}
+          >
+            <div className={`flex flex-wrap gap-1.5`}>
+              <CollapsibleList total={attr.values.length}>
+                {attr.values.map((val) => {
+                  const isSelected = selectedAvIds.includes(val.id);
+                  if (isSizeLike) {
+                    // Square size chip
+                    return (
+                      <button
+                        key={val.id}
+                        type="button"
+                        onClick={() => toggleAv(val.id)}
+                        className={`flex h-9 min-w-[2.25rem] items-center justify-center rounded border px-2 text-xs font-medium transition-all ${
+                          isSelected
+                            ? "border-foreground bg-foreground text-background shadow-sm"
+                            : "border-border text-foreground-muted hover:border-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {val.value}
+                      </button>
+                    );
+                  }
+                  // Longer values: checkbox-row style
+                  return (
+                    <button
+                      key={val.id}
+                      type="button"
+                      onClick={() => toggleAv(val.id)}
+                      className={`flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-sm transition-colors ${
+                        isSelected
+                          ? "font-medium text-foreground"
+                          : "text-foreground-muted hover:text-foreground hover:bg-background-light"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                          isSelected ? "border-foreground bg-foreground" : "border-border"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-2.5 w-2.5 text-background" />}
+                      </span>
+                      {val.value}
+                    </button>
+                  );
+                })}
+              </CollapsibleList>
             </div>
-            {hasActive && (
-              <button
-                type="button"
-                onClick={() => clearAttrGroup(attr.values)}
-                className="mt-2 text-xs text-primary hover:underline"
-              >
-                Clear {attr.name}
-              </button>
-            )}
+          </Section>
+        );
+      })}
+
+      {/* TEXT attributes — searchable select */}
+      {textAttrs.map((attr) => {
+        const activeIds = attr.values.filter((v) => selectedAvIds.includes(v.id));
+        return (
+          <Section
+            key={attr.id}
+            title={attr.name}
+            badge={activeIds.length || 0}
+            onClear={() => clearAttrGroup(attr.values)}
+          >
+            <div className="flex flex-col gap-0.5">
+              <CollapsibleList total={attr.values.length}>
+                {attr.values.map((val) => {
+                  const isSelected = selectedAvIds.includes(val.id);
+                  return (
+                    <button
+                      key={val.id}
+                      type="button"
+                      onClick={() => toggleAv(val.id)}
+                      className={`flex items-center gap-2.5 rounded px-2 py-1.5 text-sm transition-colors ${
+                        isSelected
+                          ? "font-medium text-foreground"
+                          : "text-foreground-muted hover:text-foreground hover:bg-background-light"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                          isSelected ? "border-foreground bg-foreground" : "border-border"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-2.5 w-2.5 text-background" />}
+                      </span>
+                      {val.value}
+                    </button>
+                  );
+                })}
+              </CollapsibleList>
+            </div>
           </Section>
         );
       })}
 
       {/* Tags */}
       {tags.length > 0 && (
-        <Section title="Tags" defaultOpen={false}>
+        <Section
+          title="Tags"
+          defaultOpen={false}
+          badge={currentTag ? 1 : 0}
+          onClear={() => push({ tag: null })}
+        >
           <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => {
               const isSelected = currentTag === tag.slug;
@@ -343,7 +616,7 @@ export function FilterSidebar({
                   key={tag.id}
                   type="button"
                   onClick={() => push({ tag: isSelected ? null : tag.slug })}
-                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                     isSelected
                       ? "border-foreground bg-foreground text-background"
                       : "border-border text-foreground-muted hover:border-foreground hover:text-foreground"
@@ -361,7 +634,7 @@ export function FilterSidebar({
 
   return (
     <>
-      {/* Mobile trigger button */}
+      {/* Mobile trigger */}
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
@@ -369,9 +642,9 @@ export function FilterSidebar({
       >
         <SlidersHorizontal className="h-4 w-4" />
         Filters
-        {activeCount > 0 && (
+        {activeChips.length > 0 && (
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-            {activeCount}
+            {activeChips.length}
           </span>
         )}
       </button>
@@ -382,32 +655,36 @@ export function FilterSidebar({
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
-          <div className="relative flex w-72 max-w-full flex-col overflow-y-auto bg-background p-5 shadow-xl">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="font-semibold text-foreground">Filters</span>
+          <div className="relative flex w-[20rem] max-w-[90vw] flex-col bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <span className="font-semibold text-foreground">
+                Filters
+                {activeChips.length > 0 && (
+                  <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    {activeChips.length}
+                  </span>
+                )}
+              </span>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-sm p-1 text-foreground-muted hover:text-foreground"
+                className="rounded p-1 text-foreground-muted hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {SidebarContent}
-            <div className="sticky bottom-0 mt-4 border-t border-border bg-background pt-4">
+            <div className="flex-1 overflow-y-auto px-5 py-2">{SidebarContent}</div>
+            <div className="border-t border-border px-5 py-4">
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="w-full rounded bg-foreground py-2.5 text-sm font-medium text-background hover:opacity-80 transition-opacity"
+                className="w-full rounded bg-foreground py-2.5 text-sm font-semibold text-background hover:opacity-80 transition-opacity"
               >
                 Show Results
               </button>
             </div>
           </div>
-          <div
-            className="flex-1 bg-black/40"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="flex-1 bg-black/50" onClick={() => setMobileOpen(false)} />
         </div>
       )}
     </>

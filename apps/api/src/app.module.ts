@@ -28,10 +28,11 @@ import { SettingsModule } from "./settings/settings.module";
 import { BannersModule } from "./banners/banners.module";
 import { ReportsModule } from "./reports/reports.module";
 import { TagsModule } from "./tags/tags.module";
+import { WishlistModule } from "./wishlist/wishlist.module";
+import { ReviewsModule } from "./reviews/reviews.module";
+import { RecentlyViewedModule } from "./recently-viewed/recently-viewed.module";
+import { CustomerQueriesModule } from "./customer-queries/customer-queries.module";
 
-// All modules from the docs/architecture.md build order are now
-// registered. Future modules (Wallet, Coupons, etc.) are explicitly out
-// of scope per the Project Goal — see docs/architecture.md.
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: [".env"] }),
@@ -60,6 +61,10 @@ import { TagsModule } from "./tags/tags.module";
     BannersModule,
     ReportsModule,
     TagsModule,
+    WishlistModule,
+    ReviewsModule,
+    RecentlyViewedModule,
+    CustomerQueriesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

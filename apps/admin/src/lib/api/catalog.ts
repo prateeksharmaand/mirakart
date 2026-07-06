@@ -166,3 +166,31 @@ export async function updateTag(id: string, data: { name?: string; description?:
 export async function deleteTag(id: string): Promise<void> {
   await apiClient.delete(`/tags/${id}`);
 }
+
+// ---------- Category Attributes ----------
+
+export interface CategoryAttributeItem {
+  id: string;
+  categoryId: string;
+  attributeId: string;
+  attribute: Attribute;
+  sortOrder: number;
+  isRequired: boolean;
+}
+
+export async function getCategoryAttributes(categoryId: string): Promise<CategoryAttributeItem[]> {
+  const res = await apiClient.get(`/categories/${categoryId}/attributes`);
+  return res.data.data as CategoryAttributeItem[];
+}
+
+export async function assignCategoryAttribute(
+  categoryId: string,
+  data: { attributeId: string; sortOrder?: number; isRequired?: boolean },
+): Promise<CategoryAttributeItem> {
+  const res = await apiClient.post(`/categories/${categoryId}/attributes`, data);
+  return res.data.data as CategoryAttributeItem;
+}
+
+export async function removeCategoryAttribute(categoryId: string, attributeId: string): Promise<void> {
+  await apiClient.delete(`/categories/${categoryId}/attributes/${attributeId}`);
+}

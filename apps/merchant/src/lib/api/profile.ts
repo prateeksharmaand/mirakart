@@ -68,3 +68,9 @@ export async function listAttributes(): Promise<AttributeWithValues[]> {
   const res = await apiClient.get("/attributes");
   return (res.data as { data: AttributeWithValues[] }).data;
 }
+
+export async function listCategoryAttributes(categoryId: string): Promise<AttributeWithValues[]> {
+  const res = await apiClient.get(`/categories/${categoryId}/attributes`);
+  const items = (res.data.data ?? []) as Array<{ attribute: AttributeWithValues }>;
+  return items.map((ca) => ca.attribute);
+}

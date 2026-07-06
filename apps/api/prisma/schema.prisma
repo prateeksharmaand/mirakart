@@ -370,11 +370,15 @@ model Customer {
   updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?
 
-  addresses     Address[]
-  cart          Cart?
-  orders        Order[]
-  returns       Return[]
-  notifications Notification[] @relation("CustomerNotifications")
+  addresses      Address[]
+  cart           Cart?
+  orders         Order[]
+  returns        Return[]
+  notifications  Notification[] @relation("CustomerNotifications")
+  reviews        Review[]
+  wishlistItems  WishlistItem[]
+  recentlyViewed RecentlyViewed[]
+  queries        CustomerQuery[]
 
   @@index([status])
   @@map("customers")
@@ -427,7 +431,8 @@ model Category {
   updatedAt     DateTime   @updatedAt
   deletedAt     DateTime?
 
-  products Product[]
+  products   Product[]
+  attributes CategoryAttribute[]
 
   @@index([parentId])
   @@map("categories")
@@ -458,8 +463,9 @@ model Attribute {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  values       AttributeValue[]
-  productLinks ProductAttribute[]
+  values         AttributeValue[]
+  productLinks   ProductAttribute[]
+  categoryLinks  CategoryAttribute[]
 
   @@map("attributes")
 }
@@ -533,11 +539,15 @@ model Product {
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
 
-  images     ProductImage[]
-  variants   ProductVariant[]
-  attributes ProductAttribute[]
-  orderItems OrderItem[]
-  tags       ProductTag[]
+  images         ProductImage[]
+  variants       ProductVariant[]
+  attributes     ProductAttribute[]
+  orderItems     OrderItem[]
+  tags           ProductTag[]
+  reviews        Review[]
+  wishlistItems  WishlistItem[]
+  recentlyViewed RecentlyViewed[]
+  queries        CustomerQuery[]
 
   @@index([merchantId])
   @@index([categoryId])
@@ -928,6 +938,94 @@ model Banner {
 
   @@index([position, isActive])
   @@map("banners")
+}
+
+// ---------------------------------------------------------------------------
+// Reviews, Wishlist, Recently Viewed, Category-Attributes, Customer Queries
+// ---------------------------------------------------------------------------
+
+model Review {
+  id               String    @id @default(cuid())
+  productId        String
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  rating           Int
+  title            String?
+  body             String?
+  verifiedPurchase Boolean   @default(false)
+  isApproved       Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  @@unique([productId, customerId])
+  @@index([productId, isApproved])
+  @@index([customerId])
+  @@map("reviews")
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@map("wishlist_items")
+}
+
+model RecentlyViewed {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  viewedAt   DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@map("recently_viewed")
+}
+
+model CategoryAttribute {
+  id          String    @id @default(cuid())
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attributeId String
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  sortOrder   Int       @default(0)
+  isRequired  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@unique([categoryId, attributeId])
+  @@index([categoryId])
+  @@map("category_attributes")
+}
+
+model CustomerQuery {
+  id                   String    @id @default(cuid())
+  productId            String
+  product              Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId           String?
+  customer             Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  guestName            String?
+  guestEmail           String?
+  question             String
+  answer               String?
+  answeredAt           DateTime?
+  answeredByMerchantId String?
+  isPublic             Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  @@index([productId, isPublic])
+  @@index([customerId])
+  @@map("customer_queries")
 }
 
 model AuditLog {
