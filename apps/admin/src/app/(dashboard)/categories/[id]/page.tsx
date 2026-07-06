@@ -6,13 +6,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Checkbox, FormField, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, toast } from "@mirakart/ui";
+import {
+  Button, Checkbox, FormField, Input, Label,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Skeleton, Textarea, toast,
+} from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { getCategory, updateCategory, listCategories, listAttributes, getCategoryAttributes, assignCategoryAttribute, removeCategoryAttribute } from "../../../../lib/api/catalog";
+import {
+  getCategory, updateCategory, listCategoriesForAdmin,
+  listAttributes, getCategoryAttributes,
+  assignCategoryAttribute, removeCategoryAttribute,
+} from "../../../../lib/api/catalog";
 import { Trash2, Plus } from "lucide-react";
 
 const schema = z.object({
-  name: z.string().min(1, "Required"),
+  name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   parentId: z.string().optional(),
   isActive: z.boolean(),
@@ -22,57 +30,160 @@ type FormValues = z.infer<typeof schema>;
 export default function EditCategoryPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data: category, isLoading } = useQuery({ queryKey: ["category", params.id], queryFn: () => getCategory(params.id) });
-  const { data: all } = useQuery({ queryKey: ["categories-all"], queryFn: () => listCategories({ limit: 200 }) });
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const { data: category, isLoading, isError } = useQuery({
+    queryKey: ["category", params.id],
+    queryFn: () => getCategory(params.id),
+  });
 
+  // All categories for the parent selector (admin endpoint returns inactive ones too)
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ["categories-admin-all"],
+    queryFn: listCategoriesForAdmin,
+  });
+
+  const {
+    register, handleSubmit, setValue, watch, reset,
+    formState: { errors, isDirty },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", description: "", isActive: false },
+  });
+
+  // Populate form once category data arrives
   React.useEffect(() => {
-    if (category) reset({ name: category.name, description: category.description ?? "", parentId: category.parentId ?? undefined, isActive: category.isActive });
+    if (category) {
+      reset({
+        name: category.name,
+        description: category.description ?? "",
+        parentId: category.parentId ?? undefined,
+        isActive: category.isActive,
+      });
+    }
   }, [category, reset]);
 
   const mutation = useMutation({
-    mutationFn: (v: FormValues) => updateCategory(params.id, v),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories"] }); toast({ title: "Updated", variant: "success" }); router.push("/categories"); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+    mutationFn: (v: FormValues) =>
+      updateCategory(params.id, {
+        name: v.name,
+        description: v.description || undefined,
+        parentId: v.parentId || undefined,
+        isActive: v.isActive,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      qc.invalidateQueries({ queryKey: ["categories-admin-all"] });
+      qc.invalidateQueries({ queryKey: ["category", params.id] });
+      toast({ title: "Category updated", variant: "success" });
+      router.push("/categories");
+    },
+    onError: (e: Error) => toast({ title: "Update failed", description: e.message, variant: "danger" }),
   });
 
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 max-w-xl">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (isError || !category) {
+    return (
+      <div className="flex flex-col gap-4 max-w-xl">
+        <PageHeader title="Edit Category" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Categories", href: "/categories" }]} />
+        <div className="rounded-xl border border-danger/30 bg-danger/5 p-6 text-sm text-danger">
+          Category not found or failed to load.{" "}
+          <button type="button" className="underline" onClick={() => router.push("/categories")}>
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const watchedParentId = watch("parentId");
+  const watchedIsActive = watch("isActive");
+
+  // Options for parent select: exclude current category and its descendants
+  const parentOptions = allCategories.filter((c) => c.id !== params.id);
 
   return (
     <div className="flex flex-col gap-6 max-w-xl">
-      <PageHeader title="Edit Category" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Categories", href: "/categories" }, { label: category?.name ?? "" }]} />
-      <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+      <PageHeader
+        title="Edit Category"
+        crumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "Categories", href: "/categories" },
+          { label: category.name },
+        ]}
+      />
+
+      <form
+        onSubmit={handleSubmit((v) => mutation.mutate(v))}
+        className="rounded-xl border border-border bg-white p-6 flex flex-col gap-5"
+      >
         <FormField label="Name" htmlFor="name" error={errors.name?.message} required>
-          <Input id="name" {...register("name")} />
+          <Input id="name" placeholder="e.g. T-Shirts" {...register("name")} />
         </FormField>
+
         <FormField label="Description" htmlFor="description">
-          <Textarea id="description" rows={3} {...register("description")} />
+          <Textarea id="description" rows={3} placeholder="Optional category description" {...register("description")} />
         </FormField>
+
         <FormField label="Parent Category" htmlFor="parentId">
-          <Select value={watch("parentId") ?? "none"} onValueChange={(v) => setValue("parentId", v === "none" ? undefined : v)}>
-            <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
+          {/* key forces Select to re-render when the loaded value or options change */}
+          <Select
+            key={`parent-${watchedParentId ?? "none"}-${parentOptions.length}`}
+            value={watchedParentId ?? "none"}
+            onValueChange={(v) => setValue("parentId", v === "none" ? undefined : v, { shouldDirty: true })}
+          >
+            <SelectTrigger id="parentId">
+              <SelectValue placeholder="None (top-level)" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None (top-level)</SelectItem>
-              {all?.data.filter((c) => c.id !== params.id).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              {parentOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                  {!c.isActive && <span className="ml-1 text-xs text-foreground-muted">(inactive)</span>}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </FormField>
-        <div className="flex items-center gap-2">
-          <Checkbox id="isActive" checked={watch("isActive")} onCheckedChange={(v) => setValue("isActive", !!v)} />
-          <Label htmlFor="isActive">Active</Label>
+
+        <div className="flex items-center gap-3">
+          <Checkbox
+            id="isActive"
+            checked={watchedIsActive}
+            onCheckedChange={(v) => setValue("isActive", !!v, { shouldDirty: true })}
+          />
+          <Label htmlFor="isActive" className="cursor-pointer select-none">
+            Active <span className="ml-1 text-xs text-foreground-muted">(visible on storefront)</span>
+          </Label>
         </div>
-        <div className="flex gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-          <Button type="submit" isLoading={mutation.isPending}>Save Changes</Button>
+
+        <div className="flex gap-3 pt-1 border-t border-border">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending} disabled={!isDirty && !mutation.isPending}>
+            Save Changes
+          </Button>
         </div>
       </form>
 
-      {/* Category Attributes */}
+      {/* Category Attributes panel */}
       <CategoryAttributesPanel categoryId={params.id} />
     </div>
   );
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Category Attributes Panel
+// ────────────────────────────────────────────────────────────────────────────
 
 function CategoryAttributesPanel({ categoryId }: { categoryId: string }) {
   const qc = useQueryClient();
@@ -94,14 +205,15 @@ function CategoryAttributesPanel({ categoryId }: { categoryId: string }) {
   const unassigned = allAttrs.filter((a) => !assignedIds.has(a.id));
 
   const assignMutation = useMutation({
-    mutationFn: () => assignCategoryAttribute(categoryId, { attributeId: selectedAttributeId, isRequired }),
+    mutationFn: () =>
+      assignCategoryAttribute(categoryId, { attributeId: selectedAttributeId, isRequired }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["category-attributes", categoryId] });
       setSelectedAttributeId("");
       setIsRequired(false);
       toast({ title: "Attribute assigned", variant: "success" });
     },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+    onError: (e: Error) => toast({ title: "Failed to assign", description: e.message, variant: "danger" }),
   });
 
   const removeMutation = useMutation({
@@ -110,7 +222,7 @@ function CategoryAttributesPanel({ categoryId }: { categoryId: string }) {
       qc.invalidateQueries({ queryKey: ["category-attributes", categoryId] });
       toast({ title: "Attribute removed", variant: "success" });
     },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+    onError: (e: Error) => toast({ title: "Failed to remove", description: e.message, variant: "danger" }),
   });
 
   return (
@@ -118,31 +230,39 @@ function CategoryAttributesPanel({ categoryId }: { categoryId: string }) {
       <div>
         <h2 className="text-sm font-semibold">Category Attributes</h2>
         <p className="mt-0.5 text-xs text-foreground-muted">
-          Attributes assigned here will appear as variant selectors for merchants adding products in this category.
+          Attributes assigned here appear as variant selectors when merchants add products in this category.
         </p>
       </div>
 
-      {/* Assigned attributes list */}
       {loadingAssigned ? (
         <div className="flex flex-col gap-2">
           {[1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
       ) : assigned.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-foreground-muted">
-          No attributes assigned — add one below.
+          No attributes assigned yet — add one below.
         </p>
       ) : (
-        <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <div className="flex flex-col divide-y divide-border rounded-lg border border-border overflow-hidden">
           {assigned.map((ca) => (
-            <div key={ca.id} className="flex items-center justify-between px-4 py-2.5">
-              <div className="flex items-center gap-3">
+            <div key={ca.id} className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="text-sm font-medium text-foreground">{ca.attribute.name}</span>
-                <span className="rounded bg-background-light px-2 py-0.5 text-xs text-foreground-muted uppercase tracking-wide">
+                <span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-foreground-muted uppercase tracking-wide">
                   {ca.attribute.type}
                 </span>
-                {ca.isRequired && (
-                  <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary font-medium">Required</span>
+                {ca.isRequired ? (
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    Required
+                  </span>
+                ) : (
+                  <span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-foreground-muted">
+                    Optional
+                  </span>
                 )}
+                <span className="text-xs text-foreground-muted">
+                  {ca.attribute.values?.length ?? 0} value{(ca.attribute.values?.length ?? 0) !== 1 ? "s" : ""}
+                </span>
               </div>
               <Button
                 type="button"
@@ -150,46 +270,70 @@ function CategoryAttributesPanel({ categoryId }: { categoryId: string }) {
                 size="icon"
                 onClick={() => removeMutation.mutate(ca.attributeId)}
                 isLoading={removeMutation.isPending}
+                className="shrink-0 text-danger/60 hover:text-danger hover:bg-danger/10"
               >
-                <Trash2 className="h-4 w-4 text-danger" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Add attribute row */}
-      {unassigned.length > 0 && (
-        <div className="flex items-end gap-3 pt-1">
-          <div className="flex-1">
-            <Label className="mb-1.5 block text-xs text-foreground-muted">Add Attribute</Label>
-            <Select value={selectedAttributeId} onValueChange={setSelectedAttributeId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an attribute…" />
-              </SelectTrigger>
-              <SelectContent>
-                {unassigned.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                    <span className="ml-2 text-xs text-foreground-muted">({a.type})</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* Add attribute */}
+      {allAttrs.length > 0 && (
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <p className="text-xs font-medium text-foreground-muted uppercase tracking-wider">Add Attribute</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <Select
+                key={`add-attr-${unassigned.length}`}
+                value={selectedAttributeId}
+                onValueChange={setSelectedAttributeId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={unassigned.length === 0 ? "All attributes assigned" : "Select an attribute…"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {unassigned.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <span className="flex items-center gap-2">
+                        {a.name}
+                        <span className="text-[11px] text-foreground-muted uppercase">({a.type})</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="reqCheck"
+                checked={isRequired}
+                onCheckedChange={(v) => setIsRequired(!!v)}
+                disabled={!selectedAttributeId}
+              />
+              <Label htmlFor="reqCheck" className="text-sm cursor-pointer select-none whitespace-nowrap">
+                Required
+              </Label>
+            </div>
+            <Button
+              type="button"
+              onClick={() => assignMutation.mutate()}
+              disabled={!selectedAttributeId || unassigned.length === 0}
+              isLoading={assignMutation.isPending}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Assign
+            </Button>
           </div>
-          <div className="flex items-center gap-2 pb-1">
-            <Checkbox id="isRequired" checked={isRequired} onCheckedChange={(v) => setIsRequired(!!v)} />
-            <Label htmlFor="isRequired" className="text-xs whitespace-nowrap">Required</Label>
-          </div>
-          <Button
-            type="button"
-            onClick={() => assignMutation.mutate()}
-            disabled={!selectedAttributeId}
-            isLoading={assignMutation.isPending}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Assign
-          </Button>
         </div>
+      )}
+
+      {allAttrs.length === 0 && (
+        <p className="text-xs text-foreground-muted">
+          No attributes exist yet.{" "}
+          <a href="/attributes/new" className="text-primary underline">Create an attribute</a> first.
+        </p>
       )}
     </div>
   );

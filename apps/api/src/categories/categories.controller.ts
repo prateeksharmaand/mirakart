@@ -40,6 +40,13 @@ export class CategoriesController {
     return this.service.listForAdmin();
   }
 
+  @Get("admin/:id")
+  @AdminAuth("category.view")
+  @ApiOkResponse({ description: "Get single category by ID" })
+  findById(@Param("id") id: string) {
+    return this.service.findById(id);
+  }
+
   @Get(":slug")
   @ApiOkResponse()
   findBySlug(@Param("slug") slug: string) {

@@ -9,7 +9,7 @@ import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
 import { TableActions } from "../../../components/table-actions";
-import { listCategories, deleteCategory, type Category } from "../../../lib/api/catalog";
+import { listCategories, deleteCategory, listCategoriesForAdmin, type Category } from "../../../lib/api/catalog";
 
 export default function CategoriesPage() {
   const [page, setPage] = React.useState(1);

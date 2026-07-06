@@ -20,8 +20,13 @@ export async function listCategories(params: { page?: number; limit?: number; se
 }
 
 export async function getCategory(id: string): Promise<Category> {
-  const res = await apiClient.get(`/categories/${id}`);
+  const res = await apiClient.get(`/categories/admin/${id}`);
   return res.data.data as Category;
+}
+
+export async function listCategoriesForAdmin(): Promise<Category[]> {
+  const res = await apiClient.get("/categories/admin/all");
+  return res.data.data as Category[];
 }
 
 export async function createCategory(data: { name: string; description?: string; parentId?: string; isActive?: boolean }): Promise<Category> {
