@@ -34,6 +34,8 @@ export interface ProductListParams {
   tagSlug?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 function toQueryString(params: Record<string, string | number | boolean | undefined>): string {
@@ -57,6 +59,8 @@ export async function getProducts(params: ProductListParams = {}): Promise<Pagin
     tagSlug: params.tagSlug,
     page: params.page,
     limit: params.limit,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   });
   const { data, meta } = await fetchPublicEnvelope<ProductListItem[]>(`/products${qs}`);
   return {
@@ -77,8 +81,18 @@ export function getCategoryBySlug(slug: string): Promise<Category> {
   return fetchPublic<Category>(`/categories/${slug}`);
 }
 
-export function getBrands(): Promise<Brand[]> {
-  return fetchPublic<Brand[]>("/brands");
+export function getBrands(limit?: number): Promise<Brand[]> {
+  return fetchPublic<Brand[]>(`/brands${limit ? `?limit=${limit}` : ""}`);
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export function getTags(): Promise<Tag[]> {
+  return fetchPublic<Tag[]>("/tags");
 }
 
 export function getBrandBySlug(slug: string): Promise<Brand> {

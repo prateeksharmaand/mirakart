@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Package, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { ProductPurchasePanel } from "../../../components/product-purchase-panel";
 import { ProductGallery } from "../../../components/product-gallery";
-import { getProductBySlug } from "../../../lib/api/catalog";
+import { ProductTabs, TagList } from "../../../components/product-tabs";
+import { ProductCard } from "../../../components/product-card";
+import { getProductBySlug, getProducts } from "../../../lib/api/catalog";
 
 interface PageProps {
   params: { productSlug: string };
@@ -12,7 +15,10 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   try {
     const product = await getProductBySlug(params.productSlug);
-    return { title: product.name, description: product.description.slice(0, 160) };
+    return {
+      title: product.name,
+      description: product.description?.slice(0, 160) ?? product.name,
+    };
   } catch {
     return { title: "Product" };
   }
@@ -22,51 +28,177 @@ export default async function ProductPage({ params }: PageProps) {
   const product = await getProductBySlug(params.productSlug).catch(() => null);
   if (!product) notFound();
 
+  // Related products — same category, excluding current
+  const relatedResult = await getProducts({
+    categoryId: product.category?.id,
+    limit: 8,
+  }).catch(() => ({ data: [], meta: { page: 1, limit: 8, totalItems: 0, totalPages: 1 } }));
+  const related = relatedResult.data.filter((p) => p.id !== product.id).slice(0, 4);
+
+  const hasVariants = product.variants.length > 0;
+  const hasMultipleVariants = product.variants.length > 1;
+
+  // Build attribute summary for "Additional Information" tab
+  const attrRows: Array<{ label: string; value: string }> = [];
+  if (product.sku) attrRows.push({ label: "SKU", value: product.sku });
+  if (product.brand) attrRows.push({ label: "Brand", value: product.brand.name });
+  if (product.category) attrRows.push({ label: "Category", value: product.category.name });
+  if (hasMultipleVariants)
+    attrRows.push({ label: "Variants", value: String(product.variants.length) });
+
+  const descriptionContent = (
+    <div>
+      {product.description ? (
+        <p className="whitespace-pre-line text-sm leading-relaxed text-foreground-muted">
+          {product.description}
+        </p>
+      ) : (
+        <p className="text-sm text-foreground-muted">No description available.</p>
+      )}
+      {product.tags && product.tags.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
+            Tags
+          </p>
+          <TagList tags={product.tags} />
+        </div>
+      )}
+    </div>
+  );
+
+  const additionalContent = (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <tbody>
+          {attrRows.map((row) => (
+            <tr key={row.label} className="border-b border-border">
+              <td className="py-2.5 pr-6 font-medium text-foreground w-40">{row.label}</td>
+              <td className="py-2.5 text-foreground-muted">{row.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
-    <div className="mx-auto max-w-site px-gutter py-10">
-      <nav className="mb-6 text-sm text-foreground-muted">
-        <Link href="/" className="hover:text-foreground">
+    <div className="mx-auto max-w-site px-gutter py-8">
+      {/* Breadcrumb */}
+      <nav className="mb-5 flex items-center gap-1.5 text-xs text-foreground-muted">
+        <Link href="/" className="hover:text-foreground transition-colors">
           Home
         </Link>
-        <span className="mx-2">/</span>
-        <Link href={`/c/${product.category.slug}`} className="hover:text-foreground">
-          {product.category.name}
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">{product.name}</span>
+        <span>/</span>
+        {product.category && (
+          <>
+            <Link
+              href={`/c/${product.category.slug}`}
+              className="hover:text-foreground transition-colors"
+            >
+              {product.category.name}
+            </Link>
+            <span>/</span>
+          </>
+        )}
+        <span className="text-foreground line-clamp-1">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        <ProductGallery images={product.images} productName={product.name} />
+      {/* Main product section */}
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_420px]">
+        {/* Gallery */}
+        <div>
+          <ProductGallery images={product.images} productName={product.name} />
+        </div>
 
-        <div className="flex flex-col gap-6">
+        {/* Info + purchase — sticky on desktop */}
+        <div className="flex flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
+          {/* Brand & Name */}
           <div>
-            {product.brand ? <span className="text-sm text-foreground-muted">{product.brand.name}</span> : null}
-            <h1 className="text-3xl font-medium text-foreground">{product.name}</h1>
+            <div className="mb-1 flex items-center gap-3">
+              {product.brand && (
+                <span className="text-xs font-semibold uppercase tracking-widest text-foreground-muted">
+                  {product.brand.name}
+                </span>
+              )}
+              {product.category && (
+                <Link
+                  href={`/c/${product.category.slug}`}
+                  className="text-xs text-foreground-muted hover:text-primary transition-colors"
+                >
+                  {product.category.name}
+                </Link>
+              )}
+            </div>
+            <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+              {product.name}
+            </h1>
+            {!hasVariants && product.sku && (
+              <p className="mt-1 text-xs text-foreground-muted">SKU: {product.sku}</p>
+            )}
           </div>
 
+          {/* Purchase panel */}
           <ProductPurchasePanel product={product} />
 
-          <div className="border-t border-border pt-6">
-            <h2 className="mb-2 text-sm font-medium text-foreground">Description</h2>
-            <p className="whitespace-pre-line text-sm text-foreground-muted">{product.description}</p>
-          </div>
-
-          {product.tags && product.tags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {product.tags.map(({ tag }) => (
-                <Link
-                  key={tag.id}
-                  href={`/products?tag=${tag.slug}`}
-                  className="rounded-full border border-border px-3 py-1 text-xs text-foreground-muted hover:border-primary hover:text-primary transition-colors"
-                >
-                  {tag.name}
-                </Link>
-              ))}
+          {/* Delivery info */}
+          <div className="rounded-lg border border-border p-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Free Delivery</p>
+                  <p className="text-xs text-foreground-muted">On orders above ₹999</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Easy Returns</p>
+                  <p className="text-xs text-foreground-muted">7-day hassle-free returns</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Secure Payment</p>
+                  <p className="text-xs text-foreground-muted">100% secure transactions</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Package className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Quality Assured</p>
+                  <p className="text-xs text-foreground-muted">Authentic products only</p>
+                </div>
+              </div>
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
+
+      {/* Tabs: Description + Additional Info */}
+      <div className="mt-12 border-t border-border pt-8">
+        <ProductTabs
+          tabs={[
+            { id: "description", label: "Description", content: descriptionContent },
+            ...(attrRows.length > 0
+              ? [{ id: "info", label: "Additional Information", content: additionalContent }]
+              : []),
+          ]}
+        />
+      </div>
+
+      {/* Related products */}
+      {related.length > 0 && (
+        <div className="mt-12">
+          <h2 className="mb-6 text-xl font-semibold text-foreground">You May Also Like</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {related.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
