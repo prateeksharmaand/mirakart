@@ -23,9 +23,15 @@ export async function fetchPublicEnvelope<T>(
     next: { revalidate: 60, ...(init as { next?: { revalidate?: number } } | undefined)?.next },
   });
 
-  const body = (await res.json()) as ApiResponse<T>;
-  if (!body.success) {
-    throw new Error(body.error.message);
+  let body: ApiResponse<T>;
+  try {
+    body = (await res.json()) as ApiResponse<T>;
+  } catch {
+    throw new Error(`API returned non-JSON response (HTTP ${res.status}) for ${path}`);
+  }
+
+  if (!res.ok || !body.success) {
+    throw new Error((body as { success: false; error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`);
   }
   return { data: body.data, meta: body.meta };
 }
