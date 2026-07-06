@@ -4,7 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 
-export function SiteFooter() {
+import type { Category } from "../types/catalog";
+
+export function SiteFooter({ categories = [] }: { categories?: Category[] }) {
   return (
     <footer>
       {/* Dark Newsletter + Support + App Download Strip */}
@@ -213,22 +215,20 @@ export function SiteFooter() {
             </div>
 
             {/* Categories */}
-            <div>
-              <h4 className="mb-4 text-sm font-bold text-foreground">Categories</h4>
-              <ul className="space-y-3">
-                {[
-                  { label: "Women", href: "/c/women" },
-                  { label: "Men", href: "/c/men" },
-                  { label: "Bags", href: "/c/bags" },
-                  { label: "Outerwear", href: "/c/outerwear" },
-                  { label: "Shoes", href: "/c/shoes" },
-                ].map((l) => (
-                  <li key={l.label}>
-                    <Link href={l.href} className="text-sm text-primary hover:text-foreground">{l.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {categories.length > 0 && (
+              <div>
+                <h4 className="mb-4 text-sm font-bold text-foreground">Categories</h4>
+                <ul className="space-y-3">
+                  {categories.slice(0, 5).map((cat) => (
+                    <li key={cat.id}>
+                      <Link href={`/c/${cat.slug}`} className="text-sm text-primary hover:text-foreground">
+                        {cat.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
