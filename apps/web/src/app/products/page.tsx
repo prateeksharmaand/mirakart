@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { FilterSidebar } from "../../components/filter-sidebar";
-import { SortSelect, parseSortParam } from "../../components/sort-select";
+import { SortSelect } from "../../components/sort-select";
+import { parseSortParam } from "../../lib/sort";
 import { ProductGrid } from "../../components/product-grid";
 import {
   getProducts,
