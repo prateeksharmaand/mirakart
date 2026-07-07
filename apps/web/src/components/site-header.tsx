@@ -14,7 +14,8 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
-  const customer = useAuthStore((s) => s.customer);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+  const customer = useAuthStore((s) => (hasHydrated ? s.customer : null));
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const { data: cart } = useCart();
   const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;

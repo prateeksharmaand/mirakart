@@ -14,21 +14,23 @@ const WISHLIST_KEY = ["wishlist"];
 const WISHLIST_IDS_KEY = ["wishlist-ids"];
 
 export function useWishlist() {
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
   return useQuery({
     queryKey: WISHLIST_KEY,
     queryFn: fetchWishlist,
-    enabled: isAuthenticated,
+    enabled: hasHydrated && isAuthenticated,
     staleTime: 30_000,
   });
 }
 
 export function useWishlistProductIds() {
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
   return useQuery({
     queryKey: WISHLIST_IDS_KEY,
     queryFn: fetchWishlistProductIds,
-    enabled: isAuthenticated,
+    enabled: hasHydrated && isAuthenticated,
     staleTime: 60_000,
     select: (data) => new Set(data.map((d) => d.productId)),
   });

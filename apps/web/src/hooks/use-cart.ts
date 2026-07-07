@@ -8,8 +8,9 @@ import { useAuthStore } from "../stores/auth-store";
 const CART_KEY = ["cart"];
 
 export function useCart() {
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
-  return useQuery({ queryKey: CART_KEY, queryFn: fetchCart, enabled: isAuthenticated });
+  return useQuery({ queryKey: CART_KEY, queryFn: fetchCart, enabled: hasHydrated && isAuthenticated });
 }
 
 export function useAddCartItem() {
