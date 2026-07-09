@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { useAuthStore } from "../stores/auth-store";
 import { useCart, useRemoveCartItem } from "../hooks/use-cart";
+import { useWishlistProductIds } from "../hooks/use-wishlist";
 import { formatPrice } from "../lib/format";
 import type { Category } from "../types/catalog";
 
@@ -20,6 +21,8 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const { data: cart } = useCart();
   const removeCartItem = useRemoveCartItem();
+  const { data: wishlistIds } = useWishlistProductIds();
+  const wishlistCount = wishlistIds?.size ?? 0;
   const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   function handleSearch(e: React.FormEvent) {
@@ -138,9 +141,12 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
             <Link
               href="/account/wishlist"
               aria-label="Wishlist"
-              className="hidden h-10 w-10 items-center justify-center rounded text-foreground transition-colors hover:text-primary sm:flex"
+              className="relative hidden h-10 w-10 items-center justify-center rounded text-foreground transition-colors hover:text-primary sm:flex"
             >
               <Heart className="h-5 w-5" />
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-white">
+                {wishlistCount > 9 ? "9+" : wishlistCount}
+              </span>
             </Link>
 
             {/* Cart */}

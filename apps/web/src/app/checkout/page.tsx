@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,6 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
   EmptyState,
   Label,
   RadioGroup,
@@ -45,7 +47,9 @@ export default function CheckoutPage() {
 
   const [addressId, setAddressId] = React.useState<string>("");
   const [showAddressForm, setShowAddressForm] = React.useState(false);
-  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>("CARD");
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod | "">("CARD");
+  const [agreedToTerms, setAgreedToTerms] = React.useState(false);
+  const [showTermsError, setShowTermsError] = React.useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = React.useState(false);
 
   React.useEffect(() => {
@@ -80,6 +84,16 @@ export default function CheckoutPage() {
       toast({ title: "Add a delivery address", variant: "danger" });
       return;
     }
+    if (!paymentMethod) {
+      toast({ title: "Select a payment method", variant: "danger" });
+      return;
+    }
+    if (!agreedToTerms) {
+      setShowTermsError(true);
+      toast({ title: "Please accept the terms and conditions", variant: "danger" });
+      return;
+    }
+    setShowTermsError(false);
     setIsPlacingOrder(true);
     try {
       const order = await checkout({ shippingAddressId: addressId, billingAddressId: addressId, paymentMethod });
@@ -222,6 +236,39 @@ export default function CheckoutPage() {
               <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
             </div>
           </div>
+
+          <p className="border-t border-border pt-4 text-xs leading-relaxed text-foreground-muted">
+            Your personal data will be used to process your order, support your experience throughout this
+            website, and for other purposes described in our{" "}
+            <Link href="/privacy" className="text-primary hover:underline">
+              privacy policy
+            </Link>
+            .
+          </p>
+
+          <label className="flex items-start gap-2 text-xs text-foreground">
+            <Checkbox
+              checked={agreedToTerms}
+              onCheckedChange={(checked) => {
+                setAgreedToTerms(checked === true);
+                if (checked === true) setShowTermsError(false);
+              }}
+              className="mt-0.5"
+            />
+            <span>
+              I have read and agree to the website{" "}
+              <Link href="/terms" className="text-primary hover:underline">
+                terms and conditions
+              </Link>{" "}
+              <span className="text-danger">*</span>
+            </span>
+          </label>
+          {showTermsError ? (
+            <p className="text-xs text-danger">
+              Please read and accept the terms and conditions to proceed with your order.
+            </p>
+          ) : null}
+
           <Button
             size="lg"
             onClick={handlePlaceOrder}
