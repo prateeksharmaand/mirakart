@@ -81,31 +81,6 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* Promo Banners Strip */}
-      <section className="mx-auto w-full max-w-site px-gutter py-10">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[
-            { label: "Women's Fashion", desc: "Up to 40% off", color: "bg-[#f5f0eb]", href: "/c/women" },
-            { label: "Men's Clothing", desc: "New arrivals daily", color: "bg-[#edf0f5]", href: "/c/men" },
-            { label: "Kids & Baby", desc: "Starting from ₹299", color: "bg-[#f0f5ed]", href: "/c/kids" },
-          ].map((promo) => (
-            <Link
-              key={promo.label}
-              href={promo.href}
-              className={`group flex items-center justify-between overflow-hidden rounded-sm px-6 py-8 transition-shadow hover:shadow-card ${promo.color}`}
-            >
-              <div>
-                <p className="text-xs uppercase tracking-widest text-foreground-muted">{promo.desc}</p>
-                <h3 className="mt-1 text-xl font-semibold text-foreground">{promo.label}</h3>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Shop Now <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {/* Featured Products */}
       {featuredProducts.data.length > 0 && (
         <section className="bg-background-light py-14">
