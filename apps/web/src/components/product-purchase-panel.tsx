@@ -7,6 +7,7 @@ import { Button } from "@mirakart/ui";
 import { formatPrice } from "../lib/format";
 import { useAddCartItem } from "../hooks/use-cart";
 import { useAuthStore } from "../stores/auth-store";
+import { TagList } from "./product-tabs";
 import type { ProductDetail, ProductVariant } from "../types/catalog";
 
 function variantAttributeMap(variant: ProductVariant): Record<string, string> {
@@ -222,6 +223,16 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
           <span className="text-xs text-foreground-muted">SKU: {matchedVariant.sku}</span>
         )}
       </div>
+
+      {/* Tags */}
+      {product.tags && product.tags.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
+            Tags
+          </p>
+          <TagList tags={product.tags} />
+        </div>
+      )}
 
       {/* Quantity */}
       <div className="flex items-center gap-3">

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Package, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { ProductPurchasePanel } from "../../../components/product-purchase-panel";
 import { ProductGallery } from "../../../components/product-gallery";
-import { ProductTabs, TagList } from "../../../components/product-tabs";
+import { ProductTabs } from "../../../components/product-tabs";
 import { ProductCard } from "../../../components/product-card";
 import { ProductReviews } from "../../../components/product-reviews";
 import { ProductQueries } from "../../../components/product-queries";
@@ -58,14 +58,6 @@ export default async function ProductPage({ params }: PageProps) {
         </p>
       ) : (
         <p className="text-sm text-foreground-muted">No description available.</p>
-      )}
-      {product.tags && product.tags.length > 0 && (
-        <div className="mt-5">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
-            Tags
-          </p>
-          <TagList tags={product.tags} />
-        </div>
       )}
     </div>
   );
