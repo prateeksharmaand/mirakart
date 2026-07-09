@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -16,8 +16,10 @@ import {
   Skeleton,
   toast,
 } from "@mirakart/ui";
+import { AddressForm } from "../../components/address-form";
 import { useCart } from "../../hooks/use-cart";
-import { fetchAddresses } from "../../lib/api/customers";
+import { createAddress, fetchAddresses } from "../../lib/api/customers";
+import type { AddressInput } from "../../lib/api/customers";
 import { checkout, type PaymentMethod } from "../../lib/api/orders";
 import { initiatePayment } from "../../lib/api/payments";
 import { openRazorpayCheckout } from "../../lib/razorpay";
@@ -42,21 +44,40 @@ export default function CheckoutPage() {
   });
 
   const [addressId, setAddressId] = React.useState<string>("");
+  const [showAddressForm, setShowAddressForm] = React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>("CARD");
   const [isPlacingOrder, setIsPlacingOrder] = React.useState(false);
 
   React.useEffect(() => {
-    if (addresses && addresses.length > 0 && !addressId) {
+    if (!addresses) return;
+    if (addresses.length === 0) {
+      setShowAddressForm(true);
+      return;
+    }
+    if (!addressId) {
       setAddressId(addresses.find((a) => a.isDefault)?.id ?? addresses[0]!.id);
     }
   }, [addresses, addressId]);
 
+  const createAddressMutation = useMutation({
+    mutationFn: createAddress,
+    onSuccess: (address) => {
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      setAddressId(address.id);
+      setShowAddressForm(false);
+    },
+  });
+
   const availableItems = cart?.items.filter((item) => item.isAvailable) ?? [];
   const subtotal = availableItems.reduce((sum, item) => sum + item.currentPrice * item.quantity, 0);
 
+  async function handleCreateAddress(values: AddressInput) {
+    await createAddressMutation.mutateAsync(values);
+  }
+
   async function handlePlaceOrder() {
     if (!addressId) {
-      toast({ title: "Select a delivery address", variant: "danger" });
+      toast({ title: "Add a delivery address", variant: "danger" });
       return;
     }
     setIsPlacingOrder(true);
@@ -115,27 +136,36 @@ export default function CheckoutPage() {
     );
   }
 
+  const hasAddresses = Boolean(addresses && addresses.length > 0);
+
   return (
     <div className="mx-auto max-w-site px-gutter py-10">
       <h1 className="mb-8 text-3xl font-medium text-foreground">Checkout</h1>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Delivery Address</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle>Billing details</CardTitle>
+              {!showAddressForm && hasAddresses ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddressForm(true)}
+                  className="shrink-0 text-xs font-medium text-primary hover:underline"
+                >
+                  + Add new address
+                </button>
+              ) : null}
             </CardHeader>
             <CardContent>
-              {!addresses || addresses.length === 0 ? (
-                <p className="text-sm text-foreground-muted">
-                  You don&apos;t have any saved addresses.{" "}
-                  <a href="/account/addresses" className="text-primary">
-                    Add one
-                  </a>
-                  .
-                </p>
+              {showAddressForm || !hasAddresses ? (
+                <AddressForm
+                  onSubmit={handleCreateAddress}
+                  onCancel={hasAddresses ? () => setShowAddressForm(false) : undefined}
+                  submitLabel="Use this address"
+                />
               ) : (
                 <RadioGroup value={addressId} onValueChange={setAddressId}>
-                  {addresses.map((address) => (
+                  {addresses!.map((address) => (
                     <label
                       key={address.id}
                       className="flex cursor-pointer items-start gap-3 rounded-sm border border-border p-3 has-[[data-state=checked]]:border-primary"
@@ -145,6 +175,8 @@ export default function CheckoutPage() {
                         <span className="font-medium">{address.fullName}</span> — {address.line1}
                         {address.line2 ? `, ${address.line2}` : ""}, {address.city}, {address.state}{" "}
                         {address.postalCode}, {address.country}
+                        <br />
+                        <span className="text-foreground-muted">{address.phone}</span>
                       </span>
                     </label>
                   ))}
@@ -171,20 +203,31 @@ export default function CheckoutPage() {
         </div>
 
         <div className="flex flex-col gap-4 rounded-md border border-border p-5 h-fit">
-          <h2 className="text-sm font-medium text-foreground">Order Summary</h2>
-          {availableItems.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="text-foreground-muted">
-                {item.product.name} × {item.quantity}
-              </span>
-              <span className="text-foreground">{formatPrice(item.currentPrice * item.quantity)}</span>
+          <h2 className="text-base font-medium text-foreground">Your order</h2>
+          <div className="flex flex-col divide-y divide-border">
+            {availableItems.map((item) => (
+              <div key={item.id} className="flex items-start justify-between gap-3 py-3 text-sm">
+                <span className="text-foreground-muted">
+                  {item.product.name} × {item.quantity}
+                </span>
+                <span className="shrink-0 text-foreground">{formatPrice(item.currentPrice * item.quantity)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between py-3 text-sm">
+              <span className="text-foreground-muted">Subtotal</span>
+              <span className="text-foreground">{formatPrice(subtotal)}</span>
             </div>
-          ))}
-          <div className="flex justify-between border-t border-border pt-3 text-sm font-medium">
-            <span>Total</span>
-            <span>{formatPrice(subtotal)}</span>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-sm font-medium text-foreground">Total</span>
+              <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
+            </div>
           </div>
-          <Button size="lg" onClick={handlePlaceOrder} isLoading={isPlacingOrder} disabled={!addressId}>
+          <Button
+            size="lg"
+            onClick={handlePlaceOrder}
+            isLoading={isPlacingOrder}
+            disabled={!addressId || showAddressForm}
+          >
             Place Order
           </Button>
         </div>

@@ -1,8 +1,10 @@
 "use client";
 
+import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Badge, Button, EmptyState, Skeleton } from "@mirakart/ui";
+import { X } from "lucide-react";
+import { Badge, Button, EmptyState, Skeleton, toast } from "@mirakart/ui";
 import { useCart, useRemoveCartItem, useUpdateCartItem } from "../../hooks/use-cart";
 import { useAuthStore } from "../../stores/auth-store";
 import { formatPrice } from "../../lib/format";
@@ -12,6 +14,7 @@ export default function CartPage() {
   const { data: cart, isLoading } = useCart();
   const updateItem = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
+  const [couponCode, setCouponCode] = React.useState("");
 
   if (!isAuthenticated) {
     return (
@@ -55,45 +58,79 @@ export default function CartPage() {
 
   const unavailableCount = cart.items.filter((item) => !item.isAvailable).length;
 
+  function handleApplyCoupon() {
+    if (!couponCode.trim()) return;
+    toast({ title: "Coupon codes aren't available yet", description: "Check back soon!" });
+  }
+
   return (
     <div className="mx-auto max-w-site px-gutter py-10">
       <h1 className="mb-8 text-3xl font-medium text-foreground">Your Cart</h1>
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
-          {cart.items.map((item) => (
-            <div key={item.id} className="flex gap-4 border-b border-border pb-4">
-              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-sm bg-background-light">
-                {item.product.image ? (
-                  <Image src={item.product.image} alt={item.product.name} fill className="object-cover" />
-                ) : null}
-              </div>
-              <div className="flex flex-1 flex-col gap-1">
-                <div className="flex items-start justify-between gap-2">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_340px]">
+        <div>
+          {/* Table header — desktop only */}
+          <div className="hidden border-b border-border pb-3 sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr] sm:gap-4">
+            <span className="text-xs font-medium uppercase tracking-wider text-foreground-muted">Product</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-foreground-muted">Price</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-foreground-muted">Quantity</span>
+            <span className="text-right text-xs font-medium uppercase tracking-wider text-foreground-muted">Subtotal</span>
+          </div>
+
+          <div className="flex flex-col divide-y divide-border">
+            {cart.items.map((item) => (
+              <div
+                key={item.id}
+                className="grid grid-cols-1 gap-4 py-5 sm:grid-cols-[2fr_1fr_1fr_1fr] sm:items-center sm:gap-4"
+              >
+                {/* Product */}
+                <div className="flex items-center gap-4">
+                  <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-sm bg-background-light">
+                    {item.product.image ? (
+                      <Image src={item.product.image} alt={item.product.name} fill className="object-cover" />
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label="Remove item"
+                      onClick={() => removeItem.mutate(item.id)}
+                      className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-white shadow-soft transition-transform hover:scale-110"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
                   <div>
-                    <Link href={`/p/${item.product.slug}`} className="text-sm font-medium text-foreground hover:text-primary">
+                    <Link
+                      href={`/p/${item.product.slug}`}
+                      className="text-sm font-medium text-foreground hover:text-primary"
+                    >
                       {item.product.name}
                     </Link>
                     {item.variant.attributeValues.length > 0 ? (
-                      <p className="text-xs text-foreground-muted">
+                      <p className="mt-0.5 text-xs text-foreground-muted">
                         {item.variant.attributeValues.map((av) => `${av.attributeName}: ${av.value}`).join(", ")}
                       </p>
                     ) : null}
+                    {!item.isAvailable ? (
+                      <Badge variant="danger" className="mt-1.5 w-fit">
+                        {item.availableStock === 0 ? "Out of stock" : "Limited stock"}
+                      </Badge>
+                    ) : item.priceChanged ? (
+                      <Badge variant="warning" className="mt-1.5 w-fit">
+                        Price updated
+                      </Badge>
+                    ) : null}
                   </div>
-                  <span className="text-sm font-medium text-foreground">{formatPrice(item.currentPrice)}</span>
                 </div>
 
-                {!item.isAvailable ? (
-                  <Badge variant="danger" className="w-fit">
-                    {item.availableStock === 0 ? "Out of stock" : "Limited stock"}
-                  </Badge>
-                ) : item.priceChanged ? (
-                  <Badge variant="warning" className="w-fit">
-                    Price updated
-                  </Badge>
-                ) : null}
+                {/* Price */}
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-xs text-foreground-muted sm:hidden">Price</span>
+                  <span className="text-sm text-foreground">{formatPrice(item.currentPrice)}</span>
+                </div>
 
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="flex h-9 items-center rounded-sm border border-border-form">
+                {/* Quantity */}
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-xs text-foreground-muted sm:hidden">Quantity</span>
+                  <div className="flex h-9 w-fit items-center rounded-sm border border-border-form">
                     <button
                       type="button"
                       className="flex h-full w-8 items-center justify-center text-foreground"
@@ -112,23 +149,50 @@ export default function CartPage() {
                       +
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    className="text-xs text-foreground-muted hover:text-danger"
-                    onClick={() => removeItem.mutate(item.id)}
-                  >
-                    Remove
-                  </button>
+                </div>
+
+                {/* Subtotal */}
+                <div className="flex items-center justify-between sm:block sm:text-right">
+                  <span className="text-xs text-foreground-muted sm:hidden">Subtotal</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {formatPrice(item.currentPrice * item.quantity)}
+                  </span>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Coupon */}
+          <div className="mt-6 flex w-full max-w-sm gap-2 border-t border-border pt-6">
+            <input
+              type="text"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+              placeholder="Coupon code"
+              className="h-10 flex-1 rounded-sm border border-border-form bg-background px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleApplyCoupon}
+              className="h-10 shrink-0 rounded-sm bg-background-light px-4 text-sm font-medium text-foreground transition-colors hover:bg-border"
+            >
+              Apply coupon
+            </button>
+          </div>
         </div>
 
+        {/* Cart totals */}
         <div className="flex flex-col gap-4 rounded-md border border-border p-5 h-fit">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-foreground-muted">Subtotal</span>
-            <span className="font-medium text-foreground">{formatPrice(cart.subtotal)}</span>
+          <h2 className="text-base font-medium text-foreground">Cart totals</h2>
+          <div className="flex flex-col divide-y divide-border">
+            <div className="flex items-center justify-between py-3 text-sm">
+              <span className="text-foreground-muted">Subtotal</span>
+              <span className="text-foreground">{formatPrice(cart.subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-sm font-medium text-foreground">Total</span>
+              <span className="text-lg font-semibold text-foreground">{formatPrice(cart.subtotal)}</span>
+            </div>
           </div>
           {unavailableCount > 0 ? (
             <p className="text-xs text-danger">
@@ -137,11 +201,11 @@ export default function CartPage() {
           ) : null}
           {cart.items.every((item) => !item.isAvailable) ? (
             <Button size="lg" disabled>
-              Proceed to Checkout
+              Proceed to checkout
             </Button>
           ) : (
             <Button asChild size="lg">
-              <Link href="/checkout">Proceed to Checkout</Link>
+              <Link href="/checkout">Proceed to checkout</Link>
             </Button>
           )}
         </div>
