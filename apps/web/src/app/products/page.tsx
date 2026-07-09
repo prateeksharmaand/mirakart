@@ -11,6 +11,7 @@ import {
   getBrands,
   getTags,
   getCategories,
+  getPriceRange,
 } from "../../lib/api/catalog";
 import type { Category } from "../../types/catalog";
 
@@ -46,7 +47,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     : undefined;
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
 
-  const [result, attributes, brands, categories, tags] = await Promise.all([
+  const [result, attributes, brands, categories, tags, priceBounds] = await Promise.all([
     getProducts({
       tagSlug: searchParams.tag,
       page,
@@ -63,6 +64,12 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     getBrands(200).catch(() => []),
     (getCategories(true) as Promise<Category[]>).catch(() => []),
     getTags().catch(() => []),
+    getPriceRange({
+      tagSlug: searchParams.tag,
+      search: searchParams.search || undefined,
+      categoryId: searchParams.categoryId || undefined,
+      brandId: searchParams.brandId || undefined,
+    }).catch(() => ({ min: 0, max: 0 })),
   ]);
 
   const pageTitle = searchParams.search
@@ -111,6 +118,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
               brands={brands}
               tags={tags}
               attributes={attributes}
+              priceBounds={priceBounds}
             />
           </Suspense>
         </aside>

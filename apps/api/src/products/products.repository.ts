@@ -57,15 +57,21 @@ const productDetailInclude = {
 export class ProductsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findPublicList(filter: PublicProductFilter) {
-    const where: Prisma.ProductWhereInput = {
+  private buildPublicWhere(
+    filter: Pick<
+      PublicProductFilter,
+      "categoryId" | "brandId" | "minPrice" | "maxPrice" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"
+    >,
+    includePriceFilter = true,
+  ): Prisma.ProductWhereInput {
+    return {
       deletedAt: null,
       status: "APPROVED",
       variants: { some: { deletedAt: null } },
       ...(filter.categoryId ? { categoryId: filter.categoryId } : {}),
       ...(filter.brandId ? { brandId: filter.brandId } : {}),
       ...(filter.isFeatured !== undefined ? { isFeatured: filter.isFeatured } : {}),
-      ...(filter.minPrice !== undefined || filter.maxPrice !== undefined
+      ...(includePriceFilter && (filter.minPrice !== undefined || filter.maxPrice !== undefined)
         ? {
             basePrice: {
               ...(filter.minPrice !== undefined ? { gte: filter.minPrice } : {}),
@@ -88,6 +94,10 @@ export class ProductsRepository {
         ? { tags: { some: { tag: { slug: filter.tagSlug, isActive: true, deletedAt: null } } } }
         : {}),
     };
+  }
+
+  async findPublicList(filter: PublicProductFilter) {
+    const where = this.buildPublicWhere(filter);
 
     const [items, totalItems] = await Promise.all([
       this.prisma.product.findMany({
@@ -101,6 +111,24 @@ export class ProductsRepository {
     ]);
 
     return { items, totalItems };
+  }
+
+  async getPriceRange(
+    filter: Pick<
+      PublicProductFilter,
+      "categoryId" | "brandId" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"
+    >,
+  ): Promise<{ min: number; max: number }> {
+    const where = this.buildPublicWhere(filter, false);
+    const result = await this.prisma.product.aggregate({
+      where,
+      _min: { basePrice: true },
+      _max: { basePrice: true },
+    });
+    return {
+      min: result._min.basePrice ? Number(result._min.basePrice) : 0,
+      max: result._max.basePrice ? Number(result._max.basePrice) : 0,
+    };
   }
 
   findPublicBySlug(slug: string) {

@@ -5,7 +5,7 @@ import { FilterSidebar } from "../../components/filter-sidebar";
 import { SortSelect } from "../../components/sort-select";
 import { parseSortParam } from "../../lib/sort";
 import { ProductGrid } from "../../components/product-grid";
-import { getProducts, getAttributes, getBrands, getTags } from "../../lib/api/catalog";
+import { getProducts, getAttributes, getBrands, getTags, getPriceRange } from "../../lib/api/catalog";
 
 interface PageProps {
   searchParams: {
@@ -29,7 +29,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
   const attributeValueIds = searchParams.av ? searchParams.av.split(",").filter(Boolean) : undefined;
 
-  const [result, attributes, brands, tags] = await Promise.all([
+  const [result, attributes, brands, tags, priceBounds] = await Promise.all([
     getProducts({
       search: searchParams.q,
       page,
@@ -44,6 +44,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
     getAttributes().catch(() => []),
     getBrands(200).catch(() => []),
     getTags().catch(() => []),
+    getPriceRange({
+      search: searchParams.q,
+      brandId: searchParams.brandId || undefined,
+      tagSlug: searchParams.tag || undefined,
+    }).catch(() => ({ min: 0, max: 0 })),
   ]);
 
   const currentSearchParams = {
@@ -83,6 +88,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               brands={brands}
               tags={tags}
               attributes={attributes}
+              priceBounds={priceBounds}
               hideCategoryFilter
             />
           </Suspense>

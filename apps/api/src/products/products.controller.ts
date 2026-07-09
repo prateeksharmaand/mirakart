@@ -14,6 +14,12 @@ export class ProductsController {
     return this.service.listPublic(query);
   }
 
+  @Get("price-range")
+  @ApiOkResponse()
+  priceRange(@Query() query: ProductQueryDto) {
+    return this.service.getPriceRange(query);
+  }
+
   @Get(":slug")
   @ApiOkResponse()
   findBySlug(@Param("slug") slug: string) {

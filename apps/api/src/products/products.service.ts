@@ -39,6 +39,17 @@ export class ProductsService {
     return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
+  async getPriceRange(query: ProductQueryDto) {
+    return this.repo.getPriceRange({
+      categoryId: query.categoryId,
+      brandId: query.brandId,
+      search: query.search,
+      isFeatured: query.isFeatured,
+      attributeValueIds: query.attributeValueIds,
+      tagSlug: query.tagSlug,
+    });
+  }
+
   async findPublicBySlug(slug: string) {
     const product = await this.repo.findPublicBySlug(slug);
     if (!product) throw new NotFoundException("Product not found");

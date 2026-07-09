@@ -4,13 +4,15 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, X, SlidersHorizontal, Check } from "lucide-react";
 import type { Category, Brand } from "../types/catalog";
-import type { AttributeFilter, Tag } from "../lib/api/catalog";
+import type { AttributeFilter, PriceRange, Tag } from "../lib/api/catalog";
+import { PriceRangeSlider } from "./price-range-slider";
 
 interface FilterSidebarProps {
   categories: Category[];
   brands: Brand[];
   tags: Tag[];
   attributes: AttributeFilter[];
+  priceBounds: PriceRange;
   hideCategoryFilter?: boolean;
 }
 
@@ -107,6 +109,7 @@ export function FilterSidebar({
   brands,
   tags,
   attributes,
+  priceBounds,
   hideCategoryFilter = false,
 }: FilterSidebarProps) {
   const router = useRouter();
@@ -120,12 +123,17 @@ export function FilterSidebar({
   const currentTag = searchParams.get("tag") ?? "";
   const currentMinPrice = searchParams.get("minPrice") ?? "";
   const currentMaxPrice = searchParams.get("maxPrice") ?? "";
-  const [draftMin, setDraftMin] = React.useState(currentMinPrice);
-  const [draftMax, setDraftMax] = React.useState(currentMaxPrice);
+  const priceValue: [number, number] = [
+    currentMinPrice ? Number(currentMinPrice) : priceBounds.min,
+    currentMaxPrice ? Number(currentMaxPrice) : priceBounds.max,
+  ];
 
-  // Keep draft in sync when URL changes from outside
-  React.useEffect(() => { setDraftMin(currentMinPrice); }, [currentMinPrice]);
-  React.useEffect(() => { setDraftMax(currentMaxPrice); }, [currentMaxPrice]);
+  function handlePriceChangeComplete([lo, hi]: [number, number]) {
+    push({
+      minPrice: lo > priceBounds.min ? String(lo) : null,
+      maxPrice: hi < priceBounds.max ? String(hi) : null,
+    });
+  }
 
   const selectedAvIds = React.useMemo(() => {
     const raw = searchParams.get("av");
@@ -174,14 +182,8 @@ export function FilterSidebar({
     push({ av: next.length > 0 ? next.join(",") : null });
   }
 
-  function applyPrice() {
-    push({ minPrice: draftMin || null, maxPrice: draftMax || null });
-  }
-
   function clearAll() {
     router.push("?");
-    setDraftMin("");
-    setDraftMax("");
   }
 
   const colorAttrs = attributes.filter((a) => a.type === "COLOR" && a.values.length > 0);
@@ -205,7 +207,7 @@ export function FilterSidebar({
     activeChips.push({
       key: "price",
       label,
-      onRemove: () => { setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null }); },
+      onRemove: () => push({ minPrice: null, maxPrice: null }),
     });
   }
   if (currentTag) {
@@ -222,13 +224,6 @@ export function FilterSidebar({
       });
     }
   }
-
-  const PRICE_PRESETS = [
-    { label: "Under ₹500", min: "", max: "500" },
-    { label: "₹500–₹1,000", min: "500", max: "1000" },
-    { label: "₹1,000–₹2,500", min: "1000", max: "2500" },
-    { label: "₹2,500+", min: "2500", max: "" },
-  ];
 
   const SidebarContent = (
     <div className="flex flex-col">
@@ -272,72 +267,21 @@ export function FilterSidebar({
       )}
 
       {/* Price */}
-      <Section
-        title="Price"
-        badge={currentMinPrice || currentMaxPrice ? 1 : 0}
-        onClear={() => { setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null }); }}
-      >
-        {/* Quick presets */}
-        <div className="mb-3 flex flex-col gap-1">
-          {PRICE_PRESETS.map((preset) => {
-            const isActive = currentMinPrice === preset.min && currentMaxPrice === preset.max;
-            return (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => {
-                  if (isActive) {
-                    setDraftMin(""); setDraftMax(""); push({ minPrice: null, maxPrice: null });
-                  } else {
-                    setDraftMin(preset.min); setDraftMax(preset.max);
-                    push({ minPrice: preset.min || null, maxPrice: preset.max || null });
-                  }
-                }}
-                className={`flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors ${
-                  isActive
-                    ? "bg-foreground text-background font-medium"
-                    : "text-foreground-muted hover:text-foreground hover:bg-background-light"
-                }`}
-              >
-                {isActive && <Check className="h-3.5 w-3.5 shrink-0" />}
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-        {/* Custom range */}
-        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-foreground-muted">
-          Custom Range
-        </p>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            placeholder="Min ₹"
-            value={draftMin}
-            min={0}
-            onChange={(e) => setDraftMin(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
-            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
-          />
-          <span className="shrink-0 text-foreground-muted">–</span>
-          <input
-            type="number"
-            placeholder="Max ₹"
-            value={draftMax}
-            min={0}
-            onChange={(e) => setDraftMax(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
-            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={applyPrice}
-          className="mt-2 w-full rounded bg-foreground py-1.5 text-xs font-medium text-background hover:opacity-80 transition-opacity"
+      {priceBounds.max > priceBounds.min && (
+        <Section
+          title="Price"
+          badge={currentMinPrice || currentMaxPrice ? 1 : 0}
+          onClear={() => push({ minPrice: null, maxPrice: null })}
         >
-          Apply Price
-        </button>
-      </Section>
+          <PriceRangeSlider
+            min={priceBounds.min}
+            max={priceBounds.max}
+            value={priceValue}
+            onChange={() => {}}
+            onChangeComplete={handlePriceChangeComplete}
+          />
+        </Section>
+      )}
 
       {/* Categories */}
       {!hideCategoryFilter && categories.length > 0 && (

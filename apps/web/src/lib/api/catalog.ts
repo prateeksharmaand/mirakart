@@ -102,3 +102,22 @@ export function getBrandBySlug(slug: string): Promise<Brand> {
 export function getAttributes(): Promise<AttributeFilter[]> {
   return fetchPublic<AttributeFilter[]>("/attributes");
 }
+
+export interface PriceRange {
+  min: number;
+  max: number;
+}
+
+export function getPriceRange(
+  params: Pick<ProductListParams, "categoryId" | "brandId" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"> = {},
+): Promise<PriceRange> {
+  const qs = toQueryString({
+    categoryId: params.categoryId,
+    brandId: params.brandId,
+    search: params.search,
+    isFeatured: params.isFeatured,
+    attributeValueIds: params.attributeValueIds?.join(","),
+    tagSlug: params.tagSlug,
+  });
+  return fetchPublic<PriceRange>(`/products/price-range${qs}`);
+}
