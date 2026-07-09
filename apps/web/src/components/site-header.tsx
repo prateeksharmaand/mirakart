@@ -6,7 +6,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { useAuthStore } from "../stores/auth-store";
-import { useCart } from "../hooks/use-cart";
+import { useCart, useRemoveCartItem } from "../hooks/use-cart";
+import { formatPrice } from "../lib/format";
 import type { Category } from "../types/catalog";
 
 export function SiteHeader({ categories }: { categories: Category[] }) {
@@ -18,6 +19,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   const customer = useAuthStore((s) => (hasHydrated ? s.customer : null));
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const { data: cart } = useCart();
+  const removeCartItem = useRemoveCartItem();
   const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   function handleSearch(e: React.FormEvent) {
@@ -142,14 +144,90 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
             </Link>
 
             {/* Cart */}
-            <Link href="/cart" aria-label="Cart" className="relative flex h-10 w-10 items-center justify-center rounded text-foreground transition-colors hover:text-primary">
-              <ShoppingBag className="h-5 w-5" />
-              {itemCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-white">
-                  {itemCount > 9 ? "9+" : itemCount}
+            <div className="group relative">
+              <Link
+                href="/cart"
+                aria-label="Cart"
+                className="flex h-10 items-center gap-2 rounded px-1 text-foreground transition-colors hover:text-primary"
+              >
+                {cart && cart.items.length > 0 && (
+                  <span className="hidden text-sm font-semibold text-foreground sm:inline">
+                    {formatPrice(cart.subtotal)}
+                  </span>
+                )}
+                <span className="relative flex h-10 w-10 items-center justify-center">
+                  <ShoppingBag className="h-5 w-5" />
+                  {itemCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-white">
+                      {itemCount > 9 ? "9+" : itemCount}
+                    </span>
+                  )}
                 </span>
+              </Link>
+
+              {/* Hover mini-cart */}
+              {cart && cart.items.length > 0 && (
+                <div className="invisible absolute right-0 top-full z-50 w-80 rounded border border-border bg-background opacity-0 shadow-soft transition-all group-hover:visible group-hover:opacity-100">
+                  <div className="flex max-h-80 flex-col gap-4 overflow-y-auto p-4">
+                    {cart.items.map((item) => (
+                      <div key={item.id} className="flex items-start gap-3">
+                        <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded bg-background-light">
+                          {item.product.image ? (
+                            <Image
+                              src={item.product.image}
+                              alt={item.product.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <ShoppingBag className="h-5 w-5 text-border" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={`/p/${item.product.slug}`}
+                            className="line-clamp-2 text-sm font-medium text-foreground hover:text-primary"
+                          >
+                            {item.product.name}
+                          </Link>
+                          <p className="mt-1 text-xs text-foreground-muted">
+                            {item.quantity} × {formatPrice(item.currentPrice)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Remove item"
+                          onClick={() => removeCartItem.mutate(item.id)}
+                          className="shrink-0 text-foreground-muted hover:text-danger"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-border px-4 py-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-foreground-muted">Subtotal:</span>
+                      <span className="font-semibold text-primary">{formatPrice(cart.subtotal)}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-foreground-muted">
+                      You have {itemCount} {itemCount === 1 ? "item" : "items"} in your cart
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      <Link href="/cart" className="btn-outline w-full text-center text-xs">
+                        View cart
+                      </Link>
+                      <Link href="/checkout" className="btn-primary w-full text-center text-xs">
+                        Checkout
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               )}
-            </Link>
+            </div>
           </div>
         </div>
       </header>
