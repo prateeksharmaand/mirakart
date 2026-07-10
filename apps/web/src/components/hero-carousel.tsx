@@ -20,45 +20,48 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
   if (banners.length === 0) return null;
 
   return (
-    <div className="relative w-full overflow-hidden bg-background-light">
+    <div className="relative w-full overflow-hidden">
       {banners.map((banner, i) => (
         <Link
           key={banner.id}
           href={banner.linkUrl ?? "#"}
           aria-hidden={i !== active}
           tabIndex={i === active ? 0 : -1}
-          className={`block aspect-[21/9] w-full transition-opacity duration-700 ${
+          className={`flex h-[420px] w-full flex-col-reverse transition-opacity duration-700 sm:h-[460px] sm:flex-row lg:h-[540px] ${
             i === active ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
           }`}
         >
-          <Image
-            src={banner.media.url}
-            alt={banner.title}
-            fill
-            priority={i === 0}
-            sizes="100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 flex items-center">
-            <div className="mx-auto w-full max-w-site px-gutter">
-              <div className="max-w-md">
-                <p className="mb-3 text-sm font-medium uppercase tracking-widest text-foreground-muted">
-                  New Collection
-                </p>
-                <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">{banner.title}</h1>
-                <div className="mt-6 flex gap-3">
-                  <span className="btn-primary">
-                    Shop Now <ArrowRight className="h-4 w-4" />
-                  </span>
-                </div>
-              </div>
+          {/* Text panel */}
+          <div className="flex w-full shrink-0 flex-col justify-center bg-background-light px-gutter py-8 sm:w-[38%] sm:px-10 lg:px-14">
+            <p className="mb-3 text-sm font-medium uppercase tracking-widest text-foreground-muted">
+              New Collection
+            </p>
+            <h1 className="text-3xl font-bold leading-tight text-foreground lg:text-4xl xl:text-5xl">
+              {banner.title}
+            </h1>
+            <div className="mt-6 flex gap-3">
+              <span className="btn-primary w-fit">
+                Shop Now <ArrowRight className="h-4 w-4" />
+              </span>
             </div>
+          </div>
+
+          {/* Image panel */}
+          <div className="relative w-full flex-1 overflow-hidden sm:w-auto">
+            <Image
+              src={banner.media.url}
+              alt={banner.title}
+              fill
+              priority={i === 0}
+              sizes="(min-width: 640px) 62vw, 100vw"
+              className="object-cover"
+            />
           </div>
         </Link>
       ))}
 
       {banners.length > 1 && (
-        <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+        <div className="absolute bottom-5 right-6 z-10 flex gap-2 sm:right-10">
           {banners.map((banner, i) => (
             <button
               key={banner.id}
