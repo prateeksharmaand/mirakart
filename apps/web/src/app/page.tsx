@@ -28,7 +28,7 @@ export default async function HomePage() {
         <HeroCarousel banners={heroBanners} />
       ) : (
         /* Fallback hero when no banner is configured */
-        <section className="relative flex aspect-[21/9] w-full items-center bg-gradient-to-r from-background-light to-background">
+        <section className="relative flex aspect-[21/9] items-center bg-gradient-to-r from-background-light to-background">
           <div className="mx-auto w-full max-w-site px-gutter">
             <div className="max-w-lg">
               <p className="mb-3 text-sm font-medium uppercase tracking-widest text-primary">New Collection</p>
