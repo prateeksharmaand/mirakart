@@ -110,7 +110,29 @@ export class ProductsRepository {
       this.prisma.product.count({ where }),
     ]);
 
-    return { items, totalItems };
+    const reviewStats =
+      items.length > 0
+        ? await this.prisma.review.groupBy({
+            by: ["productId"],
+            where: { productId: { in: items.map((item) => item.id) }, isApproved: true, deletedAt: null },
+            _avg: { rating: true },
+            _count: { id: true },
+          })
+        : [];
+    const statsByProductId = new Map(
+      reviewStats.map((stat) => [
+        stat.productId,
+        { averageRating: stat._avg.rating ? Number(stat._avg.rating.toFixed(1)) : 0, reviewCount: stat._count.id },
+      ]),
+    );
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        ...(statsByProductId.get(item.id) ?? { averageRating: 0, reviewCount: 0 }),
+      })),
+      totalItems,
+    };
   }
 
   async getPriceRange(

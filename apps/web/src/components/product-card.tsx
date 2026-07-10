@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Star } from "lucide-react";
 import { formatPrice } from "../lib/format";
 import { WishlistButton } from "./wishlist-button";
 import type { ProductListItem } from "../types/catalog";
@@ -67,8 +67,18 @@ export function ProductCard({ product }: { product: ProductListItem }) {
 
       {/* Info */}
       <div className="mt-3 flex flex-col gap-1 px-0.5">
-        {product.brand && (
-          <span className="text-[11px] uppercase tracking-wider text-foreground-muted">{product.brand.name}</span>
+        {(product.brand || product.reviewCount > 0) && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] uppercase tracking-wider text-foreground-muted">
+              {product.brand?.name}
+            </span>
+            {product.reviewCount > 0 && (
+              <span className="flex shrink-0 items-center gap-1 text-[11px] text-foreground-muted">
+                <Star className="h-3 w-3 fill-primary text-primary" />
+                {product.reviewCount} {product.reviewCount === 1 ? "review" : "reviews"}
+              </span>
+            )}
+          </div>
         )}
         <Link href={`/p/${product.slug}`} className="text-sm font-medium leading-snug text-foreground line-clamp-2 hover:text-primary">
           {product.name}

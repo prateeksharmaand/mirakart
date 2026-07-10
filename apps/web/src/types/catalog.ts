@@ -85,6 +85,8 @@ export interface ProductListItem {
   isFeatured: boolean;
   images: ProductImage[];
   brand: Brand | null;
+  averageRating: number;
+  reviewCount: number;
 }
 
 export interface ProductDetail extends ProductListItem {
