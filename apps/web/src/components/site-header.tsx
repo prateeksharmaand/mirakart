@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { useAuthStore } from "../stores/auth-store";
 import { useCart, useRemoveCartItem } from "../hooks/use-cart";
 import { useWishlistProductIds } from "../hooks/use-wishlist";
@@ -305,20 +305,30 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {categoriesOpen && (
-                <div className="absolute left-0 top-full z-50 max-h-96 w-64 overflow-y-auto rounded-b border border-t-0 border-border bg-background py-2 shadow-soft">
+              <div
+                className={`absolute left-0 top-[calc(100%+0.5rem)] z-50 w-72 origin-top-left rounded-md border border-border bg-background shadow-soft transition-all duration-200 ease-theme ${
+                  categoriesOpen
+                    ? "visible translate-y-0 opacity-100"
+                    : "invisible -translate-y-1 opacity-0 pointer-events-none"
+                }`}
+              >
+                <p className="border-b border-border px-5 py-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+                  Shop by Category
+                </p>
+                <div className="max-h-96 overflow-y-auto py-2">
                   {categories.map((category) => (
                     <Link
                       key={category.id}
                       href={`/c/${category.slug}`}
                       onClick={() => setCategoriesOpen(false)}
-                      className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-background-light hover:text-primary"
+                      className="group/item flex items-center justify-between gap-3 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-background-light hover:text-primary"
                     >
                       {category.name}
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground-muted opacity-0 transition-opacity group-hover/item:opacity-100" />
                     </Link>
                   ))}
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="h-12 w-px shrink-0 bg-border" />
