@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/product-card";
 import { NewsletterForm } from "../components/newsletter-form";
+import { HeroCarousel } from "../components/hero-carousel";
 import { getBanners } from "../lib/api/banners";
 import { getProducts } from "../lib/api/catalog";
 
@@ -21,65 +21,35 @@ export default async function HomePage() {
     })),
   ]);
 
-  const hero = heroBanners[0];
-
   return (
     <div className="flex flex-col">
       {/* Hero Banner */}
-      <section className="relative w-full overflow-hidden bg-background-light">
-        {hero ? (
-          <Link href={hero.linkUrl ?? "#"} className="relative block aspect-[21/9] w-full">
-            <Image
-              src={hero.media.url}
-              alt={hero.title}
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 flex items-center">
-              <div className="mx-auto w-full max-w-site px-gutter">
-                <div className="max-w-md">
-                  <p className="mb-3 text-sm font-medium uppercase tracking-widest text-foreground-muted">
-                    New Collection
-                  </p>
-                  <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
-                    {hero.title}
-                  </h1>
-                  <div className="mt-6 flex gap-3">
-                    <span className="btn-primary">
-                      Shop Now <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-        ) : (
-          /* Fallback hero when no banner is configured */
-          <div className="relative flex aspect-[21/9] w-full items-center bg-gradient-to-r from-background-light to-background">
-            <div className="mx-auto w-full max-w-site px-gutter">
-              <div className="max-w-lg">
-                <p className="mb-3 text-sm font-medium uppercase tracking-widest text-primary">New Collection</p>
-                <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
-                  Discover Your Style
-                </h1>
-                <p className="mt-4 text-base text-foreground-muted">
-                  Shop from thousands of verified sellers and find the perfect look.
-                </p>
-                <div className="mt-8 flex gap-3">
-                  <Link href="/search" className="btn-primary">
-                    Shop Now <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link href="/search" className="btn-outline">
-                    View All
-                  </Link>
-                </div>
+      {heroBanners.length > 0 ? (
+        <HeroCarousel banners={heroBanners} />
+      ) : (
+        /* Fallback hero when no banner is configured */
+        <section className="relative flex aspect-[21/9] w-full items-center bg-gradient-to-r from-background-light to-background">
+          <div className="mx-auto w-full max-w-site px-gutter">
+            <div className="max-w-lg">
+              <p className="mb-3 text-sm font-medium uppercase tracking-widest text-primary">New Collection</p>
+              <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
+                Discover Your Style
+              </h1>
+              <p className="mt-4 text-base text-foreground-muted">
+                Shop from thousands of verified sellers and find the perfect look.
+              </p>
+              <div className="mt-8 flex gap-3">
+                <Link href="/search" className="btn-primary">
+                  Shop Now <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/search" className="btn-outline">
+                  View All
+                </Link>
               </div>
             </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* Featured Products */}
       {featuredProducts.data.length > 0 && (

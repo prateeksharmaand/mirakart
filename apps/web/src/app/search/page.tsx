@@ -17,6 +17,7 @@ interface PageProps {
     sort?: string;
     brandId?: string;
     tag?: string;
+    categoryId?: string;
   };
 }
 
@@ -38,6 +39,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       attributeValueIds,
       brandId: searchParams.brandId || undefined,
       tagSlug: searchParams.tag || undefined,
+      categoryId: searchParams.categoryId || undefined,
       sortBy,
       sortOrder,
     }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } })),
@@ -48,6 +50,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       search: searchParams.q,
       brandId: searchParams.brandId || undefined,
       tagSlug: searchParams.tag || undefined,
+      categoryId: searchParams.categoryId || undefined,
     }).catch(() => ({ min: 0, max: 0 })),
   ]);
 
@@ -59,6 +62,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     sort: searchParams.sort,
     brandId: searchParams.brandId,
     tag: searchParams.tag,
+    categoryId: searchParams.categoryId,
   };
 
   return (
