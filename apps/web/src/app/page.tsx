@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/product-card";
 import { NewsletterForm } from "../components/newsletter-form";
 import { HeroCarousel } from "../components/hero-carousel";
 import { FeatureStrip } from "../components/feature-strip";
 import { getBanners } from "../lib/api/banners";
-import { getProducts } from "../lib/api/catalog";
+import type { Banner } from "../lib/api/banners";
+import { getCategories, getProducts } from "../lib/api/catalog";
+import type { Category } from "../types/catalog";
 
 export const revalidate = 60;
 
@@ -22,32 +24,42 @@ export default async function HomePage() {
     })),
   ]);
 
+  // When no HOME_HERO banners are configured, feature a real category
+  // (with an actual banner/icon image) instead of showing hardcoded copy.
+  let heroFallbackBanner: Banner | null = null;
+  if (heroBanners.length === 0) {
+    const categories = (await getCategories(true).catch(() => [])) as Category[];
+    const featured = categories.find((c) => c.bannerMedia) ?? categories.find((c) => c.iconMedia) ?? null;
+    const media = featured?.bannerMedia ?? featured?.iconMedia ?? null;
+    if (featured && media) {
+      heroFallbackBanner = {
+        id: featured.id,
+        title: featured.name,
+        linkUrl: `/c/${featured.slug}`,
+        position: "HOME_HERO",
+        media,
+      };
+    }
+  }
+
   return (
     <div className="flex flex-col">
       {/* Hero Banner */}
       {heroBanners.length > 0 ? (
         <HeroCarousel banners={heroBanners} />
+      ) : heroFallbackBanner ? (
+        <HeroCarousel banners={[heroFallbackBanner]} />
       ) : (
-        /* Fallback hero when no banner is configured */
-        <section className="relative flex aspect-[21/9] w-full items-center bg-gradient-to-r from-background-light to-background">
-          <div className="mx-auto w-full max-w-site px-gutter">
-            <div className="max-w-lg">
-              <p className="mb-3 text-sm font-medium uppercase tracking-widest text-primary">New Collection</p>
-              <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
-                Discover Your Style
-              </h1>
-              <p className="mt-4 text-base text-foreground-muted">
-                Shop from thousands of verified sellers and find the perfect look.
-              </p>
-              <div className="mt-8 flex gap-3">
-                <Link href="/search" className="btn-primary">
-                  Shop Now <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link href="/search" className="btn-outline">
-                  View All
-                </Link>
-              </div>
-            </div>
+        /* Last-resort fallback: no banners and no category images to feature */
+        <section className="relative flex aspect-[21/9] w-full items-center justify-center bg-gradient-to-r from-background-light to-background">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground lg:text-4xl">Welcome to Mirakart</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm text-foreground-muted">
+              New arrivals are on their way — check back soon.
+            </p>
+            <Link href="/products" className="btn-primary mt-6 inline-flex">
+              Browse Products
+            </Link>
           </div>
         </section>
       )}
