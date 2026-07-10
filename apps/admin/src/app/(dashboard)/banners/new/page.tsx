@@ -2,40 +2,35 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Button,
-  Checkbox,
   FormField,
   Input,
-  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Skeleton,
   toast,
 } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { BANNER_POSITIONS, getBanner, updateBanner, uploadBannerImage } from "../../../../lib/api/banners";
+import { BANNER_POSITIONS, createBanner, uploadBannerImage } from "../../../../lib/api/banners";
 
 const schema = z.object({
   title: z.string().min(1, "Required"),
   linkUrl: z.string().optional(),
   position: z.string().min(1, "Required"),
   sortOrder: z.coerce.number().default(0),
-  isActive: z.boolean(),
 });
 type FormValues = z.infer<typeof schema>;
 
-export default function EditBannerPage({ params }: { params: { id: string } }) {
+export default function NewBannerPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data: banner, isLoading } = useQuery({ queryKey: ["banner", params.id], queryFn: () => getBanner(params.id) });
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
 
@@ -44,21 +39,8 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
     handleSubmit,
     watch,
     setValue,
-    reset,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
-
-  React.useEffect(() => {
-    if (banner) {
-      reset({
-        title: banner.title ?? "",
-        linkUrl: banner.linkUrl ?? "",
-        position: banner.position,
-        sortOrder: banner.sortOrder,
-        isActive: banner.isActive,
-      });
-    }
-  }, [banner, reset]);
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { sortOrder: 0 } });
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
@@ -68,39 +50,43 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      const mediaId = file ? (await uploadBannerImage(file)).id : undefined;
-      return updateBanner(params.id, {
+      if (!file) throw new Error("Select an image for the banner");
+      const media = await uploadBannerImage(file);
+      return createBanner({
         title: values.title,
-        linkUrl: values.linkUrl || null,
+        mediaId: media.id,
         position: values.position,
+        linkUrl: values.linkUrl || undefined,
         sortOrder: values.sortOrder,
-        isActive: values.isActive,
-        ...(mediaId ? { mediaId } : {}),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["banners"] });
-      toast({ title: "Updated", variant: "success" });
+      toast({ title: "Banner created", variant: "success" });
       router.push("/banners");
     },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
-
   return (
-    <div className="flex flex-col gap-6 max-w-xl">
-      <PageHeader title="Edit Banner" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Banners", href: "/banners" }, { label: "Edit" }]} />
-      <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
-        <FormField label="Image" htmlFor="image">
-          <img src={preview ?? banner?.media?.url} alt="Banner" className="mb-2 h-32 w-full rounded object-cover" />
+    <div className="flex max-w-xl flex-col gap-6">
+      <PageHeader
+        title="New Banner"
+        crumbs={[{ label: "Dashboard", href: "/" }, { label: "Banners", href: "/banners" }, { label: "New" }]}
+      />
+      <form
+        onSubmit={handleSubmit((v) => mutation.mutate(v))}
+        className="flex flex-col gap-4 rounded-xl border border-border bg-white p-6"
+      >
+        <FormField label="Image" htmlFor="image" required>
+          {preview && <img src={preview} alt="Preview" className="mb-2 h-32 w-full rounded object-cover" />}
           <Input id="image" type="file" accept="image/*" onChange={handleFileChange} />
         </FormField>
         <FormField label="Title" htmlFor="title" error={errors.title?.message} required>
           <Input id="title" {...register("title")} />
         </FormField>
         <FormField label="Link URL" htmlFor="linkUrl">
-          <Input id="linkUrl" {...register("linkUrl")} />
+          <Input id="linkUrl" placeholder="/c/some-category" {...register("linkUrl")} />
         </FormField>
         <FormField label="Position" htmlFor="position" error={errors.position?.message} required>
           <Select value={watch("position")} onValueChange={(v) => setValue("position", v)}>
@@ -119,13 +105,13 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
         <FormField label="Sort Order" htmlFor="sortOrder">
           <Input id="sortOrder" type="number" {...register("sortOrder")} />
         </FormField>
-        <div className="flex items-center gap-2">
-          <Checkbox id="isActive" checked={watch("isActive")} onCheckedChange={(v) => setValue("isActive", !!v)} />
-          <Label htmlFor="isActive">Active</Label>
-        </div>
         <div className="flex gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-          <Button type="submit" isLoading={mutation.isPending}>Save Changes</Button>
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending}>
+            Create Banner
+          </Button>
         </div>
       </form>
     </div>
