@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/product-card";
-import { NewsletterForm } from "../components/newsletter-form";
 import { HeroCarousel } from "../components/hero-carousel";
 import { FeatureStrip } from "../components/feature-strip";
 import { getBanners } from "../lib/api/banners";
@@ -86,18 +85,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
-      {/* Banner CTA */}
-      <section className="mx-auto w-full max-w-site px-gutter py-14">
-        <div className="overflow-hidden rounded-sm bg-foreground px-8 py-12 text-center text-background sm:px-16">
-          <p className="text-xs uppercase tracking-widest text-background/60">Limited Time Offer</p>
-          <h2 className="mt-2 text-3xl font-bold">Get 20% Off Your First Order</h2>
-          <p className="mt-3 text-sm text-background/70">
-            Sign up for our newsletter and receive an exclusive discount code.
-          </p>
-          <NewsletterForm className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center" />
-        </div>
-      </section>
 
       {/* Don't Miss The Last Deals */}
       <section className="border-y border-border bg-background">
