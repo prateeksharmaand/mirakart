@@ -3,15 +3,16 @@ import { ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/product-card";
 import { HeroCarousel } from "../components/hero-carousel";
 import { FeatureStrip } from "../components/feature-strip";
+import { DealCard } from "../components/deal-card";
 import { getBanners } from "../lib/api/banners";
 import type { Banner } from "../lib/api/banners";
-import { getCategories, getProducts } from "../lib/api/catalog";
+import { getCategories, getDeals, getProducts } from "../lib/api/catalog";
 import type { Category } from "../types/catalog";
 
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [heroBanners, featuredProducts, newArrivals] = await Promise.all([
+  const [heroBanners, featuredProducts, newArrivals, deals] = await Promise.all([
     getBanners("HOME_HERO").catch(() => []),
     getProducts({ isFeatured: true, limit: 8 }).catch(() => ({
       data: [],
@@ -21,6 +22,7 @@ export default async function HomePage() {
       data: [],
       meta: { page: 1, limit: 4, totalItems: 0, totalPages: 1 },
     })),
+    getDeals(4).catch(() => []),
   ]);
 
   // When no HOME_HERO banners are configured, feature a real category
@@ -87,19 +89,18 @@ export default async function HomePage() {
       )}
 
       {/* Don't Miss The Last Deals */}
-      <section className="border-y border-border bg-background">
-        <div className="mx-auto flex max-w-site items-center gap-8 px-gutter py-8 sm:gap-16">
-          <h2 className="min-w-fit text-xl font-semibold text-foreground sm:text-2xl">
-            Don't Miss The<br />Last Deals
-          </h2>
-          <div className="h-12 w-px shrink-0 bg-border" />
-          <p className="text-sm leading-relaxed text-primary">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-            labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas
-            accumsan lacus vel facilisis.
-          </p>
-        </div>
-      </section>
+      {deals.length > 0 && (
+        <section className="border-y border-border bg-background py-10">
+          <div className="mx-auto w-full max-w-site px-gutter">
+            <h2 className="mb-8 text-xl font-semibold text-foreground sm:text-2xl">Don&apos;t Miss The Last Deals</h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {deals.map((deal) => (
+                <DealCard key={deal.id} deal={deal} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Latest Buyers Reviews */}
       <section className="mx-auto w-full max-w-site px-gutter py-16">

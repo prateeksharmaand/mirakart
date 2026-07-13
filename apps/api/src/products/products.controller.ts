@@ -20,6 +20,13 @@ export class ProductsController {
     return this.service.getPriceRange(query);
   }
 
+  @Get("deals")
+  @ApiOkResponse()
+  deals(@Query("limit") limit?: string) {
+    const parsed = Number(limit);
+    return this.service.getActiveDeals(Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 20) : 8);
+  }
+
   @Get(":slug")
   @ApiOkResponse()
   findBySlug(@Param("slug") slug: string) {

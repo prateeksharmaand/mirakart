@@ -160,6 +160,54 @@ export class ProductsRepository {
     });
   }
 
+  async findActiveDeals(limit: number) {
+    const items = await this.prisma.product.findMany({
+      where: {
+        deletedAt: null,
+        status: "APPROVED",
+        dealEndsAt: { gt: new Date() },
+        variants: { some: { deletedAt: null } },
+      },
+      include: {
+        images: { where: { isPrimary: true }, take: 1, include: { media: true } },
+        brand: true,
+        variants: { where: { deletedAt: null }, include: { inventory: true } },
+      },
+      orderBy: { dealEndsAt: "asc" },
+      take: limit,
+    });
+    if (items.length === 0) return [];
+
+    const productIds = items.map((item) => item.id);
+    const [reviewStats, soldStats] = await Promise.all([
+      this.prisma.review.groupBy({
+        by: ["productId"],
+        where: { productId: { in: productIds }, isApproved: true, deletedAt: null },
+        _avg: { rating: true },
+        _count: { id: true },
+      }),
+      this.prisma.orderItem.groupBy({
+        by: ["productId"],
+        where: { productId: { in: productIds }, status: { not: "CANCELLED" } },
+        _sum: { quantity: true },
+      }),
+    ]);
+    const reviewByProductId = new Map(
+      reviewStats.map((stat) => [
+        stat.productId,
+        { averageRating: stat._avg.rating ? Number(stat._avg.rating.toFixed(1)) : 0, reviewCount: stat._count.id },
+      ]),
+    );
+    const soldByProductId = new Map(soldStats.map((stat) => [stat.productId, stat._sum.quantity ?? 0]));
+
+    return items.map((item) => ({
+      ...item,
+      ...(reviewByProductId.get(item.id) ?? { averageRating: 0, reviewCount: 0 }),
+      soldCount: soldByProductId.get(item.id) ?? 0,
+      availableCount: item.variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0),
+    }));
+  }
+
   async findMerchantList(filter: MerchantProductFilter) {
     const where: Prisma.ProductWhereInput = {
       merchantId: filter.merchantId,
@@ -251,6 +299,7 @@ export class ProductsRepository {
       sku: string | null;
       weight: number | null;
       isFeatured: boolean;
+      dealEndsAt: Date | null;
       metaTitle: string;
       metaDescription: string;
       status: ProductStatus;

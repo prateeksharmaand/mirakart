@@ -121,3 +121,14 @@ export function getPriceRange(
   });
   return fetchPublic<PriceRange>(`/products/price-range${qs}`);
 }
+
+export interface DealProduct extends ProductListItem {
+  description: string;
+  dealEndsAt: string;
+  soldCount: number;
+  availableCount: number;
+}
+
+export function getDeals(limit = 4): Promise<DealProduct[]> {
+  return fetchPublic<DealProduct[]>(`/products/deals?limit=${limit}`);
+}

@@ -24,6 +24,7 @@ export interface Product {
   status: string;
   basePrice: number;
   compareAtPrice?: number | null;
+  dealEndsAt?: string | null;
   createdAt: string;
   category?: { id: string; name: string } | null;
   brand?: { id: string; name: string } | null;
@@ -89,6 +90,7 @@ export async function updateProduct(id: string, data: Partial<{
   compareAtPrice: number;
   status: string;
   tagIds: string[];
+  dealEndsAt: string | null;
 }>): Promise<Product> {
   const res = await apiClient.patch(`/merchants/me/products/${id}`, data);
   return res.data.data as Product;

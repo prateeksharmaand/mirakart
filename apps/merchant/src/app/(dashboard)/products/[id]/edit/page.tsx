@@ -39,8 +39,17 @@ const schema = z.object({
   comparePrice: z.coerce.number().optional(),
   status: z.enum(["DRAFT", "PENDING_APPROVAL", "ARCHIVED"]).optional(),
   tagIds: z.array(z.string()).default([]),
+  dealEndsAt: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
+
+// datetime-local inputs use "YYYY-MM-DDTHH:mm" in the browser's local timezone
+function isoToDatetimeLocal(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -74,6 +83,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           ? (product.status as MerchantStatus)
           : undefined,
         tagIds: product.tags?.map((pt) => pt.tag.id) ?? [],
+        dealEndsAt: isoToDatetimeLocal(product.dealEndsAt),
       });
     }
   }, [product, reset]);
@@ -88,6 +98,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       compareAtPrice: v.comparePrice,
       status: v.status,
       tagIds: v.tagIds,
+      dealEndsAt: v.dealEndsAt ? new Date(v.dealEndsAt).toISOString() : null,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["merchant-products"] });
@@ -151,6 +162,24 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               <Input type="number" step="0.01" {...register("comparePrice")} />
             </FormField>
           </div>
+          <FormField
+            label="Deal Ends At"
+            htmlFor="dealEndsAt"
+            hint="Set this to run a time-limited deal — the product shows a countdown on the storefront until this time. Leave blank for a normal listing."
+          >
+            <div className="flex items-center gap-2">
+              <Input id="dealEndsAt" type="datetime-local" {...register("dealEndsAt")} />
+              {watch("dealEndsAt") && (
+                <button
+                  type="button"
+                  onClick={() => setValue("dealEndsAt", "")}
+                  className="shrink-0 text-xs text-foreground-muted hover:text-danger"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </FormField>
           <FormField label="Status">
             {isAdminControlled ? (
               <div className="flex items-center gap-2 h-9">

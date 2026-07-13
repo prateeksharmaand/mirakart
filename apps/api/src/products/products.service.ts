@@ -56,6 +56,10 @@ export class ProductsService {
     return product;
   }
 
+  async getActiveDeals(limit: number) {
+    return this.repo.findActiveDeals(limit);
+  }
+
   // --- Merchant ---
 
   async listForMerchant(merchantId: string, query: MerchantProductQueryDto) {
@@ -120,7 +124,7 @@ export class ProductsService {
       throw new BadRequestException("compareAtPrice must be greater than basePrice");
     }
 
-    const { tagIds, status, ...updateData } = dto;
+    const { tagIds, status, dealEndsAt, ...updateData } = dto;
 
     // Status transition rules:
     // - REJECTED → any merchant action auto-promotes to PENDING_APPROVAL + clears rejection
@@ -130,6 +134,7 @@ export class ProductsService {
 
     const updated = await this.repo.update(id, {
       ...updateData,
+      ...(dealEndsAt !== undefined ? { dealEndsAt: dealEndsAt ? new Date(dealEndsAt) : null } : {}),
       ...(resolvedStatus ? { status: resolvedStatus, ...(wasRejected ? { rejectionReason: null } : {}) } : {}),
     });
 

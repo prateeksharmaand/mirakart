@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { IsArray, IsDateString, IsIn, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
 import { Type } from "class-transformer";
 
 const MERCHANT_SETTABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"] as const;
@@ -72,4 +72,9 @@ export class UpdateProductDto {
   @IsArray()
   @IsString({ each: true })
   tagIds?: string[];
+
+  @ApiPropertyOptional({ description: "ISO date the deal ends at. Pass null to clear." })
+  @IsOptional()
+  @IsDateString()
+  dealEndsAt?: string | null;
 }

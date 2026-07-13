@@ -530,6 +530,7 @@ model Product {
   barcode         String?
   weight          Decimal?      @db.Decimal(8, 2)
   isFeatured      Boolean       @default(false)
+  dealEndsAt      DateTime?
   metaTitle       String?
   metaDescription String?
   approvedById    String?
