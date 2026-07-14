@@ -109,6 +109,28 @@ export default async function ProductPage({ params }: PageProps) {
         {/* Gallery */}
         <div>
           <ProductGallery images={product.images} productName={product.name} />
+
+          {/* Tabs: Description + Additional Info + Reviews + Queries */}
+          <div id="reviews-tab" className="mt-8 border-t border-border pt-8">
+            <ProductTabs
+              tabs={[
+                { id: "description", label: "Description", content: descriptionContent },
+                ...(attrRows.length > 0
+                  ? [{ id: "info", label: "Additional Information", content: additionalContent }]
+                  : []),
+                {
+                  id: "reviews",
+                  label: "Reviews",
+                  content: <ProductReviews productId={product.id} productSlug={product.slug} />,
+                },
+                {
+                  id: "queries",
+                  label: "Q&A",
+                  content: <ProductQueries productId={product.id} productSlug={product.slug} />,
+                },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Info + purchase — sticky on desktop */}
@@ -158,28 +180,6 @@ export default async function ProductPage({ params }: PageProps) {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <RecentlyViewedSidebar excludeProductId={product.id} />
         </div>
-      </div>
-
-      {/* Tabs: Description + Additional Info + Reviews + Queries */}
-      <div id="reviews-tab" className="mt-12 border-t border-border pt-8">
-        <ProductTabs
-          tabs={[
-            { id: "description", label: "Description", content: descriptionContent },
-            ...(attrRows.length > 0
-              ? [{ id: "info", label: "Additional Information", content: additionalContent }]
-              : []),
-            {
-              id: "reviews",
-              label: "Reviews",
-              content: <ProductReviews productId={product.id} productSlug={product.slug} />,
-            },
-            {
-              id: "queries",
-              label: "Q&A",
-              content: <ProductQueries productId={product.id} productSlug={product.slug} />,
-            },
-          ]}
-        />
       </div>
 
       {/* Related products */}
