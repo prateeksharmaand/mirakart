@@ -9,7 +9,7 @@ import { PageSizeSelect } from "../../../components/page-size-select";
 import { DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { parseSortParam } from "../../../lib/sort";
 import { ProductGrid } from "../../../components/product-grid";
-import { expandWithDescendants } from "../../../lib/category-tree-utils";
+import { collectDescendantIds, expandWithDescendants, findCategoryNode } from "../../../lib/category-tree-utils";
 import {
   getCategoryBySlug,
   getCategories,
@@ -63,12 +63,24 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
   ]);
 
-  // This category + any extra categories explicitly checked in the sidebar tree,
-  // each expanded to include their own subcategories -- otherwise a category with
-  // no products tagged directly to it (all tagged to its subcategories) shows empty.
+  // Default scope is this category + all of its subcategories (so a category
+  // with no products tagged directly to it -- all tagged to its subcategories
+  // -- isn't empty). If the user checks specific subcategories in the sidebar
+  // tree, narrow down to just those instead of the full subtree. Checking a
+  // category outside this branch (e.g. a different top-level category) adds
+  // it alongside, expanded the same way.
+  const ownNode = findCategoryNode(fullTree, category.id);
+  const descendantIds = new Set(ownNode ? collectDescendantIds(ownNode) : []);
+
   const explicitIds = searchParams.categoryIds ? searchParams.categoryIds.split(",").filter(Boolean) : [];
-  const rawIds = [category.id, ...explicitIds.filter((id) => id !== category.id)];
-  const categoryIds = expandWithDescendants(fullTree, rawIds);
+  const explicitWithinOwn = explicitIds.filter((id) => descendantIds.has(id));
+  const explicitOutsideOwn = explicitIds.filter((id) => id !== category.id && !descendantIds.has(id));
+
+  const ownScopeIds =
+    explicitWithinOwn.length > 0
+      ? expandWithDescendants(fullTree, explicitWithinOwn)
+      : expandWithDescendants(fullTree, [category.id]);
+  const categoryIds = [...new Set([...ownScopeIds, ...expandWithDescendants(fullTree, explicitOutsideOwn)])];
 
   const [result, priceBounds] = await Promise.all([
     getProducts({
