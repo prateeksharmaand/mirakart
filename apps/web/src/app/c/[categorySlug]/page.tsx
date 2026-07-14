@@ -9,6 +9,7 @@ import { PageSizeSelect } from "../../../components/page-size-select";
 import { DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { parseSortParam } from "../../../lib/sort";
 import { ProductGrid } from "../../../components/product-grid";
+import { expandWithDescendants } from "../../../lib/category-tree-utils";
 import {
   getCategoryBySlug,
   getCategories,
@@ -53,16 +54,23 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     ? searchParams.av.split(",").filter(Boolean)
     : undefined;
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
-
-  // Extra subcategories checked in the sidebar tree, on top of this page's own category
-  const extraCategoryIds = searchParams.categoryIds
-    ? searchParams.categoryIds.split(",").filter((id) => id && id !== category.id)
-    : [];
-  const categoryIds = extraCategoryIds.length > 0 ? [category.id, ...extraCategoryIds] : undefined;
-
   const limit = searchParams.limit ? Number(searchParams.limit) : DEFAULT_PAGE_SIZE;
 
-  const [result, attributes, brands, tags, priceBounds, fullTree] = await Promise.all([
+  const [attributes, brands, tags, fullTree] = await Promise.all([
+    getAttributes().catch(() => []),
+    getBrands(200).catch(() => []),
+    getTags().catch(() => []),
+    (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
+  ]);
+
+  // This category + any extra categories explicitly checked in the sidebar tree,
+  // each expanded to include their own subcategories -- otherwise a category with
+  // no products tagged directly to it (all tagged to its subcategories) shows empty.
+  const explicitIds = searchParams.categoryIds ? searchParams.categoryIds.split(",").filter(Boolean) : [];
+  const rawIds = [category.id, ...explicitIds.filter((id) => id !== category.id)];
+  const categoryIds = expandWithDescendants(fullTree, rawIds);
+
+  const [result, priceBounds] = await Promise.all([
     getProducts({
       categoryId: category.id,
       categoryIds,
@@ -76,11 +84,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
       sortBy,
       sortOrder,
     }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } })),
-    getAttributes().catch(() => []),
-    getBrands(200).catch(() => []),
-    getTags().catch(() => []),
     getPriceRange({ categoryId: category.id, categoryIds }).catch(() => ({ min: 0, max: 0 })),
-    (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
   ]);
 
   const currentSearchParams = {

@@ -26,12 +26,14 @@ function collectExpandIds(nodes: CategoryNode[], targets: Set<string>): Set<stri
 interface CategoryTreeProps {
   nodes: CategoryNode[];
   selectedIds: Set<string>;
-  /** Rendered as always-checked and non-toggleable — the current page's own category. */
+  /** Always shown checked — the current page's own category. */
   pinnedId?: string;
   onToggle: (id: string) => void;
+  /** Called instead of onToggle when the pinned node is clicked (e.g. navigate to the unfiltered listing). */
+  onTogglePinned?: () => void;
 }
 
-export function CategoryTree({ nodes, selectedIds, pinnedId, onToggle }: CategoryTreeProps) {
+export function CategoryTree({ nodes, selectedIds, pinnedId, onToggle, onTogglePinned }: CategoryTreeProps) {
   const expandIds = React.useMemo(() => {
     const targets = new Set(selectedIds);
     if (pinnedId) targets.add(pinnedId);
@@ -47,6 +49,7 @@ export function CategoryTree({ nodes, selectedIds, pinnedId, onToggle }: Categor
           selectedIds={selectedIds}
           pinnedId={pinnedId}
           onToggle={onToggle}
+          onTogglePinned={onTogglePinned}
           expandIds={expandIds}
           depth={0}
         />
@@ -60,6 +63,7 @@ function CategoryTreeRow({
   selectedIds,
   pinnedId,
   onToggle,
+  onTogglePinned,
   expandIds,
   depth,
 }: {
@@ -67,6 +71,7 @@ function CategoryTreeRow({
   selectedIds: Set<string>;
   pinnedId?: string;
   onToggle: (id: string) => void;
+  onTogglePinned?: () => void;
   expandIds: Set<string>;
   depth: number;
 }) {
@@ -93,9 +98,9 @@ function CategoryTreeRow({
         )}
         <button
           type="button"
-          disabled={isPinned}
-          onClick={() => !isPinned && onToggle(node.id)}
-          className="flex flex-1 items-center gap-2 rounded py-1.5 text-left text-sm disabled:cursor-default"
+          title={isPinned ? "Click to clear this category" : undefined}
+          onClick={() => (isPinned ? onTogglePinned?.() : onToggle(node.id))}
+          className="flex flex-1 items-center gap-2 rounded py-1.5 text-left text-sm"
         >
           <span
             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
@@ -122,6 +127,7 @@ function CategoryTreeRow({
               selectedIds={selectedIds}
               pinnedId={pinnedId}
               onToggle={onToggle}
+              onTogglePinned={onTogglePinned}
               expandIds={expandIds}
               depth={depth + 1}
             />

@@ -7,6 +7,7 @@ import { PageSizeSelect } from "../../components/page-size-select";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { parseSortParam } from "../../lib/sort";
 import { ProductGrid } from "../../components/product-grid";
+import { expandWithDescendants } from "../../lib/category-tree-utils";
 import {
   getProducts,
   getAttributes,
@@ -50,10 +51,26 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     ? searchParams.av.split(",").filter(Boolean)
     : undefined;
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
-  const categoryIds = searchParams.categoryIds ? searchParams.categoryIds.split(",").filter(Boolean) : undefined;
   const limit = searchParams.limit ? Number(searchParams.limit) : DEFAULT_PAGE_SIZE;
 
-  const [result, attributes, brands, categoryTree, tags, priceBounds] = await Promise.all([
+  const [attributes, brands, categoryTree, tags] = await Promise.all([
+    getAttributes().catch(() => []),
+    getBrands(200).catch(() => []),
+    (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
+    getTags().catch(() => []),
+  ]);
+
+  // Expand any checked categories to include their own subcategories, so a
+  // category with no products tagged directly to it (all tagged to its
+  // subcategories) doesn't appear empty.
+  const rawIds = searchParams.categoryIds
+    ? searchParams.categoryIds.split(",").filter(Boolean)
+    : searchParams.categoryId
+      ? [searchParams.categoryId]
+      : [];
+  const categoryIds = rawIds.length > 0 ? expandWithDescendants(categoryTree, rawIds) : undefined;
+
+  const [result, priceBounds] = await Promise.all([
     getProducts({
       tagSlug: searchParams.tag,
       page,
@@ -68,10 +85,6 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       categoryIds,
       brandId: searchParams.brandId || undefined,
     }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } })),
-    getAttributes().catch(() => []),
-    getBrands(200).catch(() => []),
-    (getCategories(false) as Promise<CategoryNode[]>).catch(() => []),
-    getTags().catch(() => []),
     getPriceRange({
       tagSlug: searchParams.tag,
       search: searchParams.search || undefined,

@@ -7,6 +7,7 @@ import { PageSizeSelect } from "../../components/page-size-select";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { parseSortParam } from "../../lib/sort";
 import { ProductGrid } from "../../components/product-grid";
+import { expandWithDescendants } from "../../lib/category-tree-utils";
 import { getProducts, getAttributes, getBrands, getCategories, getTags, getPriceRange } from "../../lib/api/catalog";
 import type { CategoryNode } from "../../types/catalog";
 
@@ -34,10 +35,23 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const page = Number(searchParams.page ?? 1);
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
   const attributeValueIds = searchParams.av ? searchParams.av.split(",").filter(Boolean) : undefined;
-  const categoryIds = searchParams.categoryIds ? searchParams.categoryIds.split(",").filter(Boolean) : undefined;
   const limit = searchParams.limit ? Number(searchParams.limit) : DEFAULT_PAGE_SIZE;
 
-  const [result, attributes, brands, tags, priceBounds, categoryTree] = await Promise.all([
+  const [attributes, brands, tags, categoryTree] = await Promise.all([
+    getAttributes().catch(() => []),
+    getBrands(200).catch(() => []),
+    getTags().catch(() => []),
+    (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
+  ]);
+
+  const rawIds = searchParams.categoryIds
+    ? searchParams.categoryIds.split(",").filter(Boolean)
+    : searchParams.categoryId
+      ? [searchParams.categoryId]
+      : [];
+  const categoryIds = rawIds.length > 0 ? expandWithDescendants(categoryTree, rawIds) : undefined;
+
+  const [result, priceBounds] = await Promise.all([
     getProducts({
       search: searchParams.q,
       page,
@@ -52,9 +66,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
       sortBy,
       sortOrder,
     }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } })),
-    getAttributes().catch(() => []),
-    getBrands(200).catch(() => []),
-    getTags().catch(() => []),
     getPriceRange({
       search: searchParams.q,
       brandId: searchParams.brandId || undefined,
@@ -62,7 +73,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
       categoryId: searchParams.categoryId || undefined,
       categoryIds,
     }).catch(() => ({ min: 0, max: 0 })),
-    (getCategories(false) as Promise<CategoryNode[]>).catch(() => []),
   ]);
 
   const currentSearchParams = {

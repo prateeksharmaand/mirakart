@@ -12,7 +12,7 @@ import { flattenCategories } from "../lib/category-tree-utils";
 interface FilterSidebarProps {
   /** Full category tree. On /c/[slug], pass a single-root array ([category]) via pinnedCategoryId. */
   categoryTree: CategoryNode[];
-  /** The current page's own category (e.g. on /c/[slug]) — shown checked/locked, not toggleable. */
+  /** The current page's own category (e.g. on /c/[slug]) — shown checked; clicking it leaves the category page. */
   pinnedCategoryId?: string;
   brands: Brand[];
   tags: Tag[];
@@ -322,6 +322,7 @@ export function FilterSidebar({
             selectedIds={selectedCategoryIdSet}
             pinnedId={pinnedCategoryId}
             onToggle={toggleCategory}
+            onTogglePinned={pinnedCategoryId ? () => router.push("/products") : undefined}
           />
         </Section>
       )}
