@@ -18,7 +18,7 @@ export class CategoriesRepository {
   findAllForAdmin() {
     return this.prisma.category.findMany({
       where: { deletedAt: null },
-      include: categoryMediaInclude,
+      include: { ...categoryMediaInclude, parent: { select: { id: true, name: true } } },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });
   }

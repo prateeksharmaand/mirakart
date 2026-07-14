@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { FilterSidebar } from "../../components/filter-sidebar";
 import { SortSelect } from "../../components/sort-select";
+import { PageSizeSelect } from "../../components/page-size-select";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { parseSortParam } from "../../lib/sort";
 import { ProductGrid } from "../../components/product-grid";
 import {
@@ -13,7 +15,7 @@ import {
   getCategories,
   getPriceRange,
 } from "../../lib/api/catalog";
-import type { Category } from "../../types/catalog";
+import type { CategoryNode } from "../../types/catalog";
 
 interface PageProps {
   searchParams: {
@@ -25,7 +27,9 @@ interface PageProps {
     search?: string;
     sort?: string;
     categoryId?: string;
+    categoryIds?: string;
     brandId?: string;
+    limit?: string;
   };
 }
 
@@ -46,11 +50,14 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     ? searchParams.av.split(",").filter(Boolean)
     : undefined;
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
+  const categoryIds = searchParams.categoryIds ? searchParams.categoryIds.split(",").filter(Boolean) : undefined;
+  const limit = searchParams.limit ? Number(searchParams.limit) : DEFAULT_PAGE_SIZE;
 
-  const [result, attributes, brands, categories, tags, priceBounds] = await Promise.all([
+  const [result, attributes, brands, categoryTree, tags, priceBounds] = await Promise.all([
     getProducts({
       tagSlug: searchParams.tag,
       page,
+      limit,
       minPrice: searchParams.minPrice ? Number(searchParams.minPrice) : undefined,
       maxPrice: searchParams.maxPrice ? Number(searchParams.maxPrice) : undefined,
       search: searchParams.search || undefined,
@@ -58,16 +65,18 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       sortBy,
       sortOrder,
       categoryId: searchParams.categoryId || undefined,
+      categoryIds,
       brandId: searchParams.brandId || undefined,
     }).catch(() => ({ data: [], meta: { page: 1, limit: 20, totalItems: 0, totalPages: 1 } })),
     getAttributes().catch(() => []),
     getBrands(200).catch(() => []),
-    (getCategories(true) as Promise<Category[]>).catch(() => []),
+    (getCategories(false) as Promise<CategoryNode[]>).catch(() => []),
     getTags().catch(() => []),
     getPriceRange({
       tagSlug: searchParams.tag,
       search: searchParams.search || undefined,
       categoryId: searchParams.categoryId || undefined,
+      categoryIds,
       brandId: searchParams.brandId || undefined,
     }).catch(() => ({ min: 0, max: 0 })),
   ]);
@@ -86,8 +95,12 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     search: searchParams.search,
     sort: searchParams.sort,
     categoryId: searchParams.categoryId,
+    categoryIds: searchParams.categoryIds,
     brandId: searchParams.brandId,
+    limit: searchParams.limit,
   };
+  const resultFrom = result.meta.totalItems === 0 ? 0 : (result.meta.page - 1) * result.meta.limit + 1;
+  const resultTo = Math.min(result.meta.page * result.meta.limit, result.meta.totalItems);
 
   return (
     <div className="mx-auto max-w-site px-gutter py-8">
@@ -100,13 +113,9 @@ export default async function ProductsPage({ searchParams }: PageProps) {
         <span className="capitalize text-foreground">{pageTitle}</span>
       </nav>
 
-      {/* Page title + count */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      {/* Page title */}
+      <div className="mb-6">
         <h1 className="text-2xl font-semibold capitalize text-foreground">{pageTitle}</h1>
-        <p className="text-sm text-foreground-muted">
-          {result.meta.totalItems}{" "}
-          {result.meta.totalItems === 1 ? "product" : "products"}
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
@@ -114,7 +123,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
         <aside>
           <Suspense fallback={null}>
             <FilterSidebar
-              categories={categories}
+              categoryTree={categoryTree}
               brands={brands}
               tags={tags}
               attributes={attributes}
@@ -125,11 +134,21 @@ export default async function ProductsPage({ searchParams }: PageProps) {
 
         {/* Main content */}
         <div className="flex flex-col gap-5">
-          {/* Sort bar */}
-          <div className="flex items-center justify-end">
-            <Suspense fallback={null}>
-              <SortSelect currentSort={searchParams.sort} />
-            </Suspense>
+          {/* Results bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-foreground-muted">
+              {result.meta.totalItems === 0
+                ? "No results"
+                : `Showing ${resultFrom}–${resultTo} of ${result.meta.totalItems} results`}
+            </p>
+            <div className="flex items-center gap-4">
+              <Suspense fallback={null}>
+                <PageSizeSelect currentLimit={result.meta.limit} />
+              </Suspense>
+              <Suspense fallback={null}>
+                <SortSelect currentSort={searchParams.sort} />
+              </Suspense>
+            </div>
           </div>
 
           <ProductGrid

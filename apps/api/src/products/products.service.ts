@@ -24,6 +24,7 @@ export class ProductsService {
   async listPublic(query: ProductQueryDto) {
     const { items, totalItems } = await this.repo.findPublicList({
       categoryId: query.categoryId,
+      categoryIds: query.categoryIds,
       brandId: query.brandId,
       minPrice: query.minPrice,
       maxPrice: query.maxPrice,
@@ -42,6 +43,7 @@ export class ProductsService {
   async getPriceRange(query: ProductQueryDto) {
     return this.repo.getPriceRange({
       categoryId: query.categoryId,
+      categoryIds: query.categoryIds,
       brandId: query.brandId,
       search: query.search,
       isFeatured: query.isFeatured,

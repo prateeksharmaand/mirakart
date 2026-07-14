@@ -13,7 +13,7 @@ import {
 } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import {
-  getCategory, updateCategory, listCategoriesForAdmin,
+  getCategory, updateCategory, listCategoriesForAdmin, uploadCategoryImage,
   listAttributes, getCategoryAttributes,
   assignCategoryAttribute, removeCategoryAttribute,
 } from "../../../../lib/api/catalog";
@@ -50,6 +50,13 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
     defaultValues: { name: "", description: "", isActive: false },
   });
 
+  const [iconMediaId, setIconMediaId] = React.useState<string | undefined>(undefined);
+  const [iconPreview, setIconPreview] = React.useState<string | null>(null);
+  const [bannerMediaId, setBannerMediaId] = React.useState<string | undefined>(undefined);
+  const [bannerPreview, setBannerPreview] = React.useState<string | null>(null);
+  const [uploadingIcon, setUploadingIcon] = React.useState(false);
+  const [uploadingBanner, setUploadingBanner] = React.useState(false);
+
   // Populate form once category data arrives
   React.useEffect(() => {
     if (category) {
@@ -59,8 +66,40 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
         parentId: category.parentId ?? undefined,
         isActive: category.isActive,
       });
+      setIconMediaId(category.iconMedia?.id);
+      setBannerMediaId(category.bannerMedia?.id);
     }
   }, [category, reset]);
+
+  async function handleIconChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIconPreview(URL.createObjectURL(file));
+    setUploadingIcon(true);
+    try {
+      const media = await uploadCategoryImage(file);
+      setIconMediaId(media.id);
+    } catch (err) {
+      toast({ title: "Icon upload failed", description: (err as Error).message, variant: "danger" });
+    } finally {
+      setUploadingIcon(false);
+    }
+  }
+
+  async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBannerPreview(URL.createObjectURL(file));
+    setUploadingBanner(true);
+    try {
+      const media = await uploadCategoryImage(file);
+      setBannerMediaId(media.id);
+    } catch (err) {
+      toast({ title: "Banner upload failed", description: (err as Error).message, variant: "danger" });
+    } finally {
+      setUploadingBanner(false);
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: (v: FormValues) =>
@@ -69,6 +108,8 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
         description: v.description || undefined,
         parentId: v.parentId || undefined,
         isActive: v.isActive,
+        iconMediaId,
+        bannerMediaId,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] });
@@ -132,6 +173,21 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
           <Textarea id="description" rows={3} placeholder="Optional category description" {...register("description")} />
         </FormField>
 
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Icon Image" htmlFor="iconImage" hint="Small square image shown in category lists/nav.">
+            {(iconPreview ?? category.iconMedia?.url) && (
+              <img src={iconPreview ?? category.iconMedia?.url} alt="Icon" className="mb-2 h-16 w-16 rounded object-cover" />
+            )}
+            <Input id="iconImage" type="file" accept="image/*" onChange={handleIconChange} disabled={uploadingIcon} />
+          </FormField>
+          <FormField label="Banner Image" htmlFor="bannerImage" hint="Wide image shown at the top of the category page.">
+            {(bannerPreview ?? category.bannerMedia?.url) && (
+              <img src={bannerPreview ?? category.bannerMedia?.url} alt="Banner" className="mb-2 h-16 w-full rounded object-cover" />
+            )}
+            <Input id="bannerImage" type="file" accept="image/*" onChange={handleBannerChange} disabled={uploadingBanner} />
+          </FormField>
+        </div>
+
         <FormField label="Parent Category" htmlFor="parentId">
           {/* key forces Select to re-render when the loaded value or options change */}
           <Select
@@ -169,7 +225,16 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={mutation.isPending} disabled={!isDirty && !mutation.isPending}>
+          <Button
+            type="submit"
+            isLoading={mutation.isPending}
+            disabled={
+              !mutation.isPending &&
+              !isDirty &&
+              iconMediaId === category.iconMedia?.id &&
+              bannerMediaId === category.bannerMedia?.id
+            }
+          >
             Save Changes
           </Button>
         </div>

@@ -4,19 +4,18 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { Badge, Button, Pagination, toast } from "@mirakart/ui";
+import { Badge, Button, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
 import { TableActions } from "../../../components/table-actions";
-import { listCategories, deleteCategory, listCategoriesForAdmin, type Category } from "../../../lib/api/catalog";
+import { deleteCategory, listCategoriesForAdmin, type Category } from "../../../lib/api/catalog";
 
 export default function CategoriesPage() {
-  const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<Category | null>(null);
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({ queryKey: ["categories", page], queryFn: () => listCategories({ page, limit: 20 }) });
+  const { data: categories, isLoading } = useQuery({ queryKey: ["categories"], queryFn: listCategoriesForAdmin });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCategory(id),
@@ -50,10 +49,7 @@ export default function CategoriesPage() {
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Categories" }]}
         action={<Button asChild><Link href="/categories/new"><Plus className="mr-2 h-4 w-4" />New Category</Link></Button>}
       />
-      <DataTable columns={columns} data={data?.data ?? []} keyField="id" isLoading={isLoading} />
-      {data?.meta && data.meta.totalPages > 1 && (
-        <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
-      )}
+      <DataTable columns={columns} data={categories ?? []} keyField="id" isLoading={isLoading} />
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete category"

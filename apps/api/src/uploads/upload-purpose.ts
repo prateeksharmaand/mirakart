@@ -7,6 +7,7 @@ export const UploadPurpose = {
   RETURN_IMAGES: "RETURN_IMAGES",
   STORE_ASSETS: "STORE_ASSETS",
   BANNERS: "BANNERS",
+  CATEGORY_MEDIA: "CATEGORY_MEDIA",
 } as const;
 export type UploadPurpose = (typeof UploadPurpose)[keyof typeof UploadPurpose];
 
@@ -45,6 +46,14 @@ export const UPLOAD_PURPOSE_CONFIG: Record<UploadPurpose, PurposeConfig> = {
     allowedPrincipalTypes: ["MERCHANT"],
   },
   BANNERS: {
+    bucket: "banners",
+    allowedMimeTypes: IMAGE_MIME_TYPES,
+    maxSizeBytes: 5 * 1024 * 1024,
+    allowedPrincipalTypes: ["ADMIN"],
+  },
+  CATEGORY_MEDIA: {
+    // Reuses the public "banners" bucket -- category icon/banner images are
+    // the same kind of public marketing asset, no separate bucket needed.
     bucket: "banners",
     allowedMimeTypes: IMAGE_MIME_TYPES,
     maxSizeBytes: 5 * 1024 * 1024,

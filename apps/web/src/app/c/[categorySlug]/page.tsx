@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { FilterSidebar } from "../../../components/filter-sidebar";
 import { SortSelect } from "../../../components/sort-select";
+import { PageSizeSelect } from "../../../components/page-size-select";
+import { DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { parseSortParam } from "../../../lib/sort";
 import { ProductGrid } from "../../../components/product-grid";
+import { findCategoryNode } from "../../../lib/category-tree-utils";
 import {
   getCategoryBySlug,
+  getCategories,
   getProducts,
   getAttributes,
   getBrands,
   getTags,
   getPriceRange,
 } from "../../../lib/api/catalog";
+import type { CategoryNode } from "../../../types/catalog";
 
 interface PageProps {
   params: { categorySlug: string };
@@ -25,6 +31,8 @@ interface PageProps {
     brandId?: string;
     tag?: string;
     sort?: string;
+    categoryIds?: string;
+    limit?: string;
   };
 }
 
@@ -47,10 +55,20 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     : undefined;
   const { sortBy, sortOrder } = parseSortParam(searchParams.sort);
 
-  const [result, attributes, brands, tags, priceBounds] = await Promise.all([
+  // Extra subcategories checked in the sidebar tree, on top of this page's own category
+  const extraCategoryIds = searchParams.categoryIds
+    ? searchParams.categoryIds.split(",").filter((id) => id && id !== category.id)
+    : [];
+  const categoryIds = extraCategoryIds.length > 0 ? [category.id, ...extraCategoryIds] : undefined;
+
+  const limit = searchParams.limit ? Number(searchParams.limit) : DEFAULT_PAGE_SIZE;
+
+  const [result, attributes, brands, tags, priceBounds, fullTree] = await Promise.all([
     getProducts({
       categoryId: category.id,
+      categoryIds,
       page,
+      limit,
       minPrice: searchParams.minPrice ? Number(searchParams.minPrice) : undefined,
       maxPrice: searchParams.maxPrice ? Number(searchParams.maxPrice) : undefined,
       attributeValueIds,
@@ -62,8 +80,13 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     getAttributes().catch(() => []),
     getBrands(200).catch(() => []),
     getTags().catch(() => []),
-    getPriceRange({ categoryId: category.id }).catch(() => ({ min: 0, max: 0 })),
+    getPriceRange({ categoryId: category.id, categoryIds }).catch(() => ({ min: 0, max: 0 })),
+    (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
   ]);
+
+  // Scope the sidebar tree to just this category + its own subcategories
+  const ownNode = findCategoryNode(fullTree, category.id);
+  const categoryTree: CategoryNode[] = ownNode ? [ownNode] : [];
 
   const currentSearchParams = {
     minPrice: searchParams.minPrice,
@@ -72,7 +95,11 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     brandId: searchParams.brandId,
     tag: searchParams.tag,
     sort: searchParams.sort,
+    categoryIds: searchParams.categoryIds,
+    limit: searchParams.limit,
   };
+  const resultFrom = result.meta.totalItems === 0 ? 0 : (result.meta.page - 1) * result.meta.limit + 1;
+  const resultTo = Math.min(result.meta.page * result.meta.limit, result.meta.totalItems);
 
   return (
     <div className="mx-auto max-w-site px-gutter py-8">
@@ -89,40 +116,56 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         <span className="text-foreground">{category.name}</span>
       </nav>
 
-      {/* Title + count */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
+      {/* Banner */}
+      {category.bannerMedia ? (
+        <div className="relative mb-6 flex h-56 items-center overflow-hidden rounded-sm bg-background-light sm:h-72">
+          <Image src={category.bannerMedia.url} alt={category.name} fill className="object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/50 to-transparent" />
+          <div className="relative z-10 max-w-md px-8">
+            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{category.name}</h1>
+            {category.description && (
+              <p className="mt-2 text-sm text-foreground-muted">{category.description}</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">{category.name}</h1>
           {category.description && (
             <p className="mt-1 text-sm text-foreground-muted">{category.description}</p>
           )}
         </div>
-        <p className="text-sm text-foreground-muted">
-          {result.meta.totalItems}{" "}
-          {result.meta.totalItems === 1 ? "product" : "products"}
-        </p>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
         <aside>
           <Suspense fallback={null}>
-            {/* hideCategoryFilter — category is already locked by URL slug */}
             <FilterSidebar
-              categories={[]}
+              categoryTree={categoryTree}
+              pinnedCategoryId={category.id}
               brands={brands}
               tags={tags}
               attributes={attributes}
               priceBounds={priceBounds}
-              hideCategoryFilter
             />
           </Suspense>
         </aside>
 
         <div className="flex flex-col gap-5">
-          <div className="flex items-center justify-end">
-            <Suspense fallback={null}>
-              <SortSelect currentSort={searchParams.sort} />
-            </Suspense>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-foreground-muted">
+              {result.meta.totalItems === 0
+                ? "No results"
+                : `Showing ${resultFrom}–${resultTo} of ${result.meta.totalItems} results`}
+            </p>
+            <div className="flex items-center gap-4">
+              <Suspense fallback={null}>
+                <PageSizeSelect currentLimit={result.meta.limit} />
+              </Suspense>
+              <Suspense fallback={null}>
+                <SortSelect currentSort={searchParams.sort} />
+              </Suspense>
+            </div>
           </div>
 
           <ProductGrid

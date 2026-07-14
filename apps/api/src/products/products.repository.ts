@@ -12,6 +12,7 @@ interface SortableFilter {
 
 export interface PublicProductFilter extends SortableFilter {
   categoryId?: string;
+  categoryIds?: string[];
   brandId?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -60,7 +61,15 @@ export class ProductsRepository {
   private buildPublicWhere(
     filter: Pick<
       PublicProductFilter,
-      "categoryId" | "brandId" | "minPrice" | "maxPrice" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"
+      | "categoryId"
+      | "categoryIds"
+      | "brandId"
+      | "minPrice"
+      | "maxPrice"
+      | "search"
+      | "isFeatured"
+      | "attributeValueIds"
+      | "tagSlug"
     >,
     includePriceFilter = true,
   ): Prisma.ProductWhereInput {
@@ -68,7 +77,11 @@ export class ProductsRepository {
       deletedAt: null,
       status: "APPROVED",
       variants: { some: { deletedAt: null } },
-      ...(filter.categoryId ? { categoryId: filter.categoryId } : {}),
+      ...(filter.categoryIds && filter.categoryIds.length > 0
+        ? { categoryId: { in: filter.categoryIds } }
+        : filter.categoryId
+          ? { categoryId: filter.categoryId }
+          : {}),
       ...(filter.brandId ? { brandId: filter.brandId } : {}),
       ...(filter.isFeatured !== undefined ? { isFeatured: filter.isFeatured } : {}),
       ...(includePriceFilter && (filter.minPrice !== undefined || filter.maxPrice !== undefined)
@@ -138,7 +151,7 @@ export class ProductsRepository {
   async getPriceRange(
     filter: Pick<
       PublicProductFilter,
-      "categoryId" | "brandId" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"
+      "categoryId" | "categoryIds" | "brandId" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"
     >,
   ): Promise<{ min: number; max: number }> {
     const where = this.buildPublicWhere(filter, false);

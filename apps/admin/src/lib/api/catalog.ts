@@ -10,13 +10,9 @@ export interface Category {
   isActive: boolean;
   parentId?: string | null;
   parent?: { id: string; name: string } | null;
-  imageMedia?: { url: string } | null;
+  iconMedia?: { id: string; url: string } | null;
+  bannerMedia?: { id: string; url: string } | null;
   createdAt: string;
-}
-
-export async function listCategories(params: { page?: number; limit?: number; search?: string; parentId?: string } = {}) {
-  const res = await apiClient.get("/categories", { params });
-  return res.data as { data: Category[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }
 
 export async function getCategory(id: string): Promise<Category> {
@@ -29,12 +25,37 @@ export async function listCategoriesForAdmin(): Promise<Category[]> {
   return res.data.data as Category[];
 }
 
-export async function createCategory(data: { name: string; description?: string; parentId?: string; isActive?: boolean }): Promise<Category> {
+export async function uploadCategoryImage(file: Blob): Promise<{ id: string; url: string }> {
+  const formData = new FormData();
+  formData.append("file", file, "image.jpg");
+  formData.append("purpose", "CATEGORY_MEDIA");
+  const res = await apiClient.post("/uploads", formData);
+  return res.data.data as { id: string; url: string };
+}
+
+export async function createCategory(data: {
+  name: string;
+  description?: string;
+  parentId?: string;
+  isActive?: boolean;
+  iconMediaId?: string;
+  bannerMediaId?: string;
+}): Promise<Category> {
   const res = await apiClient.post("/categories", data);
   return res.data.data as Category;
 }
 
-export async function updateCategory(id: string, data: { name?: string; description?: string; parentId?: string; isActive?: boolean }): Promise<Category> {
+export async function updateCategory(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    parentId?: string;
+    isActive?: boolean;
+    iconMediaId?: string;
+    bannerMediaId?: string;
+  },
+): Promise<Category> {
   const res = await apiClient.patch(`/categories/${id}`, data);
   return res.data.data as Category;
 }

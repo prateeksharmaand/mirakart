@@ -9,6 +9,13 @@ export class ProductQueryDto extends PaginationQueryDto {
   @IsString()
   categoryId?: string;
 
+  @ApiPropertyOptional({ description: "Comma-separated category ids (OR filter, takes precedence over categoryId)" })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === "string" ? value.split(",").filter(Boolean) : value))
+  @IsArray()
+  @IsString({ each: true })
+  categoryIds?: string[];
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

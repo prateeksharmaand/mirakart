@@ -25,6 +25,7 @@ export interface AttributeFilter {
 
 export interface ProductListParams {
   categoryId?: string;
+  categoryIds?: string[];
   brandId?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -50,6 +51,7 @@ function toQueryString(params: Record<string, string | number | boolean | undefi
 export async function getProducts(params: ProductListParams = {}): Promise<PaginatedResult<ProductListItem>> {
   const qs = toQueryString({
     categoryId: params.categoryId,
+    categoryIds: params.categoryIds?.join(","),
     brandId: params.brandId,
     minPrice: params.minPrice,
     maxPrice: params.maxPrice,
@@ -109,10 +111,14 @@ export interface PriceRange {
 }
 
 export function getPriceRange(
-  params: Pick<ProductListParams, "categoryId" | "brandId" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"> = {},
+  params: Pick<
+    ProductListParams,
+    "categoryId" | "categoryIds" | "brandId" | "search" | "isFeatured" | "attributeValueIds" | "tagSlug"
+  > = {},
 ): Promise<PriceRange> {
   const qs = toQueryString({
     categoryId: params.categoryId,
+    categoryIds: params.categoryIds?.join(","),
     brandId: params.brandId,
     search: params.search,
     isFeatured: params.isFeatured,

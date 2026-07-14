@@ -3,17 +3,21 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, X, SlidersHorizontal, Check } from "lucide-react";
-import type { Category, Brand } from "../types/catalog";
+import type { Brand, CategoryNode } from "../types/catalog";
 import type { AttributeFilter, PriceRange, Tag } from "../lib/api/catalog";
 import { PriceRangeSlider } from "./price-range-slider";
+import { CategoryTree } from "./category-tree";
+import { flattenCategories } from "../lib/category-tree-utils";
 
 interface FilterSidebarProps {
-  categories: Category[];
+  /** Full category tree. On /c/[slug], pass a single-root array ([category]) via pinnedCategoryId. */
+  categoryTree: CategoryNode[];
+  /** The current page's own category (e.g. on /c/[slug]) — shown checked/locked, not toggleable. */
+  pinnedCategoryId?: string;
   brands: Brand[];
   tags: Tag[];
   attributes: AttributeFilter[];
   priceBounds: PriceRange;
-  hideCategoryFilter?: boolean;
 }
 
 // Returns true if the hex color is light (use dark icon on top of it)
@@ -105,20 +109,29 @@ function CollapsibleList({
 }
 
 export function FilterSidebar({
-  categories,
+  categoryTree,
+  pinnedCategoryId,
   brands,
   tags,
   attributes,
   priceBounds,
-  hideCategoryFilter = false,
 }: FilterSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [brandSearch, setBrandSearch] = React.useState("");
 
-  // URL state
-  const currentCategoryId = searchParams.get("categoryId") ?? "";
+  // URL state — categoryIds (multi-select, from the tree) takes precedence;
+  // a lone legacy `categoryId` (e.g. the header's category-scoped search) is
+  // treated as a single pre-selected id until the user touches the tree.
+  const selectedCategoryIds = React.useMemo(() => {
+    const raw = searchParams.get("categoryIds");
+    if (raw) return raw.split(",").filter(Boolean);
+    const single = searchParams.get("categoryId");
+    return single ? [single] : [];
+  }, [searchParams]);
+  const selectedCategoryIdSet = React.useMemo(() => new Set(selectedCategoryIds), [selectedCategoryIds]);
+  const flatCategories = React.useMemo(() => flattenCategories(categoryTree), [categoryTree]);
   const currentBrandId = searchParams.get("brandId") ?? "";
   const currentTag = searchParams.get("tag") ?? "";
   const currentMinPrice = searchParams.get("minPrice") ?? "";
@@ -186,15 +199,29 @@ export function FilterSidebar({
     router.push("?");
   }
 
+  function toggleCategory(id: string) {
+    const next = selectedCategoryIdSet.has(id)
+      ? selectedCategoryIds.filter((existingId) => existingId !== id)
+      : [...selectedCategoryIds, id];
+    push({ categoryId: null, categoryIds: next.length > 0 ? next.join(",") : null });
+  }
+
   const colorAttrs = attributes.filter((a) => a.type === "COLOR" && a.values.length > 0);
   const selectAttrs = attributes.filter((a) => a.type === "SELECT" && a.values.length > 0);
   const textAttrs = attributes.filter((a) => a.type === "TEXT" && a.values.length > 0);
 
   // Active chips data
   const activeChips: Array<{ key: string; label: string; onRemove: () => void }> = [];
-  if (currentCategoryId) {
-    const cat = categories.find((c) => c.id === currentCategoryId);
-    if (cat) activeChips.push({ key: "cat", label: cat.name, onRemove: () => push({ categoryId: null }) });
+  for (const catId of selectedCategoryIds) {
+    if (catId === pinnedCategoryId) continue; // the page's own category isn't a removable chip
+    const cat = flatCategories.find((c) => c.id === catId);
+    if (cat) {
+      activeChips.push({
+        key: `cat-${catId}`,
+        label: cat.name,
+        onRemove: () => toggleCategory(catId),
+      });
+    }
   }
   if (currentBrandId) {
     const brand = brands.find((b) => b.id === currentBrandId);
@@ -284,42 +311,18 @@ export function FilterSidebar({
       )}
 
       {/* Categories */}
-      {!hideCategoryFilter && categories.length > 0 && (
+      {categoryTree.length > 0 && (
         <Section
-          title="Categories"
-          badge={currentCategoryId ? 1 : 0}
-          onClear={() => push({ categoryId: null })}
+          title={pinnedCategoryId ? "Product Categories" : "Categories"}
+          badge={activeChips.filter((c) => c.key.startsWith("cat-")).length}
+          onClear={() => push({ categoryId: null, categoryIds: null })}
         >
-          <div className="flex flex-col gap-0.5">
-            <CollapsibleList total={categories.length}>
-              {categories.map((cat) => {
-                const active = currentCategoryId === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => push({ categoryId: active ? null : cat.id })}
-                    className={`flex items-center gap-2.5 rounded px-2 py-1.5 text-sm transition-colors ${
-                      active
-                        ? "font-medium text-foreground"
-                        : "text-foreground-muted hover:text-foreground hover:bg-background-light"
-                    }`}
-                  >
-                    <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                        active
-                          ? "border-foreground bg-foreground"
-                          : "border-border"
-                      }`}
-                    >
-                      {active && <Check className="h-2.5 w-2.5 text-background" />}
-                    </span>
-                    {cat.name}
-                  </button>
-                );
-              })}
-            </CollapsibleList>
-          </div>
+          <CategoryTree
+            nodes={categoryTree}
+            selectedIds={selectedCategoryIdSet}
+            pinnedId={pinnedCategoryId}
+            onToggle={toggleCategory}
+          />
         </Section>
       )}
 
