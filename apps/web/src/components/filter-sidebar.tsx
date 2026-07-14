@@ -552,7 +552,6 @@ export function FilterSidebar({
       {tags.length > 0 && (
         <Section
           title="Tags"
-          defaultOpen={false}
           badge={currentTag ? 1 : 0}
           onClear={() => push({ tag: null })}
         >
