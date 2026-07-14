@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { Button, Skeleton } from "@mirakart/ui";
+import { CheckoutSteps } from "../../../../components/checkout-steps";
 import { fetchOrder } from "../../../../lib/api/orders";
 import { formatPrice } from "../../../../lib/format";
 
@@ -25,6 +26,7 @@ export default function OrderConfirmationPage({ params }: { params: { orderId: s
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-gutter py-16 text-center">
+      <CheckoutSteps current="confirmation" />
       <CheckCircle2 className="h-14 w-14 text-success" />
       <h1 className="text-2xl font-medium text-foreground">Order placed!</h1>
       <p className="text-foreground-muted">

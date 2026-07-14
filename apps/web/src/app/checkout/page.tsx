@@ -12,13 +12,13 @@ import {
   CardTitle,
   Checkbox,
   EmptyState,
-  Label,
   RadioGroup,
   RadioGroupItem,
   Skeleton,
   toast,
 } from "@mirakart/ui";
 import { AddressForm } from "../../components/address-form";
+import { CheckoutSteps } from "../../components/checkout-steps";
 import { useCart } from "../../hooks/use-cart";
 import { createAddress, fetchAddresses } from "../../lib/api/customers";
 import type { AddressInput } from "../../lib/api/customers";
@@ -154,6 +154,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-site px-gutter py-10">
+      <CheckoutSteps current="checkout" />
       <h1 className="mb-8 text-3xl font-medium text-foreground">Checkout</h1>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
@@ -208,7 +209,7 @@ export default function CheckoutPage() {
                 {PAYMENT_OPTIONS.map((option) => (
                   <label key={option.value} className="flex cursor-pointer items-center gap-3">
                     <RadioGroupItem value={option.value} />
-                    <Label className="cursor-pointer font-normal">{option.label}</Label>
+                    <span className="cursor-pointer text-sm font-normal text-foreground">{option.label}</span>
                   </label>
                 ))}
               </RadioGroup>
