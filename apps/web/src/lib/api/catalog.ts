@@ -135,6 +135,15 @@ export interface DealProduct extends ProductListItem {
   availableCount: number;
 }
 
+export interface ReviewSummary {
+  averageRating: number;
+  reviewCount: number;
+}
+
+export function getReviewSummary(productId: string): Promise<ReviewSummary> {
+  return fetchPublic<ReviewSummary>(`/products/${productId}/reviews/summary`);
+}
+
 export function getDeals(limit = 4): Promise<DealProduct[]> {
   return fetchPublic<DealProduct[]>(`/products/deals?limit=${limit}`);
 }

@@ -10,9 +10,11 @@ interface WishlistButtonProps {
   productId: string;
   productSlug: string;
   className?: string;
+  /** "icon" (default) — round icon button. "text" — inline text link with icon. */
+  variant?: "icon" | "text";
 }
 
-export function WishlistButton({ productId, productSlug, className = "" }: WishlistButtonProps) {
+export function WishlistButton({ productId, productSlug, className = "", variant = "icon" }: WishlistButtonProps) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
   const { data: wishlistIds } = useWishlistProductIds();
@@ -27,6 +29,22 @@ export function WishlistButton({ productId, productSlug, className = "" }: Wishl
       return;
     }
     toggle.mutate(productId);
+  }
+
+  if (variant === "text") {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={toggle.isPending}
+        className={`flex items-center gap-1.5 text-sm text-foreground-muted transition-colors hover:text-primary ${
+          isWishlisted ? "text-red-500 hover:text-red-600" : ""
+        } ${className}`}
+      >
+        <Heart className="h-3.5 w-3.5" fill={isWishlisted ? "currentColor" : "none"} />
+        {isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+      </button>
+    );
   }
 
   return (

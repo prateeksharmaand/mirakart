@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Package, RotateCcw, ShieldCheck, Truck } from "lucide-react";
+import { Star } from "lucide-react";
 import { ProductPurchasePanel } from "../../../components/product-purchase-panel";
 import { ProductGallery } from "../../../components/product-gallery";
 import { ProductTabs } from "../../../components/product-tabs";
 import { ProductCard } from "../../../components/product-card";
 import { ProductReviews } from "../../../components/product-reviews";
 import { ProductQueries } from "../../../components/product-queries";
-import { RecentlyViewedTracker, RecentlyViewedSection } from "../../../components/recently-viewed";
+import { RecentlyViewedTracker, RecentlyViewedSidebar } from "../../../components/recently-viewed";
 import { WishlistButton } from "../../../components/wishlist-button";
-import { getProductBySlug, getProducts } from "../../../lib/api/catalog";
+import { getProductBySlug, getProducts, getReviewSummary } from "../../../lib/api/catalog";
 
 interface PageProps {
   params: { productSlug: string };
@@ -33,10 +33,13 @@ export default async function ProductPage({ params }: PageProps) {
   if (!product) notFound();
 
   // Related products — same category, excluding current
-  const relatedResult = await getProducts({
-    categoryId: product.category?.id,
-    limit: 8,
-  }).catch(() => ({ data: [], meta: { page: 1, limit: 8, totalItems: 0, totalPages: 1 } }));
+  const [relatedResult, reviewSummary] = await Promise.all([
+    getProducts({
+      categoryId: product.category?.id,
+      limit: 8,
+    }).catch(() => ({ data: [], meta: { page: 1, limit: 8, totalItems: 0, totalPages: 1 } })),
+    getReviewSummary(product.id).catch(() => ({ averageRating: 0, reviewCount: 0 })),
+  ]);
   const related = relatedResult.data.filter((p) => p.id !== product.id).slice(0, 4);
 
   const hasVariants = product.variants.length > 0;
@@ -102,31 +105,21 @@ export default async function ProductPage({ params }: PageProps) {
       </nav>
 
       {/* Main product section */}
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_420px]">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_420px_260px]">
         {/* Gallery */}
         <div>
           <ProductGallery images={product.images} productName={product.name} />
         </div>
 
         {/* Info + purchase — sticky on desktop */}
-        <div className="flex flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
+        <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
           {/* Brand & Name */}
           <div>
-            <div className="mb-1 flex items-center gap-3">
-              {product.brand && (
-                <span className="text-xs font-semibold uppercase tracking-widest text-foreground-muted">
-                  {product.brand.name}
-                </span>
-              )}
-              {product.category && (
-                <Link
-                  href={`/c/${product.category.slug}`}
-                  className="text-xs text-foreground-muted hover:text-primary transition-colors"
-                >
-                  {product.category.name}
-                </Link>
-              )}
-            </div>
+            {product.brand && (
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-widest text-foreground-muted">
+                {product.brand.name}
+              </span>
+            )}
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
                 {product.name}
@@ -138,47 +131,37 @@ export default async function ProductPage({ params }: PageProps) {
             )}
           </div>
 
+          {/* Rating summary */}
+          {reviewSummary.reviewCount > 0 && (
+            <a href="#reviews-tab" className="flex items-center gap-2">
+              <span className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className="h-3.5 w-3.5"
+                    fill={n <= Math.round(reviewSummary.averageRating) ? "#F59E0B" : "none"}
+                    stroke={n <= Math.round(reviewSummary.averageRating) ? "#F59E0B" : "currentColor"}
+                  />
+                ))}
+              </span>
+              <span className="text-xs text-foreground-muted hover:text-primary transition-colors">
+                ({reviewSummary.reviewCount} {reviewSummary.reviewCount === 1 ? "review" : "reviews"})
+              </span>
+            </a>
+          )}
+
           {/* Purchase panel */}
           <ProductPurchasePanel product={product} />
+        </div>
 
-          {/* Delivery info */}
-          <div className="rounded-lg border border-border p-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
-                <div>
-                  <p className="text-xs font-medium text-foreground">Free Delivery</p>
-                  <p className="text-xs text-foreground-muted">On orders above ₹999</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
-                <div>
-                  <p className="text-xs font-medium text-foreground">Easy Returns</p>
-                  <p className="text-xs text-foreground-muted">7-day hassle-free returns</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
-                <div>
-                  <p className="text-xs font-medium text-foreground">Secure Payment</p>
-                  <p className="text-xs text-foreground-muted">100% secure transactions</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Package className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
-                <div>
-                  <p className="text-xs font-medium text-foreground">Quality Assured</p>
-                  <p className="text-xs text-foreground-muted">Authentic products only</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Recent views sidebar */}
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <RecentlyViewedSidebar excludeProductId={product.id} />
         </div>
       </div>
 
       {/* Tabs: Description + Additional Info + Reviews + Queries */}
-      <div className="mt-12 border-t border-border pt-8">
+      <div id="reviews-tab" className="mt-12 border-t border-border pt-8">
         <ProductTabs
           tabs={[
             { id: "description", label: "Description", content: descriptionContent },
@@ -210,9 +193,6 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
         </div>
       )}
-
-      {/* Recently viewed */}
-      <RecentlyViewedSection excludeProductId={product.id} />
     </div>
   );
 }

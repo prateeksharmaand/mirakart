@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, Zap, Check } from "lucide-react";
-import { Button } from "@mirakart/ui";
+import { ShoppingBag, Zap, Check, Ruler, Share2 } from "lucide-react";
+import { Button, toast } from "@mirakart/ui";
 import { formatPrice } from "../lib/format";
 import { useAddCartItem } from "../hooks/use-cart";
 import { useAuthStore } from "../stores/auth-store";
 import { TagList } from "./product-tabs";
+import { WishlistButton } from "./wishlist-button";
 import type { ProductDetail, ProductVariant } from "../types/catalog";
 
 function variantAttributeMap(variant: ProductVariant): Record<string, string> {
@@ -122,6 +124,20 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
     );
   }
 
+  async function handleShare() {
+    const shareData = { title: product.name, url: window.location.href };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // user cancelled the share sheet — no action needed
+      }
+      return;
+    }
+    await navigator.clipboard.writeText(shareData.url);
+    toast({ title: "Link copied to clipboard", variant: "success" });
+  }
+
   function handleBuyNow() {
     if (!isAuthenticated) {
       router.push(`/login?next=/p/${product.slug}`);
@@ -153,9 +169,17 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
         )}
       </div>
 
+      {/* Short description excerpt */}
+      {product.description && (
+        <p className="line-clamp-3 text-sm leading-relaxed text-foreground-muted">
+          {product.description}
+        </p>
+      )}
+
       {/* Variant attributes */}
-      {attributes.map((attribute) => {
+      {attributes.map((attribute, index) => {
         const isColor = attribute.type === "COLOR";
+        const isLast = index === attributes.length - 1;
         return (
           <div key={attribute.id} className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -164,6 +188,15 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
                 <span className="text-sm text-foreground-muted">
                   — {[...attribute.values.values()].find((v) => v.id === selected[attribute.id])?.value}
                 </span>
+              )}
+              {isLast && Object.keys(selected).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelected({})}
+                  className="ml-auto text-xs text-foreground-muted underline underline-offset-2 hover:text-primary"
+                >
+                  Clear
+                </button>
               )}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -216,13 +249,8 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
         );
       })}
 
-      {/* Stock status + SKU */}
-      <div className="flex items-center gap-4">
-        {matchedVariant && <StockBadge stock={stock} />}
-        {matchedVariant?.sku && (
-          <span className="text-xs text-foreground-muted">SKU: {matchedVariant.sku}</span>
-        )}
-      </div>
+      {/* Stock status */}
+      <div className="flex items-center gap-4">{matchedVariant && <StockBadge stock={stock} />}</div>
 
       {/* Tags */}
       {product.tags && product.tags.length > 0 && (
@@ -298,6 +326,46 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
           <Zap className="h-4 w-4" />
           Buy Now
         </button>
+      </div>
+
+      {/* Extra buttons */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
+        <button
+          type="button"
+          onClick={() => toast({ title: "Check the size chart in the product description", variant: "default" })}
+          className="flex items-center gap-1.5 text-foreground-muted transition-colors hover:text-primary"
+        >
+          <Ruler className="h-3.5 w-3.5" />
+          Size Guide
+        </button>
+        <span className="text-border">|</span>
+        <WishlistButton productId={product.id} productSlug={product.slug} variant="text" />
+        <span className="text-border">|</span>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="flex items-center gap-1.5 text-foreground-muted transition-colors hover:text-primary"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          Share this Product
+        </button>
+      </div>
+
+      {/* SKU + Category meta */}
+      <div className="flex flex-col gap-1 text-sm text-foreground-muted">
+        {(matchedVariant?.sku ?? product.sku) && (
+          <p>
+            SKU: <span className="text-foreground">{matchedVariant?.sku ?? product.sku}</span>
+          </p>
+        )}
+        {product.category && (
+          <p>
+            Category:{" "}
+            <Link href={`/c/${product.category.slug}`} className="text-foreground hover:text-primary">
+              {product.category.name}
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );
