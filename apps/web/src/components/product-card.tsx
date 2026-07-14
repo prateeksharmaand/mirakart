@@ -16,35 +16,37 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   return (
     <div className="group relative flex flex-col">
       {/* Image Container */}
-      <Link href={`/p/${product.slug}`} className="relative block aspect-[3/4] w-full overflow-hidden rounded-sm bg-background-light">
-        {image ? (
-          <>
-            <Image
-              src={image.url}
-              alt={product.name}
-              fill
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-              className={`object-cover transition-all duration-500 ease-theme ${secondImage ? "group-hover:opacity-0" : "group-hover:scale-105"}`}
-            />
-            {secondImage && (
+      <div className="relative block aspect-[3/4] w-full overflow-hidden rounded-sm bg-background-light">
+        <Link href={`/p/${product.slug}`} className="absolute inset-0 z-0" aria-label={product.name}>
+          {image ? (
+            <>
               <Image
-                src={secondImage.url}
+                src={image.url}
                 alt={product.name}
                 fill
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                className="object-cover opacity-0 transition-all duration-500 ease-theme group-hover:opacity-100"
+                className={`object-cover transition-all duration-500 ease-theme ${secondImage ? "group-hover:opacity-0" : "group-hover:scale-105"}`}
               />
-            )}
-          </>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-background-light">
-            <ShoppingBag className="h-8 w-8 text-border" />
-          </div>
-        )}
+              {secondImage && (
+                <Image
+                  src={secondImage.url}
+                  alt={product.name}
+                  fill
+                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+                  className="object-cover opacity-0 transition-all duration-500 ease-theme group-hover:opacity-100"
+                />
+              )}
+            </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-background-light">
+              <ShoppingBag className="h-8 w-8 text-border" />
+            </div>
+          )}
+        </Link>
 
         {/* Badges */}
         {onSale && (
-          <div className="absolute left-2.5 top-2.5">
+          <div className="pointer-events-none absolute left-2.5 top-2.5 z-10">
             <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
               -{discount}%
             </span>
@@ -52,18 +54,18 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         )}
 
         {/* Hover Actions */}
-        <div className="absolute right-2.5 top-2.5 flex translate-x-8 flex-col gap-2 opacity-0 transition-all duration-300 ease-theme group-hover:translate-x-0 group-hover:opacity-100">
+        <div className="absolute right-2.5 top-2.5 z-10 flex translate-x-8 flex-col gap-2 opacity-0 transition-all duration-300 ease-theme group-hover:translate-x-0 group-hover:opacity-100">
           <WishlistButton productId={product.id} productSlug={product.slug} />
         </div>
 
         {/* Quick Add */}
         <Link
           href={`/p/${product.slug}`}
-          className="absolute bottom-0 left-0 right-0 translate-y-full bg-foreground py-2.5 text-center text-xs font-medium uppercase tracking-wider text-background opacity-0 transition-all duration-300 ease-theme hover:bg-primary group-hover:translate-y-0 group-hover:opacity-100"
+          className="absolute bottom-0 left-0 right-0 z-10 translate-y-full bg-foreground py-2.5 text-center text-xs font-medium uppercase tracking-wider text-background opacity-0 transition-all duration-300 ease-theme hover:bg-primary group-hover:translate-y-0 group-hover:opacity-100"
         >
           Quick View
         </Link>
-      </Link>
+      </div>
 
       {/* Info */}
       <div className="mt-3 flex flex-col gap-1 px-0.5">
