@@ -5,7 +5,7 @@ import { Providers } from "../components/providers";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
 import { getCategories } from "../lib/api/catalog";
-import type { Category } from "../types/catalog";
+import type { CategoryNode } from "../types/catalog";
 
 const jost = Jost({ subsets: ["latin"], variable: "--font-jost", display: "swap" });
 
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const categories = (await getCategories(true).catch(() => [])) as Category[];
+  const categories = (await getCategories(false).catch(() => [])) as CategoryNode[];
 
   return (
     <html lang="en" className={jost.variable}>

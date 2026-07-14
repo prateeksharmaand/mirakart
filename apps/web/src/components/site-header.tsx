@@ -9,9 +9,10 @@ import { useAuthStore } from "../stores/auth-store";
 import { useCart, useRemoveCartItem } from "../hooks/use-cart";
 import { useWishlistProductIds } from "../hooks/use-wishlist";
 import { formatPrice } from "../lib/format";
-import type { Category } from "../types/catalog";
+import { flattenCategories } from "../lib/category-tree-utils";
+import type { CategoryNode } from "../types/catalog";
 
-export function SiteHeader({ categories }: { categories: Category[] }) {
+export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
@@ -19,6 +20,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [searchCategoryId, setSearchCategoryId] = React.useState("");
   const categoriesMenuRef = React.useRef<HTMLDivElement>(null);
+  const flatCategories = React.useMemo(() => flattenCategories(categories), [categories]);
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const customer = useAuthStore((s) => (hasHydrated ? s.customer : null));
   const clearAuth = useAuthStore((s) => s.clearAuth);
@@ -98,7 +100,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
                 className="h-11 max-w-[11rem] cursor-pointer bg-transparent px-3 text-sm text-foreground-muted outline-none"
               >
                 <option value="">Select Category</option>
-                {categories.map((category) => (
+                {flatCategories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -297,9 +299,9 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
                 className="flex h-12 items-center gap-2 pr-5 text-sm font-medium text-foreground transition-colors hover:text-primary"
               >
                 All Categories
-                {categories.length > 0 && (
+                {flatCategories.length > 0 && (
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                    {categories.length}
+                    {flatCategories.length}
                   </span>
                 )}
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
@@ -316,7 +318,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
                   Shop by Category
                 </p>
                 <div className="max-h-96 overflow-y-auto py-2">
-                  {categories.map((category) => (
+                  {flatCategories.map((category) => (
                     <Link
                       key={category.id}
                       href={`/c/${category.slug}`}
@@ -333,17 +335,40 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
 
             <div className="h-12 w-px shrink-0 bg-border" />
 
-            {/* Category nav links */}
+            {/* Category nav links — top-level only; any with subcategories get a hover dropdown */}
             <nav className="flex h-12 items-center gap-1 pl-2">
-              {categories.slice(0, 7).map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/c/${category.slug}`}
-                  className="flex h-12 items-center border-b-2 border-transparent px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-                >
-                  {category.name}
-                </Link>
-              ))}
+              {categories.slice(0, 7).map((category) =>
+                category.children.length > 0 ? (
+                  <div key={category.id} className="group/nav relative h-12">
+                    <Link
+                      href={`/c/${category.slug}`}
+                      className="flex h-12 items-center gap-1 border-b-2 border-transparent px-3 text-sm font-medium text-foreground transition-colors group-hover/nav:border-primary group-hover/nav:text-primary"
+                    >
+                      {category.name}
+                      <ChevronDown className="h-3 w-3 text-foreground-muted transition-transform group-hover/nav:rotate-180 group-hover/nav:text-primary" />
+                    </Link>
+                    <div className="invisible absolute left-0 top-full z-50 w-56 rounded-b-md border border-t-0 border-border bg-background py-2 opacity-0 shadow-soft transition-all duration-150 ease-theme group-hover/nav:visible group-hover/nav:opacity-100">
+                      {category.children.map((child) => (
+                        <Link
+                          key={child.id}
+                          href={`/c/${child.slug}`}
+                          className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-background-light hover:text-primary"
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={category.id}
+                    href={`/c/${category.slug}`}
+                    className="flex h-12 items-center border-b-2 border-transparent px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    {category.name}
+                  </Link>
+                ),
+              )}
               {categories.length > 7 && (
                 <button
                   type="button"
@@ -386,7 +411,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
             )}
 
             <nav className="flex flex-col divide-y divide-border">
-              {categories.map((category) => (
+              {flatCategories.map((category) => (
                 <Link
                   key={category.id}
                   href={`/c/${category.slug}`}

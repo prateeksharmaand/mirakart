@@ -9,7 +9,6 @@ import { PageSizeSelect } from "../../../components/page-size-select";
 import { DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { parseSortParam } from "../../../lib/sort";
 import { ProductGrid } from "../../../components/product-grid";
-import { findCategoryNode } from "../../../lib/category-tree-utils";
 import {
   getCategoryBySlug,
   getCategories,
@@ -84,10 +83,6 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     (getCategories(false) as Promise<CategoryNode[]>).catch(() => [] as CategoryNode[]),
   ]);
 
-  // Scope the sidebar tree to just this category + its own subcategories
-  const ownNode = findCategoryNode(fullTree, category.id);
-  const categoryTree: CategoryNode[] = ownNode ? [ownNode] : [];
-
   const currentSearchParams = {
     minPrice: searchParams.minPrice,
     maxPrice: searchParams.maxPrice,
@@ -141,7 +136,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         <aside>
           <Suspense fallback={null}>
             <FilterSidebar
-              categoryTree={categoryTree}
+              categoryTree={fullTree}
               pinnedCategoryId={category.id}
               brands={brands}
               tags={tags}
