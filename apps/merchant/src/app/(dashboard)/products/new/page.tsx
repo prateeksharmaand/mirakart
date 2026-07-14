@@ -122,7 +122,13 @@ export default function NewProductPage() {
               }}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {"  ".repeat(c.depth)}
+                      {c.depth > 0 ? "↳ " : ""}
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormField>

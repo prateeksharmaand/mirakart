@@ -34,9 +34,39 @@ export async function uploadDocument(data: { type: string; mediaId: string }): P
   return res.data.data as MerchantDocument;
 }
 
-export async function listCategories() {
-  const res = await apiClient.get("/categories", { params: { limit: 200 } });
-  return res.data.data as Array<{ id: string; name: string }>;
+export interface CategoryOption {
+  id: string;
+  name: string;
+  parentId: string | null;
+  /** Nesting depth (0 = top-level) — use to indent in a flat <Select>. */
+  depth: number;
+}
+
+export async function listCategories(): Promise<CategoryOption[]> {
+  const res = await apiClient.get("/categories", { params: { flat: "true" } });
+  const flat = res.data.data as Array<{ id: string; name: string; parentId?: string | null }>;
+  return buildCategoryOptions(flat);
+}
+
+// Orders a flat category list into parent-then-children (depth-first) so a
+// plain <Select> can show subcategories indented under their parent instead
+// of only ever listing top-level categories.
+function buildCategoryOptions(flat: Array<{ id: string; name: string; parentId?: string | null }>): CategoryOption[] {
+  const byParent = new Map<string | null, typeof flat>();
+  for (const cat of flat) {
+    const key = cat.parentId ?? null;
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key)!.push(cat);
+  }
+  const result: CategoryOption[] = [];
+  function walk(parentId: string | null, depth: number) {
+    for (const cat of byParent.get(parentId) ?? []) {
+      result.push({ id: cat.id, name: cat.name, parentId: cat.parentId ?? null, depth });
+      walk(cat.id, depth + 1);
+    }
+  }
+  walk(null, 0);
+  return result;
 }
 
 export async function listBrands() {

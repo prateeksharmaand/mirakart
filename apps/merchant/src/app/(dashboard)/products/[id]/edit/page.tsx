@@ -137,7 +137,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               >
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.depth > 0 ? "↳ " : ""}
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormField>
