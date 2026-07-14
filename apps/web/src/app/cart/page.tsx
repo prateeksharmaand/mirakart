@@ -163,8 +163,12 @@ export default function CartPage() {
                     <button
                       type="button"
                       className="flex h-full w-8 items-center justify-center text-foreground"
-                      onClick={() => updateItem.mutate({ itemId: item.id, quantity: Math.max(1, item.quantity - 1) })}
-                      aria-label="Decrease quantity"
+                      onClick={() =>
+                        item.quantity <= 1
+                          ? removeItem.mutate(item.id)
+                          : updateItem.mutate({ itemId: item.id, quantity: item.quantity - 1 })
+                      }
+                      aria-label={item.quantity <= 1 ? "Remove item" : "Decrease quantity"}
                     >
                       –
                     </button>

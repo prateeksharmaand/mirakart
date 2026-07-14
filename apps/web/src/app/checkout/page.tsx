@@ -58,15 +58,14 @@ export default function CheckoutPage() {
       setShowAddressForm(true);
       return;
     }
-    if (!addressId) {
-      setAddressId(addresses.find((a) => a.isDefault)?.id ?? addresses[0]!.id);
-    }
-  }, [addresses, addressId]);
+    setShowAddressForm(false);
+    setAddressId((prev) => (prev && addresses.some((a) => a.id === prev) ? prev : addresses.find((a) => a.isDefault)?.id ?? addresses[0]!.id));
+  }, [addresses]);
 
   const createAddressMutation = useMutation({
     mutationFn: createAddress,
     onSuccess: (address) => {
-      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      queryClient.setQueryData<typeof addresses>(["addresses"], (old) => [...(old ?? []), address]);
       setAddressId(address.id);
       setShowAddressForm(false);
     },
