@@ -4,13 +4,103 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { useAuthStore } from "../stores/auth-store";
 import { useCart, useRemoveCartItem } from "../hooks/use-cart";
 import { useWishlistProductIds } from "../hooks/use-wishlist";
 import { formatPrice } from "../lib/format";
 import { flattenCategories } from "../lib/category-tree-utils";
-import type { CategoryNode } from "../types/catalog";
+import { getProducts } from "../lib/api/catalog";
+import type { CategoryNode, ProductListItem } from "../types/catalog";
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+/** Live search results dropdown — shown under the search input while typing. */
+function SearchSuggestions({
+  searchTerm,
+  onNavigate,
+}: {
+  searchTerm: string;
+  onNavigate: () => void;
+}) {
+  const debouncedTerm = useDebouncedValue(searchTerm.trim(), 300);
+  const { data, isFetching } = useQuery({
+    queryKey: ["search-suggestions", debouncedTerm],
+    queryFn: () => getProducts({ search: debouncedTerm, limit: 7 }),
+    enabled: debouncedTerm.length >= 2,
+    staleTime: 30_000,
+  });
+
+  if (debouncedTerm.length < 2) return null;
+
+  const products = data?.data ?? [];
+  const totalItems = data?.meta.totalItems ?? 0;
+
+  return (
+    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[28rem] overflow-y-auto rounded border border-border bg-background shadow-soft">
+      {isFetching && products.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-foreground-muted">Searching…</p>
+      ) : products.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-foreground-muted">
+          No products found for &quot;{debouncedTerm}&quot;
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col divide-y divide-border">
+            {products.map((product: ProductListItem) => {
+              const image = product.images[0]?.media;
+              const price = Number(product.basePrice);
+              const compareAtPrice = product.compareAtPrice ? Number(product.compareAtPrice) : null;
+              const onSale = compareAtPrice !== null && compareAtPrice > price;
+              return (
+                <Link
+                  key={product.id}
+                  href={`/p/${product.slug}`}
+                  onClick={onNavigate}
+                  className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-background-light"
+                >
+                  <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded bg-background-light">
+                    {image ? (
+                      <Image src={image.url} alt={product.name} fill sizes="40px" className="object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ShoppingBag className="h-4 w-4 text-border" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{product.name}</span>
+                  <span className="shrink-0 text-sm">
+                    {onSale && (
+                      <span className="mr-1.5 text-foreground-muted line-through">{formatPrice(compareAtPrice!)}</span>
+                    )}
+                    <span className={onSale ? "font-medium text-primary" : "font-medium text-foreground"}>
+                      {formatPrice(price)}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+          <Link
+            href={`/search?q=${encodeURIComponent(debouncedTerm)}`}
+            onClick={onNavigate}
+            className="block border-t border-border px-4 py-2.5 text-center text-sm text-foreground-muted transition-colors hover:bg-background-light hover:text-primary"
+          >
+            See all products… ({totalItems})
+          </Link>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
   const router = useRouter();
@@ -19,6 +109,10 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
   const [categoriesOpen, setCategoriesOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [searchCategoryId, setSearchCategoryId] = React.useState("");
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [showMobileSuggestions, setShowMobileSuggestions] = React.useState(false);
+  const searchFormRef = React.useRef<HTMLFormElement>(null);
+  const mobileSearchFormRef = React.useRef<HTMLFormElement>(null);
   const categoriesMenuRef = React.useRef<HTMLDivElement>(null);
   const flatCategories = React.useMemo(() => flattenCategories(categories), [categories]);
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
@@ -41,6 +135,20 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [categoriesOpen]);
 
+  React.useEffect(() => {
+    if (!showSuggestions && !showMobileSuggestions) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (searchFormRef.current && !searchFormRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+      if (mobileSearchFormRef.current && !mobileSearchFormRef.current.contains(e.target as Node)) {
+        setShowMobileSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSuggestions, showMobileSuggestions]);
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!searchTerm.trim() && !searchCategoryId) return;
@@ -49,6 +157,8 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
     if (searchCategoryId) params.set("categoryId", searchCategoryId);
     router.push(`/search?${params.toString()}`);
     setMobileSearchOpen(false);
+    setShowSuggestions(false);
+    setShowMobileSuggestions(false);
   }
 
   return (
@@ -79,20 +189,25 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
 
           {/* Inline search bar — desktop */}
           <form
+            ref={searchFormRef}
             onSubmit={handleSearch}
-            className="ml-4 hidden flex-1 items-stretch overflow-hidden rounded border border-border bg-background-light lg:flex"
+            className="relative ml-4 hidden flex-1 items-stretch rounded border border-border bg-background-light lg:flex"
           >
-            <div className="flex flex-1 items-center pl-4">
+            <div className="flex flex-1 items-center overflow-hidden rounded-l pl-4">
               <Search className="h-4 w-4 shrink-0 text-foreground-muted" />
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
                 placeholder="Search your favorite product..."
                 className="h-11 w-full bg-transparent px-3 text-sm text-foreground placeholder:text-foreground-muted outline-none"
               />
             </div>
-            <div className="flex shrink-0 items-center border-l border-border">
+            <div className="flex shrink-0 items-center overflow-hidden rounded-r border-l border-border">
               <select
                 value={searchCategoryId}
                 onChange={(e) => setSearchCategoryId(e.target.value)}
@@ -107,6 +222,9 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
                 ))}
               </select>
             </div>
+            {showSuggestions && (
+              <SearchSuggestions searchTerm={searchTerm} onNavigate={() => setShowSuggestions(false)} />
+            )}
           </form>
 
           {/* Right Actions */}
@@ -268,12 +386,16 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
         {/* Mobile search row */}
         {mobileSearchOpen && (
           <div className="border-t border-border px-gutter py-3 lg:hidden">
-            <form onSubmit={handleSearch} className="flex items-center gap-2">
+            <form ref={mobileSearchFormRef} onSubmit={handleSearch} className="relative flex items-center gap-2">
               <input
                 autoFocus
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowMobileSuggestions(true);
+                }}
+                onFocus={() => setShowMobileSuggestions(true)}
                 placeholder="Search your favorite product..."
                 className="h-10 flex-1 rounded border border-border bg-background-light px-3 text-sm text-foreground placeholder:text-foreground-muted outline-none focus:border-primary"
               />
@@ -284,6 +406,9 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
               >
                 <Search className="h-4 w-4" />
               </button>
+              {showMobileSuggestions && (
+                <SearchSuggestions searchTerm={searchTerm} onNavigate={() => setShowMobileSuggestions(false)} />
+              )}
             </form>
           </div>
         )}
