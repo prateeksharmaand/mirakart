@@ -1,15 +1,15 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, Zap, Check, Ruler, Share2 } from "lucide-react";
+import { ShoppingBag, Zap, Check, Ruler } from "lucide-react";
 import { Button, toast } from "@mirakart/ui";
 import { formatPrice } from "../lib/format";
 import { useAddCartItem } from "../hooks/use-cart";
 import { useAuthStore } from "../stores/auth-store";
 import { TagList } from "./product-tabs";
 import { WishlistButton } from "./wishlist-button";
+import { ShareButton } from "./share-button";
 import type { ProductDetail, ProductVariant } from "../types/catalog";
 
 function variantAttributeMap(variant: ProductVariant): Record<string, string> {
@@ -124,20 +124,6 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
     );
   }
 
-  async function handleShare() {
-    const shareData = { title: product.name, url: window.location.href };
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // user cancelled the share sheet — no action needed
-      }
-      return;
-    }
-    await navigator.clipboard.writeText(shareData.url);
-    toast({ title: "Link copied to clipboard", variant: "success" });
-  }
-
   function handleBuyNow() {
     if (!isAuthenticated) {
       router.push(`/login?next=/p/${product.slug}`);
@@ -183,7 +169,7 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
         return (
           <div key={attribute.id} className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">{attribute.name}</span>
+              <span className="text-sm font-medium capitalize text-foreground">{attribute.name}</span>
               {selected[attribute.id] && (
                 <span className="text-sm text-foreground-muted">
                   — {[...attribute.values.values()].find((v) => v.id === selected[attribute.id])?.value}
@@ -341,31 +327,7 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
         <span className="text-border">|</span>
         <WishlistButton productId={product.id} productSlug={product.slug} variant="text" />
         <span className="text-border">|</span>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="flex items-center gap-1.5 text-foreground-muted transition-colors hover:text-primary"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-          Share this Product
-        </button>
-      </div>
-
-      {/* SKU + Category meta */}
-      <div className="flex flex-col gap-1 text-sm text-foreground-muted">
-        {(matchedVariant?.sku ?? product.sku) && (
-          <p>
-            SKU: <span className="text-foreground">{matchedVariant?.sku ?? product.sku}</span>
-          </p>
-        )}
-        {product.category && (
-          <p>
-            Category:{" "}
-            <Link href={`/c/${product.category.slug}`} className="text-foreground hover:text-primary">
-              {product.category.name}
-            </Link>
-          </p>
-        )}
+        <ShareButton title={product.name} variant="text" />
       </div>
     </div>
   );

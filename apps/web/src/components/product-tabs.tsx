@@ -49,7 +49,7 @@ export function TagList({ tags }: { tags: Array<{ tag: { id: string; name: strin
         <Link
           key={tag.id}
           href={`/products?tag=${tag.slug}`}
-          className="rounded-full border border-border px-3 py-1 text-xs text-foreground-muted hover:border-foreground hover:text-foreground transition-colors"
+          className="rounded-full border border-border px-3 py-1 text-xs capitalize text-foreground-muted hover:border-foreground hover:text-foreground transition-colors"
         >
           #{tag.name}
         </Link>

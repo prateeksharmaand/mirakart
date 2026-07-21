@@ -10,6 +10,7 @@ import { ProductReviews } from "../../../components/product-reviews";
 import { ProductQueries } from "../../../components/product-queries";
 import { RecentlyViewedTracker, RecentlyViewedSidebar } from "../../../components/recently-viewed";
 import { WishlistButton } from "../../../components/wishlist-button";
+import { ShareButton } from "../../../components/share-button";
 import { getProductBySlug, getProducts, getReviewSummary } from "../../../lib/api/catalog";
 
 interface PageProps {
@@ -42,12 +43,13 @@ export default async function ProductPage({ params }: PageProps) {
   ]);
   const related = relatedResult.data.filter((p) => p.id !== product.id).slice(0, 4);
 
-  const hasVariants = product.variants.length > 0;
   const hasMultipleVariants = product.variants.length > 1;
 
   // Build attribute summary for "Additional Information" tab
+  const defaultVariant = product.variants.find((v) => v.isDefault) ?? product.variants[0];
+  const sku = product.sku ?? defaultVariant?.sku;
   const attrRows: Array<{ label: string; value: string }> = [];
-  if (product.sku) attrRows.push({ label: "SKU", value: product.sku });
+  if (sku) attrRows.push({ label: "SKU", value: sku });
   if (product.brand) attrRows.push({ label: "Brand", value: product.brand.name });
   if (product.category) attrRows.push({ label: "Category", value: product.category.name });
   if (hasMultipleVariants)
@@ -146,11 +148,11 @@ export default async function ProductPage({ params }: PageProps) {
               <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
                 {product.name}
               </h1>
-              <WishlistButton productId={product.id} productSlug={product.slug} className="shrink-0 mt-1" />
+              <div className="flex shrink-0 gap-2">
+                <WishlistButton productId={product.id} productSlug={product.slug} className="mt-1" />
+                <ShareButton title={product.name} className="mt-1" />
+              </div>
             </div>
-            {!hasVariants && product.sku && (
-              <p className="mt-1 text-xs text-foreground-muted">SKU: {product.sku}</p>
-            )}
           </div>
 
           {/* Rating summary */}
