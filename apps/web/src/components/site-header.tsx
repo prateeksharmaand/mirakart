@@ -136,6 +136,13 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [categoriesOpen]);
 
+  // Reset the flyout's active subcategory panel whenever it closes, so it
+  // always reopens with no subcategory panel shown until a category is
+  // hovered again — otherwise the last-hovered category stays "stuck" open.
+  React.useEffect(() => {
+    if (!categoriesOpen) setActiveCategoryId(null);
+  }, [categoriesOpen]);
+
   React.useEffect(() => {
     if (!showSuggestions && !showMobileSuggestions) return;
     function handleClickOutside(e: MouseEvent) {
@@ -418,13 +425,7 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
         <div className="hidden border-t border-border lg:block">
           <div className="mx-auto flex max-w-site items-stretch px-gutter">
             {/* All Categories dropdown */}
-            <div
-              ref={categoriesMenuRef}
-              className="relative shrink-0"
-              onMouseEnter={() => {
-                if (!activeCategoryId) setActiveCategoryId(categories.find((c) => c.children.length > 0)?.id ?? null);
-              }}
-            >
+            <div ref={categoriesMenuRef} className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setCategoriesOpen((o) => !o)}
@@ -453,7 +454,7 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
                       key={category.id}
                       href={`/c/${category.slug}`}
                       onClick={() => setCategoriesOpen(false)}
-                      onMouseEnter={() => setActiveCategoryId(category.id)}
+                      onMouseEnter={() => setActiveCategoryId(category.children.length > 0 ? category.id : null)}
                       className={`flex items-center justify-between gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-background-light hover:text-primary ${
                         activeCategoryId === category.id ? "bg-background-light text-primary" : "text-foreground"
                       }`}
