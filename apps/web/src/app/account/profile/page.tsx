@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input, Skeleton, toast } from "@mirakart/ui";
+import { Button, Card, CardContent, FormField, Input, Skeleton, toast } from "@mirakart/ui";
 import { fetchProfile, updateProfile } from "../../../lib/api/customers";
 import { useAuthStore } from "../../../stores/auth-store";
 
@@ -48,31 +48,31 @@ export default function ProfilePage() {
   if (isLoading) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>My Profile</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex max-w-md flex-col gap-4">
-          <FormField label="Email">
-            <Input value={profile?.email ?? ""} disabled />
-          </FormField>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="First name" htmlFor="firstName" error={errors.firstName?.message} required>
-              <Input id="firstName" {...register("firstName")} />
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-medium text-foreground">My Profile</h1>
+      <Card>
+        <CardContent className="pt-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex max-w-md flex-col gap-4">
+            <FormField label="Email">
+              <Input value={profile?.email ?? ""} disabled />
             </FormField>
-            <FormField label="Last name" htmlFor="lastName" error={errors.lastName?.message} required>
-              <Input id="lastName" {...register("lastName")} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="First name" htmlFor="firstName" error={errors.firstName?.message} required>
+                <Input id="firstName" {...register("firstName")} />
+              </FormField>
+              <FormField label="Last name" htmlFor="lastName" error={errors.lastName?.message} required>
+                <Input id="lastName" {...register("lastName")} />
+              </FormField>
+            </div>
+            <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
+              <Input id="phone" {...register("phone")} />
             </FormField>
-          </div>
-          <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
-            <Input id="phone" {...register("phone")} />
-          </FormField>
-          <Button type="submit" className="w-fit" isLoading={isSubmitting}>
-            Save changes
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <Button type="submit" className="w-fit" isLoading={isSubmitting}>
+              Save changes
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
