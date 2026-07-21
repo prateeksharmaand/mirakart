@@ -58,6 +58,18 @@ export default function ProductsPage() {
         </div>
       ),
     },
+    {
+      key: "stock",
+      header: "Stock",
+      cell: (r) =>
+        r.isOutOfStock ? (
+          <Badge variant="danger">Out of Stock</Badge>
+        ) : r.isLowStock ? (
+          <Badge variant="warning">Low — {r.stockCount}</Badge>
+        ) : (
+          <span className="text-sm">{r.stockCount ?? 0}</span>
+        ),
+    },
     { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{STATUS_LABELS[r.status] ?? r.status}</Badge> },
     {
       key: "actions", header: "", className: "w-16",

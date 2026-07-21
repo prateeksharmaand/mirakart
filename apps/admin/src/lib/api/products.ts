@@ -31,6 +31,9 @@ export interface Product {
   images?: ProductImage[];
   variants?: ProductVariant[];
   rejectionReason?: string | null;
+  stockCount?: number;
+  isLowStock?: boolean;
+  isOutOfStock?: boolean;
 }
 
 export async function listProducts(params: {

@@ -2,8 +2,33 @@ import { Injectable } from "@nestjs/common";
 import type { Prisma, ProductStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { buildOrderBy } from "../common/utils/sort.util";
+import type { StockStatusFilter } from "./dto/merchant-product-query.dto";
 
 const PRODUCT_SORT_FIELDS = ["createdAt", "name", "basePrice", "status"] as const;
+
+// Column-to-column comparisons (quantity <= lowStockThreshold) aren't
+// expressible in a plain Prisma where-clause, so stock status is computed
+// here rather than in SQL.
+const stockSummaryInclude = {
+  variants: {
+    where: { deletedAt: null },
+    select: { id: true, inventory: { select: { quantity: true, lowStockThreshold: true } } },
+  },
+} as const;
+
+function withStockSummary<T extends { variants: { inventory: { quantity: number; lowStockThreshold: number } | null }[] }>(
+  product: T,
+) {
+  const stockCount = product.variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0);
+  const isLowStock = product.variants.some(
+    (v) => v.inventory && v.inventory.quantity > 0 && v.inventory.quantity <= v.inventory.lowStockThreshold,
+  );
+  return { ...product, stockCount, isLowStock, isOutOfStock: stockCount === 0 };
+}
+
+// Cap for the unpaginated fetch used when filtering by computed stock
+// status — bounded so a stock-status query can't load an unbounded catalog.
+const STOCK_FILTER_SCAN_LIMIT = 2000;
 
 interface SortableFilter {
   sortBy?: string;
@@ -28,6 +53,7 @@ export interface MerchantProductFilter extends SortableFilter {
   merchantId: string;
   status?: ProductStatus;
   search?: string;
+  stockStatus?: StockStatusFilter;
   page: number;
   limit: number;
 }
@@ -115,7 +141,11 @@ export class ProductsRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.product.findMany({
         where,
-        include: { images: { where: { isPrimary: true }, take: 1, include: { media: true } }, brand: true },
+        include: {
+          images: { where: { isPrimary: true }, take: 1, include: { media: true } },
+          brand: true,
+          variants: { where: { deletedAt: null }, select: { inventory: { select: { quantity: true } } } },
+        },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
         orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, PRODUCT_SORT_FIELDS, "createdAt"),
@@ -143,6 +173,7 @@ export class ProductsRepository {
       items: items.map((item) => ({
         ...item,
         ...(statsByProductId.get(item.id) ?? { averageRating: 0, reviewCount: 0 }),
+        availableCount: item.variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0),
       })),
       totalItems,
     };
@@ -228,19 +259,36 @@ export class ProductsRepository {
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" } } : {}),
     };
+    const include = {
+      images: { where: { isPrimary: true }, take: 1, include: { media: true } },
+      ...stockSummaryInclude,
+    };
+    const orderBy = buildOrderBy(filter.sortBy, filter.sortOrder, PRODUCT_SORT_FIELDS, "createdAt");
+
+    if (filter.stockStatus) {
+      // Stock status is a computed field, so this filter can't be pushed
+      // into SQL — scan (bounded) and paginate in-process instead.
+      const all = await this.prisma.product.findMany({ where, include, orderBy, take: STOCK_FILTER_SCAN_LIMIT });
+      const withSummary = all.map(withStockSummary);
+      const filtered = withSummary.filter((p) =>
+        filter.stockStatus === "OUT_OF_STOCK" ? p.isOutOfStock : p.isLowStock && !p.isOutOfStock,
+      );
+      const start = (filter.page - 1) * filter.limit;
+      return { items: filtered.slice(start, start + filter.limit), totalItems: filtered.length };
+    }
 
     const [items, totalItems] = await Promise.all([
       this.prisma.product.findMany({
         where,
-        include: { images: { where: { isPrimary: true }, take: 1, include: { media: true } } },
+        include,
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
-        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, PRODUCT_SORT_FIELDS, "createdAt"),
+        orderBy,
       }),
       this.prisma.product.count({ where }),
     ]);
 
-    return { items, totalItems };
+    return { items: items.map(withStockSummary), totalItems };
   }
 
   async findAdminList(filter: AdminProductFilter) {
@@ -259,6 +307,7 @@ export class ProductsRepository {
           merchant: { select: { id: true, storeName: true } },
           category: { select: { id: true, name: true } },
           brand: { select: { id: true, name: true } },
+          ...stockSummaryInclude,
         },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
@@ -267,7 +316,7 @@ export class ProductsRepository {
       this.prisma.product.count({ where }),
     ]);
 
-    return { items, totalItems };
+    return { items: items.map(withStockSummary), totalItems };
   }
 
   findById(id: string) {

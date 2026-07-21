@@ -73,8 +73,22 @@ export class OrdersService {
       });
     }
 
-    const order = await this.createOrderWithRetry(customerId, dto, lines);
+    const { order, lowStockAlerts } = await this.createOrderWithRetry(customerId, dto, lines);
     await this.cartRepo.clearItems(cart.id);
+
+    for (const alert of lowStockAlerts) {
+      const outOfStock = alert.quantity === 0;
+      this.notify(
+        "MERCHANT",
+        alert.merchantId,
+        outOfStock ? "OUT_OF_STOCK" : "LOW_STOCK",
+        outOfStock ? `"${alert.productNameSnapshot}" is out of stock` : `"${alert.productNameSnapshot}" is running low`,
+        outOfStock
+          ? `"${alert.productNameSnapshot}" just sold out.`
+          : `Only ${alert.quantity} left of "${alert.productNameSnapshot}".`,
+        { productId: alert.productId, variantId: alert.variantId },
+      );
+    }
 
     if (dto.paymentMethod === "COD") {
       for (const adminId of await this.repo.listActiveAdminIds()) {

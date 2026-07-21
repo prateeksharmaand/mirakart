@@ -31,9 +31,16 @@ export interface Product {
   images?: ProductImage[];
   variants?: ProductVariant[];
   tags?: Array<{ tag: { id: string; name: string; slug: string } }>;
+  stockCount?: number;
+  isLowStock?: boolean;
+  isOutOfStock?: boolean;
 }
 
-export async function listMerchantProducts(params: { page?: number; limit?: number; search?: string; status?: string } = {}) {
+export type StockStatusFilter = "LOW_STOCK" | "OUT_OF_STOCK";
+
+export async function listMerchantProducts(
+  params: { page?: number; limit?: number; search?: string; status?: string; stockStatus?: StockStatusFilter } = {},
+) {
   const res = await apiClient.get("/merchants/me/products", { params });
   return res.data as { data: Product[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }

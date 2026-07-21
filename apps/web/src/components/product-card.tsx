@@ -12,6 +12,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   const discount = onSale
     ? Math.round(((Number(product.compareAtPrice) - Number(product.basePrice)) / Number(product.compareAtPrice)) * 100)
     : 0;
+  const isOutOfStock = product.availableCount === 0;
 
   return (
     <div className="group relative flex flex-col">
@@ -25,9 +26,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
                 alt={product.name}
                 fill
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                className={`object-cover transition-all duration-500 ease-theme ${secondImage ? "group-hover:opacity-0" : "group-hover:scale-105"}`}
+                className={`object-cover transition-all duration-500 ease-theme ${isOutOfStock ? "opacity-50 grayscale" : secondImage ? "group-hover:opacity-0" : "group-hover:scale-105"}`}
               />
-              {secondImage && (
+              {secondImage && !isOutOfStock && (
                 <Image
                   src={secondImage.url}
                   alt={product.name}
@@ -45,12 +46,20 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </Link>
 
         {/* Badges */}
-        {onSale && (
+        {isOutOfStock ? (
           <div className="pointer-events-none absolute left-2.5 top-2.5 z-10">
-            <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-              -{discount}%
+            <span className="rounded bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
+              Out of Stock
             </span>
           </div>
+        ) : (
+          onSale && (
+            <div className="pointer-events-none absolute left-2.5 top-2.5 z-10">
+              <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                -{discount}%
+              </span>
+            </div>
+          )
         )}
 
         {/* Hover Actions */}

@@ -101,4 +101,31 @@ export class ReportsRepository {
     ]);
     return { pending, processing, packed, shipped };
   }
+
+  async merchantStockSummary(merchantId: string) {
+    const variants = await this.prisma.productVariant.findMany({
+      where: { deletedAt: null, product: { merchantId, deletedAt: null } },
+      select: { productId: true, inventory: { select: { quantity: true, lowStockThreshold: true } } },
+    });
+    // Column-to-column comparison (quantity <= lowStockThreshold) isn't
+    // expressible as a Prisma where-clause, so this is aggregated in-process.
+    const byProduct = new Map<string, { quantity: number; lowStockThreshold: number }[]>();
+    for (const v of variants) {
+      if (!v.inventory) continue;
+      const list = byProduct.get(v.productId) ?? [];
+      list.push(v.inventory);
+      byProduct.set(v.productId, list);
+    }
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    for (const inventories of byProduct.values()) {
+      const stockCount = inventories.reduce((sum, i) => sum + i.quantity, 0);
+      if (stockCount === 0) {
+        outOfStockCount++;
+      } else if (inventories.some((i) => i.quantity > 0 && i.quantity <= i.lowStockThreshold)) {
+        lowStockCount++;
+      }
+    }
+    return { lowStockCount, outOfStockCount };
+  }
 }

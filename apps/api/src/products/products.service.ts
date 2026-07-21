@@ -69,6 +69,7 @@ export class ProductsService {
       merchantId,
       status: query.status,
       search: query.search,
+      stockStatus: query.stockStatus,
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,

@@ -28,11 +28,19 @@ export default function MerchantProductsPage() {
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState("all");
+  const [stockStatus, setStockStatus] = React.useState("all");
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["merchant-products", page, search, status],
-    queryFn: () => listMerchantProducts({ page, limit: 20, search: search || undefined, status: status === "all" ? undefined : status }),
+    queryKey: ["merchant-products", page, search, status, stockStatus],
+    queryFn: () =>
+      listMerchantProducts({
+        page,
+        limit: 20,
+        search: search || undefined,
+        status: status === "all" ? undefined : status,
+        stockStatus: stockStatus === "all" ? undefined : (stockStatus as "LOW_STOCK" | "OUT_OF_STOCK"),
+      }),
   });
 
   const deleteMutation = useMutation({
@@ -57,6 +65,18 @@ export default function MerchantProductsPage() {
     },
     { key: "price", header: "Price", cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
     { key: "variants", header: "Variants", cell: (r) => r.variants?.length ?? 0 },
+    {
+      key: "stock",
+      header: "Stock",
+      cell: (r) =>
+        r.isOutOfStock ? (
+          <Badge variant="danger">Out of Stock</Badge>
+        ) : r.isLowStock ? (
+          <Badge variant="warning">Low — {r.stockCount}</Badge>
+        ) : (
+          <span className="text-sm">{r.stockCount ?? 0}</span>
+        ),
+    },
     { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{STATUS_LABELS[r.status] ?? r.status}</Badge> },
     {
       key: "actions",
@@ -98,6 +118,14 @@ export default function MerchantProductsPage() {
             <SelectItem value="APPROVED">Approved</SelectItem>
             <SelectItem value="REJECTED">Rejected</SelectItem>
             <SelectItem value="ARCHIVED">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={stockStatus} onValueChange={(v) => { setStockStatus(v); setPage(1); }}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All stock</SelectItem>
+            <SelectItem value="LOW_STOCK">Low stock</SelectItem>
+            <SelectItem value="OUT_OF_STOCK">Out of stock</SelectItem>
           </SelectContent>
         </Select>
       </div>

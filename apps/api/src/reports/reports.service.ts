@@ -32,4 +32,8 @@ export class ReportsService {
   merchantOrderStatusSummary(merchantId: string) {
     return this.repo.merchantOrderStatusSummary(merchantId);
   }
+
+  merchantStockSummary(merchantId: string) {
+    return this.repo.merchantStockSummary(merchantId);
+  }
 }

@@ -33,3 +33,13 @@ export async function getOrderStatusSummary(): Promise<OrderStatusSummary> {
   const res = await apiClient.get("/merchants/me/reports/order-status-summary");
   return res.data.data as OrderStatusSummary;
 }
+
+export interface StockSummary {
+  lowStockCount: number;
+  outOfStockCount: number;
+}
+
+export async function getStockSummary(): Promise<StockSummary> {
+  const res = await apiClient.get("/merchants/me/reports/stock-summary");
+  return res.data.data as StockSummary;
+}

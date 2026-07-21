@@ -22,6 +22,14 @@ export interface CartLineForCheckout {
   unitPrice: number;
 }
 
+export interface LowStockAlert {
+  merchantId: string;
+  productId: string;
+  variantId: string;
+  productNameSnapshot: string;
+  quantity: number;
+}
+
 const orderDetailInclude = {
   items: true,
   payment: true,
@@ -52,7 +60,9 @@ export class OrdersRepository {
   /**
    * Creates the Order, its OrderItems, the initial Payment and
    * OrderStatusHistory row, and decrements inventory — all in one
-   * transaction so concurrent checkouts can't oversell stock.
+   * transaction so concurrent checkouts can't oversell stock. Also returns
+   * any variants that crossed into low/out-of-stock territory as a result,
+   * so the caller can notify the owning merchant.
    */
   async createOrder(data: {
     orderNumber: string;
@@ -107,6 +117,7 @@ export class OrdersRepository {
       // commit time. A blind `decrement` would let two concurrent checkouts
       // both pass a stale pre-check and oversell — this re-checks quantity
       // atomically against the current row and aborts the whole order if not.
+      const lowStockAlerts: LowStockAlert[] = [];
       for (const line of data.lines) {
         const result = await tx.inventory.updateMany({
           where: { variantId: line.variantId, quantity: { gte: line.quantity } },
@@ -115,9 +126,22 @@ export class OrdersRepository {
         if (result.count === 0) {
           throw new InsufficientStockError(line.variantId);
         }
+        const inventory = await tx.inventory.findUnique({
+          where: { variantId: line.variantId },
+          select: { quantity: true, lowStockThreshold: true },
+        });
+        if (inventory && inventory.quantity <= inventory.lowStockThreshold) {
+          lowStockAlerts.push({
+            merchantId: line.merchantId,
+            productId: line.productId,
+            variantId: line.variantId,
+            productNameSnapshot: line.productNameSnapshot,
+            quantity: inventory.quantity,
+          });
+        }
       }
 
-      return order;
+      return { order, lowStockAlerts };
     });
   }
 

@@ -91,7 +91,7 @@ describe("OrdersService", () => {
         items: [{ variantId: "v1", quantity: 2 }],
       } as never);
       repo.findVariantForCheckout.mockResolvedValue(approvedVariant as never);
-      repo.createOrder.mockResolvedValue({ id: "order1" } as never);
+      repo.createOrder.mockResolvedValue({ order: { id: "order1" }, lowStockAlerts: [] } as never);
 
       const result = await service.checkout("c1", dto);
 
@@ -132,7 +132,9 @@ describe("OrdersService", () => {
         clientVersion: "5.x",
         meta: { target: ["orderNumber"] },
       });
-      repo.createOrder.mockRejectedValueOnce(collision).mockResolvedValueOnce({ id: "order1" } as never);
+      repo.createOrder
+        .mockRejectedValueOnce(collision)
+        .mockResolvedValueOnce({ order: { id: "order1" }, lowStockAlerts: [] } as never);
 
       const result = await service.checkout("c1", dto);
       expect(repo.createOrder).toHaveBeenCalledTimes(2);

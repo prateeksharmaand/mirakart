@@ -29,4 +29,10 @@ export class MerchantReportsController {
   orderStatusSummary(@CurrentUser() user: AuthenticatedPrincipal) {
     return this.service.merchantOrderStatusSummary(user.id);
   }
+
+  @Get("stock-summary")
+  @ApiOkResponse()
+  stockSummary(@CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.merchantStockSummary(user.id);
+  }
 }

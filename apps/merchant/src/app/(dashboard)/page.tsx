@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, DollarSign, RotateCcw, Package, Clock, Box, Truck } from "lucide-react";
+import { ShoppingCart, DollarSign, RotateCcw, Package, Clock, Box, Truck, AlertTriangle, PackageX } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "../../components/page-header";
-import { getMerchantSalesSummary, getMerchantTopProducts, getOrderStatusSummary } from "../../lib/api/dashboard";
+import { getMerchantSalesSummary, getMerchantTopProducts, getOrderStatusSummary, getStockSummary } from "../../lib/api/dashboard";
 import { useAuthStore } from "../../stores/auth-store";
 
 function StatsCard({ title, value, icon: Icon, iconColor = "text-primary", isLoading }: {
@@ -46,6 +46,11 @@ export default function MerchantDashboardPage() {
     queryFn: getOrderStatusSummary,
   });
 
+  const { data: stockSummary, isLoading: stockLoading } = useQuery({
+    queryKey: ["merchant-stock-summary"],
+    queryFn: getStockSummary,
+  });
+
   const chartData = (topProducts ?? []).map((p) => ({
     name: p.product?.name?.slice(0, 18) ?? "Unknown",
     revenue: p.revenue,
@@ -63,6 +68,8 @@ export default function MerchantDashboardPage() {
         <StatsCard title="Processing" value={orderStatusSummary?.processing ?? "—"} icon={Package} iconColor="text-blue-600" isLoading={orderStatusLoading} />
         <StatsCard title="Packed" value={orderStatusSummary?.packed ?? "—"} icon={Box} iconColor="text-purple-600" isLoading={orderStatusLoading} />
         <StatsCard title="Shipped" value={orderStatusSummary?.shipped ?? "—"} icon={Truck} iconColor="text-teal-600" isLoading={orderStatusLoading} />
+        <StatsCard title="Low Stock" value={stockSummary?.lowStockCount ?? "—"} icon={AlertTriangle} iconColor="text-amber-600" isLoading={stockLoading} />
+        <StatsCard title="Out of Stock" value={stockSummary?.outOfStockCount ?? "—"} icon={PackageX} iconColor="text-red-600" isLoading={stockLoading} />
       </div>
 
       <div className="rounded-xl border border-border bg-white p-6 shadow-card">
