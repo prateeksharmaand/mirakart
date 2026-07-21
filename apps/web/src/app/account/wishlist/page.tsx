@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
-import { EmptyState } from "@mirakart/ui";
+import { Button, EmptyState } from "@mirakart/ui";
 import { ProductCard } from "../../../components/product-card";
 import { useWishlist } from "../../../hooks/use-wishlist";
 
@@ -44,6 +44,11 @@ export default function WishlistPage() {
         <EmptyState
           title="Your wishlist is empty"
           description="Browse products and tap the heart icon to save your favourites here."
+          action={
+            <Button asChild>
+              <Link href="/">Continue shopping</Link>
+            </Button>
+          }
         />
       ) : (
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
