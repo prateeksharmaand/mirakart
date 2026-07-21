@@ -1,5 +1,20 @@
-export type OrderStatus = "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "REFUNDED";
+export type OrderStatus =
+  | "PENDING"
+  | "PENDING_CONFIRMATION"
+  | "CONFIRMED"
+  | "ACCEPTED"
+  | "PROCESSING"
+  | "PACKED"
+  | "SHIPPED"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "FAILED_DELIVERY"
+  | "COD_REFUSED";
 export type OrderItemStatus = OrderStatus | "RETURNED";
+export type PaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "UNPAID" | "PAID";
 
 export interface OrderItem {
   id: string;
@@ -34,4 +49,7 @@ export interface Order {
   placedAt: string;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
+  payment?: { method: string; status: PaymentStatus } | null;
+  cancelReason?: string | null;
+  rejectionReason?: string | null;
 }

@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import type { OrderItemStatus, OrderStatus, PaymentMethod, Prisma } from "@prisma/client";
+import type { ActorType, OrderItemStatus, OrderStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { buildOrderBy } from "../common/utils/sort.util";
+import type { PaymentMethodFilter } from "./dto/admin-order-query.dto";
 
 const ORDER_SORT_FIELDS = ["createdAt", "orderNumber", "status", "total"] as const;
 
@@ -64,12 +65,19 @@ export class OrdersRepository {
     const subtotal = data.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
     const total = subtotal; // shippingFee/tax/discount default to 0 — no shipping/tax engine in scope yet
 
+    // COD orders start life awaiting admin confirmation with an unpaid
+    // balance; every other payment method keeps the existing PENDING ->
+    // (webhook) -> CONFIRMED/CAPTURED flow untouched.
+    const isCod = data.paymentMethod === "COD";
+    const initialOrderStatus: OrderStatus = isCod ? "PENDING_CONFIRMATION" : "PENDING";
+    const initialPaymentStatus: PaymentStatus = isCod ? "UNPAID" : "PENDING";
+
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           orderNumber: data.orderNumber,
           customerId: data.customerId,
-          status: "PENDING",
+          status: initialOrderStatus,
           subtotal,
           total,
           shippingAddressId: data.shippingAddressId,
@@ -88,9 +96,9 @@ export class OrdersRepository {
             })),
           },
           payment: {
-            create: { method: data.paymentMethod, status: "PENDING", amount: total },
+            create: { method: data.paymentMethod, status: initialPaymentStatus, amount: total },
           },
-          statusHistory: { create: { status: "PENDING" } },
+          statusHistory: { create: { status: initialOrderStatus, changedByType: "CUSTOMER", changedById: data.customerId } },
         },
         include: orderDetailInclude,
       });
@@ -130,6 +138,8 @@ export class OrdersRepository {
 
   async findAdminOrders(filter: {
     status?: OrderStatus;
+    paymentStatus?: PaymentStatus;
+    paymentMethod?: PaymentMethodFilter;
     customerId?: string;
     page: number;
     limit: number;
@@ -140,11 +150,23 @@ export class OrdersRepository {
       deletedAt: null,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.customerId ? { customerId: filter.customerId } : {}),
+      ...(filter.paymentStatus || filter.paymentMethod
+        ? {
+            payment: {
+              ...(filter.paymentStatus ? { status: filter.paymentStatus } : {}),
+              ...(filter.paymentMethod === "COD"
+                ? { method: "COD" }
+                : filter.paymentMethod === "ONLINE"
+                  ? { method: { not: "COD" } }
+                  : {}),
+            },
+          }
+        : {}),
     };
     const [items, totalItems] = await Promise.all([
       this.prisma.order.findMany({
         where,
-        include: { items: true },
+        include: { items: true, payment: true },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
         orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, ORDER_SORT_FIELDS, "createdAt"),
@@ -154,8 +176,11 @@ export class OrdersRepository {
     return { items, totalItems };
   }
 
-  async findMerchantOrders(merchantId: string, page: number, limit: number) {
-    const where: Prisma.OrderWhereInput = { deletedAt: null, items: { some: { merchantId } } };
+  async findMerchantOrders(merchantId: string, page: number, limit: number, itemStatus?: OrderItemStatus) {
+    const where: Prisma.OrderWhereInput = {
+      deletedAt: null,
+      items: { some: { merchantId, ...(itemStatus ? { status: itemStatus } : {}) } },
+    };
     const [items, totalItems] = await Promise.all([
       this.prisma.order.findMany({
         where,
@@ -181,11 +206,118 @@ export class OrdersRepository {
     return this.prisma.orderItem.update({ where: { id }, data: { status } });
   }
 
-  async updateOrderStatus(id: string, status: OrderStatus, changedById?: string, note?: string) {
+  findItemsForOrder(orderId: string) {
+    return this.prisma.orderItem.findMany({ where: { orderId } });
+  }
+
+  /** Used to broadcast admin-facing notifications (no per-order assigned admin exists). */
+  async listActiveAdminIds(): Promise<string[]> {
+    const admins = await this.prisma.adminUser.findMany({
+      where: { status: "ACTIVE", deletedAt: null },
+      select: { id: true },
+    });
+    return admins.map((a) => a.id);
+  }
+
+  /** Order-level status + history write only — no item/inventory changes. */
+  async updateOrderStatus(id: string, status: OrderStatus, actor: { type: ActorType; id: string }, note?: string) {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.update({ where: { id }, data: { status } });
-      await tx.orderStatusHistory.create({ data: { orderId: id, status, changedById, note } });
+      await tx.orderStatusHistory.create({
+        data: { orderId: id, status, changedByType: actor.type, changedById: actor.id, note },
+      });
       return order;
+    });
+  }
+
+  private async restoreInventoryTx(
+    tx: Prisma.TransactionClient,
+    lines: { variantId: string; quantity: number }[],
+  ) {
+    for (const line of lines) {
+      await tx.inventory.updateMany({
+        where: { variantId: line.variantId },
+        data: { quantity: { increment: line.quantity } },
+      });
+    }
+  }
+
+  /**
+   * Terminates a whole order (CANCELLED / FAILED_DELIVERY / COD_REFUSED):
+   * flips every given item to `itemStatus`, restores inventory for the
+   * given lines, and writes both the order status and its history — all
+   * in one transaction. Used by customer/admin cancel, admin reject, and
+   * markCodRefused.
+   */
+  async applyTerminalOrderStatus(
+    orderId: string,
+    data: {
+      status: Extract<OrderStatus, "CANCELLED" | "FAILED_DELIVERY" | "COD_REFUSED">;
+      itemStatus: OrderItemStatus;
+      actor: { type: ActorType; id: string };
+      note?: string;
+      cancelReason?: string;
+      rejectionReason?: string;
+      itemIds: string[];
+      restoreLines: { variantId: string; quantity: number }[];
+    },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: data.status,
+          ...(data.cancelReason
+            ? { cancelReason: data.cancelReason, cancelledByType: data.actor.type, cancelledById: data.actor.id }
+            : {}),
+          ...(data.rejectionReason ? { rejectionReason: data.rejectionReason } : {}),
+        },
+      });
+      if (data.itemIds.length > 0) {
+        await tx.orderItem.updateMany({ where: { id: { in: data.itemIds } }, data: { status: data.itemStatus } });
+      }
+      await this.restoreInventoryTx(tx, data.restoreLines);
+      await tx.orderStatusHistory.create({
+        data: { orderId, status: data.status, changedByType: data.actor.type, changedById: data.actor.id, note: data.note },
+      });
+      return order;
+    });
+  }
+
+  /**
+   * Cancels one merchant's own (non-terminal) items on a multi-merchant
+   * order and restores their inventory — does NOT touch Order.status or
+   * write history, since other merchants' items may still be active. The
+   * caller inspects `remainingActiveItems` to decide whether to cascade
+   * the whole order to CANCELLED via `updateOrderStatus`.
+   */
+  async cancelMerchantItems(orderId: string, merchantId: string, fromStatuses: OrderItemStatus[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const items = await tx.orderItem.findMany({ where: { orderId, merchantId, status: { in: fromStatuses } } });
+      if (items.length > 0) {
+        await tx.orderItem.updateMany({ where: { id: { in: items.map((i) => i.id) } }, data: { status: "CANCELLED" } });
+        await this.restoreInventoryTx(tx, items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })));
+      }
+      const remainingActiveItems = await tx.orderItem.count({
+        where: { orderId, status: { notIn: ["CANCELLED", "RETURNED", "FAILED_DELIVERY", "COD_REFUSED"] } },
+      });
+      return { cancelledItems: items, remainingActiveItems };
+    });
+  }
+
+  /** Bulk-advances one merchant's items on an order (accept / processing / packed / shipped). */
+  updateItemsStatusForMerchant(orderId: string, merchantId: string, fromStatuses: OrderItemStatus[], toStatus: OrderItemStatus) {
+    return this.prisma.orderItem.updateMany({
+      where: { orderId, merchantId, status: { in: fromStatuses } },
+      data: { status: toStatus },
+    });
+  }
+
+  /** Bulk-advances every merchant's items on an order (admin confirm / admin mark-delivered). */
+  updateAllItemsStatus(orderId: string, fromStatuses: OrderItemStatus[], toStatus: OrderItemStatus) {
+    return this.prisma.orderItem.updateMany({
+      where: { orderId, status: { in: fromStatuses } },
+      data: { status: toStatus },
     });
   }
 }

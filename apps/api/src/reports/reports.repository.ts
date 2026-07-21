@@ -70,4 +70,35 @@ export class ReportsRepository {
       revenue: Number(g._sum.totalPrice ?? 0),
     }));
   }
+
+  async codOrderStats() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [pendingConfirmationCount, todaysCodOrders, outstanding] = await Promise.all([
+      this.prisma.order.count({ where: { deletedAt: null, status: "PENDING_CONFIRMATION" } }),
+      this.prisma.order.count({
+        where: { deletedAt: null, payment: { method: "COD" }, createdAt: { gte: startOfToday } },
+      }),
+      this.prisma.order.aggregate({
+        where: { deletedAt: null, payment: { method: "COD", status: "UNPAID" } },
+        _sum: { total: true },
+      }),
+    ]);
+    return {
+      pendingConfirmationCount,
+      todaysCodOrders,
+      outstandingCodAmount: Number(outstanding._sum.total ?? 0),
+    };
+  }
+
+  async merchantOrderStatusSummary(merchantId: string) {
+    const [pending, processing, packed, shipped] = await Promise.all([
+      this.prisma.orderItem.count({ where: { merchantId, status: "CONFIRMED" } }),
+      this.prisma.orderItem.count({ where: { merchantId, status: "PROCESSING" } }),
+      this.prisma.orderItem.count({ where: { merchantId, status: "PACKED" } }),
+      this.prisma.orderItem.count({ where: { merchantId, status: "SHIPPED" } }),
+    ]);
+    return { pending, processing, packed, shipped };
+  }
 }

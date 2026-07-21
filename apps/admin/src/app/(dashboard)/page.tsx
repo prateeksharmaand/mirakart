@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, DollarSign, Store, Users, Package, RotateCcw } from "lucide-react";
+import { ShoppingCart, DollarSign, Store, Users, Package, RotateCcw, Clock, Wallet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "../../components/page-header";
 import { StatsCard } from "../../components/stats-card";
@@ -11,6 +11,7 @@ import {
   getTopProducts,
   getMerchantCount,
   getCustomerCount,
+  getCodSummary,
 } from "../../lib/api/reports";
 
 function formatCurrency(n: number) {
@@ -36,6 +37,11 @@ export default function DashboardPage() {
   const { data: customerCount, isLoading: customerLoading } = useQuery({
     queryKey: ["customer-count"],
     queryFn: getCustomerCount,
+  });
+
+  const { data: codSummary, isLoading: codLoading } = useQuery({
+    queryKey: ["cod-summary"],
+    queryFn: getCodSummary,
   });
 
   const chartData = (topProducts ?? []).map((p) => ({
@@ -90,6 +96,27 @@ export default function DashboardPage() {
           icon={Package}
           isLoading={productsLoading}
           iconColor="text-slate-600"
+        />
+        <StatsCard
+          title="Pending Confirmation"
+          value={codSummary?.pendingConfirmationCount ?? "—"}
+          icon={Clock}
+          isLoading={codLoading}
+          iconColor="text-amber-600"
+        />
+        <StatsCard
+          title="Today's COD Orders"
+          value={codSummary?.todaysCodOrders ?? "—"}
+          icon={ShoppingCart}
+          isLoading={codLoading}
+          iconColor="text-teal-600"
+        />
+        <StatsCard
+          title="Outstanding COD Amount"
+          value={codSummary ? formatCurrency(codSummary.outstandingCodAmount) : "—"}
+          icon={Wallet}
+          isLoading={codLoading}
+          iconColor="text-red-600"
         />
       </div>
 

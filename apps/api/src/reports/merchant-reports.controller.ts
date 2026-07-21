@@ -23,4 +23,10 @@ export class MerchantReportsController {
   topProducts(@Query() query: TopProductsQueryDto, @CurrentUser() user: AuthenticatedPrincipal) {
     return this.service.topProducts(query, user.id);
   }
+
+  @Get("order-status-summary")
+  @ApiOkResponse()
+  orderStatusSummary(@CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.merchantOrderStatusSummary(user.id);
+  }
 }

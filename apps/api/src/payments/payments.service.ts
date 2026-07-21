@@ -50,6 +50,24 @@ export class PaymentsService {
     };
   }
 
+  /**
+   * Manual COD-collection step, called by OrdersService once it has
+   * validated the order is DELIVERED and the payment is COD/UNPAID —
+   * payment writes stay owned by this module, same separation as every
+   * other payment-status change (OrdersService never touches Payment
+   * directly).
+   */
+  async markCodReceived(
+    orderId: string,
+    data: { amountReceived: number; receivedDate: Date; remarks?: string; adminId: string },
+  ) {
+    const payment = await this.repo.findByOrderId(orderId);
+    if (!payment) throw new NotFoundException("Payment not found");
+    if (payment.method !== "COD") throw new BadRequestException("This order was not paid by Cash on Delivery");
+    if (payment.status !== "UNPAID") throw new ConflictException("This payment has already been recorded");
+    return this.repo.markCodReceived(payment.id, orderId, data);
+  }
+
   async getPayment(orderId: string, requester: { type: "CUSTOMER" | "ADMIN"; id: string }) {
     const payment = await this.repo.findByOrderId(orderId);
     if (!payment) throw new NotFoundException("Payment not found");

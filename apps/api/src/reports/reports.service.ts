@@ -24,4 +24,12 @@ export class ReportsService {
   topProducts(query: TopProductsQueryDto, merchantId?: string) {
     return this.repo.topProducts(merchantId, toRange(query), query.limit ?? 10);
   }
+
+  codOrderStats() {
+    return this.repo.codOrderStats();
+  }
+
+  merchantOrderStatusSummary(merchantId: string) {
+    return this.repo.merchantOrderStatusSummary(merchantId);
+  }
 }

@@ -1,20 +1,38 @@
 import { apiClient } from "../api-client";
 
+export type OrderStatus =
+  | "PENDING"
+  | "PENDING_CONFIRMATION"
+  | "CONFIRMED"
+  | "ACCEPTED"
+  | "PROCESSING"
+  | "PACKED"
+  | "SHIPPED"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "FAILED_DELIVERY"
+  | "COD_REFUSED";
+
+export type FulfillmentStatus = "PROCESSING" | "PACKED" | "SHIPPED";
+
 export interface MerchantOrder {
   id: string;
   orderNumber: string;
-  status: string;
+  status: OrderStatus;
   total: number;
   createdAt: string;
   customer?: { id: string; firstName: string; lastName: string; email: string } | null;
   items?: Array<{
     id: string;
-    productName: string;
-    variantSku: string;
+    productNameSnapshot: string;
+    variantSnapshot: { sku: string; attributes: { attributeName: string; value: string }[] };
     quantity: number;
     unitPrice: number;
     totalPrice: number;
-    status: string;
+    status: OrderStatus;
     merchantId: string;
   }>;
 }
@@ -31,4 +49,29 @@ export async function getMerchantOrder(id: string): Promise<MerchantOrder> {
 
 export async function updateOrderItemStatus(orderId: string, itemId: string, status: string): Promise<void> {
   await apiClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status });
+}
+
+export async function acceptOrder(id: string): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/accept`);
+  return res.data.data as MerchantOrder;
+}
+
+export async function rejectOrder(id: string, reason: string): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/reject`, { reason });
+  return res.data.data as MerchantOrder;
+}
+
+export async function updateFulfillmentStatus(id: string, status: FulfillmentStatus): Promise<MerchantOrder> {
+  const res = await apiClient.patch(`/merchants/me/orders/${id}/fulfillment-status`, { status });
+  return res.data.data as MerchantOrder;
+}
+
+export async function markCodRefused(id: string, reason: string): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/mark-cod-refused`, { reason });
+  return res.data.data as MerchantOrder;
+}
+
+export async function cancelOrder(id: string, reason?: string): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/cancel`, { reason });
+  return res.data.data as MerchantOrder;
 }

@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { Button, Skeleton, StatusBadge } from "@mirakart/ui";
-import { fetchOrder, fetchOrderTracking } from "../../../../lib/api/orders";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, Skeleton, StatusBadge, toast } from "@mirakart/ui";
+import { OrderTimeline } from "../../../../components/order-timeline";
+import { cancelOrder, fetchOrder, fetchOrderTracking } from "../../../../lib/api/orders";
 import { formatPrice } from "../../../../lib/format";
 
+const ORDER_CANCELLABLE_STATUSES = ["PENDING_CONFIRMATION", "CONFIRMED"];
+
 export default function OrderDetailPage({ params }: { params: { orderId: string } }) {
+  const queryClient = useQueryClient();
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", params.orderId],
     queryFn: () => fetchOrder(params.orderId),
@@ -15,6 +19,17 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
     queryKey: ["order-tracking", params.orderId],
     queryFn: () => fetchOrderTracking(params.orderId),
   });
+
+  async function handleCancel() {
+    try {
+      await cancelOrder(params.orderId);
+      queryClient.invalidateQueries({ queryKey: ["order", params.orderId] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast({ title: "Order cancelled", variant: "success" });
+    } catch (error) {
+      toast({ title: "Couldn't cancel order", description: (error as Error).message, variant: "danger" });
+    }
+  }
 
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (!order) return null;
@@ -29,23 +44,10 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
         <StatusBadge status={order.status} />
       </div>
 
-      {tracking && tracking.history.length > 0 ? (
-        <div className="rounded-md border border-border p-5">
-          <h2 className="mb-4 text-sm font-medium text-foreground">Tracking</h2>
-          <ol className="flex flex-col gap-4">
-            {tracking.history.map((entry, idx) => (
-              <li key={idx} className="flex items-start gap-3">
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{entry.status}</p>
-                  <p className="text-xs text-foreground-muted">{new Date(entry.changedAt).toLocaleString()}</p>
-                  {entry.note ? <p className="text-xs text-foreground-muted">{entry.note}</p> : null}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
+      <div className="rounded-md border border-border p-5">
+        <h2 className="mb-4 text-sm font-medium text-foreground">Order Status</h2>
+        <OrderTimeline status={order.status} history={tracking?.history} />
+      </div>
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-foreground">Items</h2>
@@ -87,6 +89,16 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
           <span>{formatPrice(order.total)}</span>
         </div>
       </div>
+
+      {order.cancelReason ? (
+        <p className="text-sm text-danger">Cancellation reason: {order.cancelReason}</p>
+      ) : null}
+
+      {ORDER_CANCELLABLE_STATUSES.includes(order.status) ? (
+        <Button variant="outline" className="w-fit" onClick={handleCancel}>
+          Cancel order
+        </Button>
+      ) : null}
     </div>
   );
 }

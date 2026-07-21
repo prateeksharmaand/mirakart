@@ -21,3 +21,15 @@ export async function getMerchantTopProducts(params: { dateFrom?: string; dateTo
   const res = await apiClient.get("/merchants/me/reports/top-products", { params });
   return res.data.data as TopProduct[];
 }
+
+export interface OrderStatusSummary {
+  pending: number;
+  processing: number;
+  packed: number;
+  shipped: number;
+}
+
+export async function getOrderStatusSummary(): Promise<OrderStatusSummary> {
+  const res = await apiClient.get("/merchants/me/reports/order-status-summary");
+  return res.data.data as OrderStatusSummary;
+}

@@ -29,15 +29,22 @@ describe("OrdersService", () => {
       findMerchantOrders: jest.fn(),
       findOrderDetail: jest.fn(),
       findOrderItemById: jest.fn(),
+      findItemsForOrder: jest.fn(),
       updateOrderItemStatus: jest.fn(),
       updateOrderStatus: jest.fn(),
+      applyTerminalOrderStatus: jest.fn(),
+      cancelMerchantItems: jest.fn(),
+      updateItemsStatusForMerchant: jest.fn(),
+      updateAllItemsStatus: jest.fn(),
+      listActiveAdminIds: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<OrdersRepository>;
     cartRepo = {
       findCartWithItems: jest.fn(),
       clearItems: jest.fn(),
     } as unknown as jest.Mocked<CartRepository>;
     const notifications = { create: jest.fn().mockResolvedValue(undefined) } as never;
-    service = new OrdersService(repo, cartRepo, notifications);
+    const payments = { markCodReceived: jest.fn() } as never;
+    service = new OrdersService(repo, cartRepo, notifications, payments);
   });
 
   describe("checkout", () => {

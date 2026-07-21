@@ -22,4 +22,11 @@ export class AdminReportsController {
   topProducts(@Query() query: TopProductsQueryDto) {
     return this.service.topProducts(query);
   }
+
+  @Get("cod-summary")
+  @AdminAuth("report.view")
+  @ApiOkResponse()
+  codSummary() {
+    return this.service.codOrderStats();
+  }
 }

@@ -1,16 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import type { OrderStatus } from "@prisma/client";
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
-
-const ORDER_STATUSES: OrderStatus[] = [
-  "PENDING",
-  "CONFIRMED",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED",
-];
+import { ORDER_STATUSES } from "./order-status.constants";
 
 export class UpdateOrderStatusDto {
   @ApiProperty({ enum: ORDER_STATUSES })

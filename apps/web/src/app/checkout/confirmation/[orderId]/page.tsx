@@ -24,15 +24,24 @@ export default function OrderConfirmationPage({ params }: { params: { orderId: s
 
   if (!order) return null;
 
+  const isCod = order.payment?.method === "COD";
+
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-gutter py-16 text-center">
       <CheckoutSteps current="confirmation" />
       <CheckCircle2 className="h-14 w-14 text-success" />
       <h1 className="text-2xl font-medium text-foreground">Order placed!</h1>
-      <p className="text-foreground-muted">
-        Thank you — your order <span className="font-medium text-foreground">{order.orderNumber}</span> has been
-        received and is being processed.
-      </p>
+      {isCod ? (
+        <p className="text-foreground-muted">
+          Your COD order <span className="font-medium text-foreground">{order.orderNumber}</span> has been placed
+          successfully and is awaiting confirmation.
+        </p>
+      ) : (
+        <p className="text-foreground-muted">
+          Thank you — your order <span className="font-medium text-foreground">{order.orderNumber}</span> has been
+          received and is being processed.
+        </p>
+      )}
       <div className="w-full rounded-md border border-border p-5 text-left">
         <div className="flex justify-between text-sm">
           <span className="text-foreground-muted">Order total</span>

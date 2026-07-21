@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, DollarSign, RotateCcw, Package } from "lucide-react";
+import { ShoppingCart, DollarSign, RotateCcw, Package, Clock, Box, Truck } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "../../components/page-header";
-import { getMerchantSalesSummary, getMerchantTopProducts } from "../../lib/api/dashboard";
+import { getMerchantSalesSummary, getMerchantTopProducts, getOrderStatusSummary } from "../../lib/api/dashboard";
 import { useAuthStore } from "../../stores/auth-store";
 
 function StatsCard({ title, value, icon: Icon, iconColor = "text-primary", isLoading }: {
@@ -41,6 +41,11 @@ export default function MerchantDashboardPage() {
     queryFn: () => getMerchantTopProducts({ limit: 6 }),
   });
 
+  const { data: orderStatusSummary, isLoading: orderStatusLoading } = useQuery({
+    queryKey: ["merchant-order-status-summary"],
+    queryFn: getOrderStatusSummary,
+  });
+
   const chartData = (topProducts ?? []).map((p) => ({
     name: p.product?.name?.slice(0, 18) ?? "Unknown",
     revenue: p.revenue,
@@ -54,6 +59,10 @@ export default function MerchantDashboardPage() {
         <StatsCard title="Total Revenue" value={summary ? formatCurrency(summary.totalRevenue) : "—"} icon={DollarSign} iconColor="text-green-600" isLoading={summaryLoading} />
         <StatsCard title="Orders" value={summary?.totalOrders ?? "—"} icon={ShoppingCart} isLoading={summaryLoading} />
         <StatsCard title="Returns" value={summary?.totalReturns ?? "—"} icon={RotateCcw} iconColor="text-orange-500" isLoading={summaryLoading} />
+        <StatsCard title="Pending Orders" value={orderStatusSummary?.pending ?? "—"} icon={Clock} iconColor="text-amber-600" isLoading={orderStatusLoading} />
+        <StatsCard title="Processing" value={orderStatusSummary?.processing ?? "—"} icon={Package} iconColor="text-blue-600" isLoading={orderStatusLoading} />
+        <StatsCard title="Packed" value={orderStatusSummary?.packed ?? "—"} icon={Box} iconColor="text-purple-600" isLoading={orderStatusLoading} />
+        <StatsCard title="Shipped" value={orderStatusSummary?.shipped ?? "—"} icon={Truck} iconColor="text-teal-600" isLoading={orderStatusLoading} />
       </div>
 
       <div className="rounded-xl border border-border bg-white p-6 shadow-card">

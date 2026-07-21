@@ -30,3 +30,8 @@ export async function fetchOrderTracking(id: string): Promise<{ orderId: string;
   );
   return res.data.data;
 }
+
+export async function cancelOrder(id: string, reason?: string): Promise<Order> {
+  const res = await apiClient.post<ApiSuccessResponse<Order>>(`/orders/${id}/cancel`, { reason });
+  return res.data.data;
+}

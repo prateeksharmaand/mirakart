@@ -2,15 +2,22 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@mirakart/ui";
+import { Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { listMerchantOrders, type MerchantOrder } from "../../../lib/api/orders";
 import Link from "next/link";
 
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default" | "primary"> = {
-  DELIVERED: "success", PROCESSING: "warning", CANCELLED: "danger", PENDING: "default", SHIPPED: "primary",
-};
+const ITEM_STATUSES = [
+  "CONFIRMED",
+  "ACCEPTED",
+  "PROCESSING",
+  "PACKED",
+  "SHIPPED",
+  "DELIVERED",
+  "COMPLETED",
+  "CANCELLED",
+];
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -37,7 +44,7 @@ export default function MerchantOrdersPage() {
       ),
     },
     { key: "total", header: "Total", cell: (r) => formatCurrency(r.total) },
-    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge> },
+    { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
     { key: "date", header: "Date", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
   ];
 
@@ -46,14 +53,14 @@ export default function MerchantOrdersPage() {
       <PageHeader title="Orders" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Orders" }]} />
       <div className="flex gap-3">
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="PROCESSING">Processing</SelectItem>
-            <SelectItem value="SHIPPED">Shipped</SelectItem>
-            <SelectItem value="DELIVERED">Delivered</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            {ITEM_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s.replaceAll("_", " ")}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

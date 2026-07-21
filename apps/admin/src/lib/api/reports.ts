@@ -31,3 +31,14 @@ export async function getCustomerCount(): Promise<number> {
   const res = await apiClient.get("/customers", { params: { limit: 1 } });
   return (res.data.meta?.totalItems ?? 0) as number;
 }
+
+export interface CodSummary {
+  pendingConfirmationCount: number;
+  todaysCodOrders: number;
+  outstandingCodAmount: number;
+}
+
+export async function getCodSummary(): Promise<CodSummary> {
+  const res = await apiClient.get("/admin/reports/cod-summary");
+  return res.data.data as CodSummary;
+}

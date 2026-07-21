@@ -108,12 +108,19 @@ enum AttributeType {
 
 enum OrderStatus {
   PENDING
+  PENDING_CONFIRMATION
   CONFIRMED
+  ACCEPTED
   PROCESSING
+  PACKED
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
+  COMPLETED
   CANCELLED
   REFUNDED
+  FAILED_DELIVERY
+  COD_REFUSED
 
   @@map("order_status")
 }
@@ -121,11 +128,17 @@ enum OrderStatus {
 enum OrderItemStatus {
   PENDING
   CONFIRMED
+  ACCEPTED
   PROCESSING
+  PACKED
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
+  COMPLETED
   CANCELLED
   RETURNED
+  FAILED_DELIVERY
+  COD_REFUSED
 
   @@map("order_item_status")
 }
@@ -146,6 +159,8 @@ enum PaymentStatus {
   CAPTURED
   FAILED
   REFUNDED
+  UNPAID
+  PAID
 
   @@map("payment_status")
 }
@@ -209,11 +224,10 @@ model AdminUser {
   updatedAt    DateTime    @updatedAt
   deletedAt    DateTime?
 
-  approvedMerchants  Merchant[]           @relation("MerchantApprovedBy")
-  approvedProducts   Product[]            @relation("ProductApprovedBy")
-  orderStatusChanges OrderStatusHistory[]
-  updatedSettings    Setting[]
-  notifications      Notification[]       @relation("AdminNotifications")
+  approvedMerchants Merchant[]      @relation("MerchantApprovedBy")
+  approvedProducts  Product[]       @relation("ProductApprovedBy")
+  updatedSettings   Setting[]
+  notifications     Notification[] @relation("AdminNotifications")
 
   @@index([status])
   @@map("admin_users")
@@ -685,6 +699,13 @@ model Order {
   updatedAt         DateTime    @updatedAt
   deletedAt         DateTime?
 
+  // Set when an admin rejects a PENDING_CONFIRMATION order.
+  rejectionReason String?
+  // Set by whichever actor cancelled the order (customer/merchant/admin).
+  cancelReason     String?
+  cancelledByType  ActorType?
+  cancelledById    String?
+
   items         OrderItem[]
   payment       Payment?
   statusHistory OrderStatusHistory[]
@@ -727,14 +748,17 @@ model OrderItem {
 }
 
 model OrderStatusHistory {
-  id          String      @id @default(cuid())
-  orderId     String
-  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status      OrderStatus
-  note        String?
-  changedById String?
-  changedBy   AdminUser?  @relation(fields: [changedById], references: [id])
-  changedAt   DateTime    @default(now())
+  id            String      @id @default(cuid())
+  orderId       String
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status        OrderStatus
+  note          String?
+  changedByType ActorType?
+  changedById   String?
+  // changedById is polymorphic (Customer | Merchant | AdminUser, per
+  // changedByType) — same no-DB-FK rationale as RefreshToken.principalId
+  // and ReturnStatusHistory.changedById.
+  changedAt     DateTime    @default(now())
 
   @@index([orderId])
   @@map("order_status_history")
@@ -756,6 +780,11 @@ model Payment {
   wasIdempotent     Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  // Manual COD-collection audit trail. "Received Date" reuses `paidAt`.
+  collectedByAdminId String?
+  collectionNote     String?
+  amountReceived     Decimal? @db.Decimal(12, 2)
 
   @@index([orderId, status])
   @@index([idempotencyKey])

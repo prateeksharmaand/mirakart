@@ -7,6 +7,7 @@ import { Spinner } from "@mirakart/ui";
 import { useAuthStore } from "../../stores/auth-store";
 
 const NAV_ITEMS = [
+  { href: "/account", label: "Overview" },
   { href: "/account/profile", label: "Profile" },
   { href: "/account/addresses", label: "Addresses" },
   { href: "/account/orders", label: "Orders" },
@@ -42,7 +43,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
               key={item.href}
               href={item.href}
               className={`rounded-sm px-3 py-2 text-sm font-medium transition-colors ${
-                pathname.startsWith(item.href)
+                (item.href === "/account" ? pathname === "/account" : pathname.startsWith(item.href))
                   ? "bg-primary/10 text-primary"
                   : "text-foreground hover:bg-background-light"
               }`}

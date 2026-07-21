@@ -34,6 +34,38 @@ export class PaymentsRepository {
     });
   }
 
+  /**
+   * Manual COD collection: flips Payment UNPAID -> PAID and Order -> COMPLETED
+   * in one transaction, mirroring markResolved's "update Payment + Order
+   * together" shape. Also writes the OrderStatusHistory row for the
+   * resulting COMPLETED order status (markResolved's caller — the Razorpay
+   * webhook path — doesn't need this since it only touches CONFIRMED/
+   * CANCELLED via a different code path already covered there).
+   */
+  async markCodReceived(
+    paymentId: string,
+    orderId: string,
+    data: { amountReceived: number; receivedDate: Date; remarks?: string; adminId: string },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: "PAID",
+          paidAt: data.receivedDate,
+          amountReceived: data.amountReceived,
+          collectedByAdminId: data.adminId,
+          collectionNote: data.remarks,
+        },
+      });
+      const order = await tx.order.update({ where: { id: orderId }, data: { status: "COMPLETED" } });
+      await tx.orderStatusHistory.create({
+        data: { orderId, status: "COMPLETED", changedByType: "ADMIN", changedById: data.adminId, note: data.remarks },
+      });
+      return { payment, order };
+    });
+  }
+
   findByIdempotencyKey(idempotencyKey: string) {
     return this.prisma.payment.findUnique({
       where: { idempotencyKey },
