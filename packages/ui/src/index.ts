@@ -2,6 +2,7 @@ export { cn } from "./lib/utils";
 
 export * from "./components/button";
 export * from "./components/input";
+export * from "./components/password-input";
 export * from "./components/textarea";
 export * from "./components/label";
 export * from "./components/form-field";

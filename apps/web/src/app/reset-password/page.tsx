@@ -6,16 +6,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, FormField, Input, toast } from "@mirakart/ui";
+import { Button, FormField, PasswordInput, toast } from "@mirakart/ui";
 import { AuthCard } from "../../components/auth-card";
 import { resetPassword } from "../../lib/api/auth";
 
-const schema = z.object({
-  password: z
-    .string()
-    .min(8, "At least 8 characters")
-    .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
-});
+const schema = z
+  .object({
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .min(8, "At least 8 characters")
+      .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 type FormValues = z.infer<typeof schema>;
 
 function ResetPasswordForm() {
@@ -68,7 +75,15 @@ function ResetPasswordForm() {
           hint="At least 8 characters, with a letter and a number"
           required
         >
-          <Input id="password" type="password" {...register("password")} />
+          <PasswordInput id="password" {...register("password")} />
+        </FormField>
+        <FormField
+          label="Confirm new password"
+          htmlFor="confirmPassword"
+          error={errors.confirmPassword?.message}
+          required
+        >
+          <PasswordInput id="confirmPassword" {...register("confirmPassword")} />
         </FormField>
         <Button type="submit" size="lg" isLoading={isSubmitting}>
           Update password

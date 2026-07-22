@@ -6,21 +6,28 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, FormField, Input, toast } from "@mirakart/ui";
+import { Button, FormField, Input, PasswordInput, toast } from "@mirakart/ui";
 import { AuthCard } from "../../components/auth-card";
 import { register as registerCustomer } from "../../lib/api/auth";
 import { useAuthStore } from "../../stores/auth-store";
 
-const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Enter a valid email address"),
-  password: z
-    .string()
-    .min(8, "At least 8 characters")
-    .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
-  phone: z.string().optional(),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().min(1, "Email is required").email("Enter a valid email address"),
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .min(8, "At least 8 characters")
+      .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    phone: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 type FormValues = z.infer<typeof schema>;
 
 export default function RegisterPage() {
@@ -37,7 +44,8 @@ export default function RegisterPage() {
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     try {
-      const result = await registerCustomer(values);
+      const { confirmPassword: _confirmPassword, ...input } = values;
+      const result = await registerCustomer(input);
       setAuth({ accessToken: result.accessToken, refreshToken: result.refreshToken, customer: result.customer });
       router.push("/account/orders");
     } catch (error) {
@@ -71,7 +79,15 @@ export default function RegisterPage() {
           hint="At least 8 characters, with a letter and a number"
           required
         >
-          <Input id="password" type="password" {...registerField("password")} />
+          <PasswordInput id="password" {...registerField("password")} />
+        </FormField>
+        <FormField
+          label="Confirm password"
+          htmlFor="confirmPassword"
+          error={errors.confirmPassword?.message}
+          required
+        >
+          <PasswordInput id="confirmPassword" {...registerField("confirmPassword")} />
         </FormField>
         <Button type="submit" size="lg" isLoading={isSubmitting}>
           Create account

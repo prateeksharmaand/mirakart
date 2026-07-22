@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, CardContent, FormField, Input, Skeleton, toast } from "@mirakart/ui";
+import { Button, Card, CardContent, FormField, Input, PasswordInput, Skeleton, toast } from "@mirakart/ui";
 import { changePassword } from "../../../lib/api/auth";
 import { fetchProfile, updateProfile } from "../../../lib/api/customers";
 import { useAuthStore } from "../../../stores/auth-store";
@@ -18,13 +18,20 @@ const profileSchema = z.object({
 });
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z
-    .string()
-    .min(8, "At least 8 characters")
-    .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
-});
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z
+      .string()
+      .min(1, "New password is required")
+      .min(8, "At least 8 characters")
+      .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
+    confirmNewPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "Passwords do not match",
+    path: ["confirmNewPassword"],
+  });
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function ProfilePage() {
@@ -121,7 +128,7 @@ export default function ProfilePage() {
                 error={passwordErrors.currentPassword?.message}
                 required
               >
-                <Input id="currentPassword" type="password" {...registerPassword("currentPassword")} />
+                <PasswordInput id="currentPassword" {...registerPassword("currentPassword")} />
               </FormField>
               <FormField
                 label="New password"
@@ -130,7 +137,15 @@ export default function ProfilePage() {
                 hint="At least 8 characters, with a letter and a number"
                 required
               >
-                <Input id="newPassword" type="password" {...registerPassword("newPassword")} />
+                <PasswordInput id="newPassword" {...registerPassword("newPassword")} />
+              </FormField>
+              <FormField
+                label="Confirm new password"
+                htmlFor="confirmNewPassword"
+                error={passwordErrors.confirmNewPassword?.message}
+                required
+              >
+                <PasswordInput id="confirmNewPassword" {...registerPassword("confirmNewPassword")} />
               </FormField>
               <Button type="submit" className="w-fit" isLoading={isSavingPassword}>
                 Update password

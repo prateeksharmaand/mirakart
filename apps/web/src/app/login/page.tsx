@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, FormField, Input, toast } from "@mirakart/ui";
+import { Button, FormField, Input, PasswordInput, toast } from "@mirakart/ui";
 import { AuthCard } from "../../components/auth-card";
 import { login } from "../../lib/api/auth";
 import { useAuthStore } from "../../stores/auth-store";
@@ -49,7 +49,7 @@ function LoginForm() {
           <Input id="email" type="email" {...register("email")} />
         </FormField>
         <FormField label="Password" htmlFor="password" error={errors.password?.message} required>
-          <Input id="password" type="password" {...register("password")} />
+          <PasswordInput id="password" {...register("password")} />
         </FormField>
         <Link href="/forgot-password" className="text-right text-sm text-primary">
           Forgot password?
