@@ -11,18 +11,10 @@ export default function WishlistPage() {
   const { data: items = [], isLoading } = useWishlist();
 
   return (
-    <div className="mx-auto max-w-site px-gutter py-8">
-      <nav className="mb-4 flex items-center gap-1.5 text-xs text-foreground-muted">
-        <Link href="/" className="hover:text-foreground">Home</Link>
-        <span>/</span>
-        <Link href="/account" className="hover:text-foreground">Account</Link>
-        <span>/</span>
-        <span className="text-foreground">Wishlist</span>
-      </nav>
-
-      <div className="mb-6 flex items-center gap-3">
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3">
         <Heart className="h-5 w-5 text-red-500" fill="currentColor" />
-        <h1 className="text-2xl font-semibold text-foreground">My Wishlist</h1>
+        <h1 className="text-xl font-medium text-foreground">My Wishlist</h1>
         {items.length > 0 && (
           <span className="rounded-full bg-border px-2.5 py-0.5 text-xs text-foreground-muted">
             {items.length} item{items.length !== 1 ? "s" : ""}

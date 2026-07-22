@@ -11,12 +11,12 @@ import { changePassword } from "../../../lib/api/auth";
 import { fetchProfile, updateProfile } from "../../../lib/api/customers";
 import { useAuthStore } from "../../../stores/auth-store";
 
-const schema = z.object({
+const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   phone: z.string().optional(),
 });
-type FormValues = z.infer<typeof schema>;
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -27,20 +27,47 @@ const passwordSchema = z.object({
 });
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-function ChangePasswordCard() {
+export default function ProfilePage() {
   const router = useRouter();
+  const updateCustomer = useAuthStore((s) => s.updateCustomer);
   const clearAuth = useAuthStore((s) => s.clearAuth);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { data: profile, isLoading } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
+  const [isSavingProfile, setIsSavingProfile] = React.useState(false);
+  const [isSavingPassword, setIsSavingPassword] = React.useState(false);
 
   const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
+    register: registerProfile,
+    handleSubmit: handleProfileSubmit,
+    reset: resetProfile,
+    formState: { errors: profileErrors },
+  } = useForm<ProfileFormValues>({ resolver: zodResolver(profileSchema) });
+
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    reset: resetPassword,
+    formState: { errors: passwordErrors },
   } = useForm<PasswordFormValues>({ resolver: zodResolver(passwordSchema) });
 
-  async function onSubmit(values: PasswordFormValues) {
-    setIsSubmitting(true);
+  React.useEffect(() => {
+    if (profile) resetProfile({ firstName: profile.firstName, lastName: profile.lastName, phone: profile.phone ?? "" });
+  }, [profile, resetProfile]);
+
+  async function onSaveProfile(values: ProfileFormValues) {
+    setIsSavingProfile(true);
+    try {
+      const updated = await updateProfile(values);
+      updateCustomer({ id: updated.id, email: updated.email, firstName: updated.firstName, lastName: updated.lastName });
+      toast({ title: "Profile updated", variant: "success" });
+    } catch (error) {
+      toast({ title: "Couldn't update profile", description: (error as Error).message, variant: "danger" });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function onChangePassword(values: PasswordFormValues) {
+    setIsSavingPassword(true);
     try {
       await changePassword(values.currentPassword, values.newPassword);
       toast({
@@ -52,71 +79,9 @@ function ChangePasswordCard() {
       router.push("/login");
     } catch (error) {
       toast({ title: "Couldn't update password", description: (error as Error).message, variant: "danger" });
-      reset(values);
+      resetPassword(values);
     } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-medium text-foreground">Change Password</h2>
-      <Card>
-        <CardContent className="pt-5">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex max-w-md flex-col gap-4">
-            <FormField
-              label="Current password"
-              htmlFor="currentPassword"
-              error={errors.currentPassword?.message}
-              required
-            >
-              <Input id="currentPassword" type="password" {...register("currentPassword")} />
-            </FormField>
-            <FormField
-              label="New password"
-              htmlFor="newPassword"
-              error={errors.newPassword?.message}
-              hint="At least 8 characters, with a letter and a number"
-              required
-            >
-              <Input id="newPassword" type="password" {...register("newPassword")} />
-            </FormField>
-            <Button type="submit" className="w-fit" isLoading={isSubmitting}>
-              Update password
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-export default function ProfilePage() {
-  const updateCustomer = useAuthStore((s) => s.updateCustomer);
-  const { data: profile, isLoading } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
-
-  React.useEffect(() => {
-    if (profile) reset({ firstName: profile.firstName, lastName: profile.lastName, phone: profile.phone ?? "" });
-  }, [profile, reset]);
-
-  async function onSubmit(values: FormValues) {
-    setIsSubmitting(true);
-    try {
-      const updated = await updateProfile(values);
-      updateCustomer({ id: updated.id, email: updated.email, firstName: updated.firstName, lastName: updated.lastName });
-      toast({ title: "Profile updated", variant: "success" });
-    } catch (error) {
-      toast({ title: "Couldn't update profile", description: (error as Error).message, variant: "danger" });
-    } finally {
-      setIsSubmitting(false);
+      setIsSavingPassword(false);
     }
   }
 
@@ -126,30 +91,54 @@ export default function ProfilePage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-medium text-foreground">My Profile</h1>
       <Card>
-        <CardContent className="pt-5">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex max-w-md flex-col gap-4">
+        <CardContent className="flex flex-col gap-8 pt-5">
+          <form onSubmit={handleProfileSubmit(onSaveProfile)} className="flex max-w-md flex-col gap-4">
             <FormField label="Email">
               <Input value={profile?.email ?? ""} disabled />
             </FormField>
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="First name" htmlFor="firstName" error={errors.firstName?.message} required>
-                <Input id="firstName" {...register("firstName")} />
+              <FormField label="First name" htmlFor="firstName" error={profileErrors.firstName?.message} required>
+                <Input id="firstName" {...registerProfile("firstName")} />
               </FormField>
-              <FormField label="Last name" htmlFor="lastName" error={errors.lastName?.message} required>
-                <Input id="lastName" {...register("lastName")} />
+              <FormField label="Last name" htmlFor="lastName" error={profileErrors.lastName?.message} required>
+                <Input id="lastName" {...registerProfile("lastName")} />
               </FormField>
             </div>
-            <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
-              <Input id="phone" {...register("phone")} />
+            <FormField label="Phone" htmlFor="phone" error={profileErrors.phone?.message}>
+              <Input id="phone" {...registerProfile("phone")} />
             </FormField>
-            <Button type="submit" className="w-fit" isLoading={isSubmitting}>
+            <Button type="submit" className="w-fit" isLoading={isSavingProfile}>
               Save changes
             </Button>
           </form>
+
+          <div className="border-t border-border pt-6">
+            <h2 className="mb-4 text-sm font-medium text-foreground">Change Password</h2>
+            <form onSubmit={handlePasswordSubmit(onChangePassword)} className="flex max-w-md flex-col gap-4">
+              <FormField
+                label="Current password"
+                htmlFor="currentPassword"
+                error={passwordErrors.currentPassword?.message}
+                required
+              >
+                <Input id="currentPassword" type="password" {...registerPassword("currentPassword")} />
+              </FormField>
+              <FormField
+                label="New password"
+                htmlFor="newPassword"
+                error={passwordErrors.newPassword?.message}
+                hint="At least 8 characters, with a letter and a number"
+                required
+              >
+                <Input id="newPassword" type="password" {...registerPassword("newPassword")} />
+              </FormField>
+              <Button type="submit" className="w-fit" isLoading={isSavingPassword}>
+                Update password
+              </Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
-
-      <ChangePasswordCard />
     </div>
   );
 }

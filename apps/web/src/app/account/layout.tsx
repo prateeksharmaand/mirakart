@@ -9,6 +9,7 @@ import { useAuthStore } from "../../stores/auth-store";
 const NAV_ITEMS = [
   { href: "/account", label: "Overview" },
   { href: "/account/profile", label: "Profile" },
+  { href: "/account/wishlist", label: "Wishlist" },
   { href: "/account/addresses", label: "Addresses" },
   { href: "/account/orders", label: "Orders" },
   { href: "/account/returns", label: "Returns" },
@@ -20,6 +21,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
   const customer = useAuthStore((s) => s.customer);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
 
   React.useEffect(() => {
     if (hasHydrated && !isAuthenticated) {
@@ -66,6 +68,16 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 {item.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                clearAuth();
+                router.push("/login");
+              }}
+              className="rounded-sm px-3 py-2 text-left text-sm font-medium text-danger transition-colors hover:bg-background-light"
+            >
+              Log out
+            </button>
           </div>
         </aside>
         <div>{children}</div>
