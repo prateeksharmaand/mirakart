@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { slugify } from "../common/utils/slugify.util";
+import { generateProductCode } from "./utils/product-code.util";
 import { ProductsRepository } from "./products.repository";
 import type { AddProductImageDto } from "./dto/add-product-image.dto";
 import type { AdminProductQueryDto, MerchantProductQueryDto } from "./dto/merchant-product-query.dto";
@@ -14,6 +15,8 @@ import type { UpdateVariantDto } from "./dto/update-variant.dto";
 function paginate(page: number, limit: number, totalItems: number) {
   return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
 }
+
+const PRODUCT_CODE_RETRY_ATTEMPTS = 3;
 
 @Injectable()
 export class ProductsService {
@@ -88,33 +91,62 @@ export class ProductsService {
     }
     const slug = await this.generateUniqueSlug(dto.name);
     const { tagIds, ...productData } = dto;
-    let product;
-    try {
-      product = await this.repo.create({
-        merchantId,
-        categoryId: productData.categoryId,
-        brandId: productData.brandId,
-        name: productData.name,
-        slug,
-        description: productData.description,
-        basePrice: productData.basePrice,
-        compareAtPrice: productData.compareAtPrice,
-        sku: productData.sku,
-        weight: productData.weight,
-        metaTitle: productData.metaTitle,
-        metaDescription: productData.metaDescription,
-        status: productData.status ?? "DRAFT",
-      });
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        throw new ConflictException("A product with this name already exists");
-      }
-      throw e;
-    }
+    const brandCode = productData.brandId ? await this.repo.findBrandCode(productData.brandId) : null;
+
+    const product = await this.createWithRetry(merchantId, productData, slug, brandCode);
+
     if (tagIds && tagIds.length > 0) {
       await this.repo.syncTags(product.id, tagIds);
     }
     return product;
+  }
+
+  /** Product IDs are generated from a per-brand sequential count, so a
+   *  concurrent create can race for the same code — retry with a freshly
+   *  counted sequence on a unique-constraint collision, mirroring
+   *  OrdersService's createOrderWithRetry for orderNumber. */
+  private async createWithRetry(
+    merchantId: string,
+    productData: Omit<CreateProductDto, "tagIds">,
+    slug: string,
+    brandCode: string | null,
+  ) {
+    for (let attempt = 1; attempt <= PRODUCT_CODE_RETRY_ATTEMPTS; attempt++) {
+      const sequence = (await this.repo.countByBrand(productData.brandId ?? null)) + 1;
+      const productCode = generateProductCode(brandCode, sequence);
+      try {
+        return await this.repo.create({
+          merchantId,
+          categoryId: productData.categoryId,
+          brandId: productData.brandId,
+          name: productData.name,
+          slug,
+          productCode,
+          description: productData.description,
+          basePrice: productData.basePrice,
+          compareAtPrice: productData.compareAtPrice,
+          sku: productData.sku,
+          weight: productData.weight,
+          metaTitle: productData.metaTitle,
+          metaDescription: productData.metaDescription,
+          status: productData.status ?? "APPROVED",
+        });
+      } catch (e) {
+        const isProductCodeCollision =
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === "P2002" &&
+          (e.meta?.target as string[] | undefined)?.includes("productCode");
+        if (isProductCodeCollision) {
+          if (attempt < PRODUCT_CODE_RETRY_ATTEMPTS) continue;
+          break;
+        }
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          throw new ConflictException("A product with this name already exists");
+        }
+        throw e;
+      }
+    }
+    throw new ConflictException("Could not generate a unique product ID — please try again");
   }
 
   async update(id: string, merchantId: string, dto: UpdateProductDto) {
@@ -127,11 +159,21 @@ export class ProductsService {
       throw new BadRequestException("compareAtPrice must be greater than basePrice");
     }
 
+    // A suspension is an admin enforcement action — a merchant can still edit
+    // other fields, but can't self-reactivate by just setting status back
+    // ("SUSPENDED" isn't in UpdateProductDto's allowed values, so any status
+    // change attempted here is necessarily an attempt to move off it).
+    if (product.status === "SUSPENDED" && dto.status) {
+      throw new BadRequestException(
+        "This product is suspended by an admin — contact support to have it reactivated.",
+      );
+    }
+
     const { tagIds, status, dealEndsAt, ...updateData } = dto;
 
     // Status transition rules:
     // - REJECTED → any merchant action auto-promotes to PENDING_APPROVAL + clears rejection
-    // - Otherwise respect the merchant's explicit status choice (DRAFT / PENDING_APPROVAL / ARCHIVED)
+    // - Otherwise respect the merchant's explicit status choice (DRAFT / APPROVED / ARCHIVED)
     const wasRejected = product.status === "REJECTED";
     const resolvedStatus = wasRejected ? "PENDING_APPROVAL" : status;
 
@@ -192,6 +234,24 @@ export class ProductsService {
   async setFeatured(id: string, isFeatured: boolean) {
     await this.findAdminProduct(id);
     return this.repo.update(id, { isFeatured });
+  }
+
+  /** Admin-only visibility levers, available any time after creation (products
+   *  are live by default now — see create()). Unlike approve()/reject(), these
+   *  work from any current status, not just PENDING_APPROVAL. */
+  async suspend(id: string) {
+    await this.findAdminProduct(id);
+    return this.repo.setStatus(id, "SUSPENDED");
+  }
+
+  async activate(id: string, adminId: string) {
+    await this.findAdminProduct(id);
+    return this.repo.setApprovalStatus(id, { status: "APPROVED", approvedById: adminId, approvedAt: new Date() });
+  }
+
+  async archive(id: string) {
+    await this.findAdminProduct(id);
+    return this.repo.setStatus(id, "ARCHIVED");
   }
 
   // --- Variants ---

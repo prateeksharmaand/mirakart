@@ -49,6 +49,7 @@ export default async function ProductPage({ params }: PageProps) {
   const defaultVariant = product.variants.find((v) => v.isDefault) ?? product.variants[0];
   const sku = product.sku ?? defaultVariant?.sku;
   const attrRows: Array<{ label: string; value: string }> = [];
+  attrRows.push({ label: "Product ID", value: product.productCode });
   if (sku) attrRows.push({ label: "SKU", value: sku });
   if (product.brand) attrRows.push({ label: "Brand", value: product.brand.name });
   if (product.category) attrRows.push({ label: "Category", value: product.category.name });

@@ -10,7 +10,11 @@ import { Button, Checkbox, FormField, Input, Label, Skeleton, toast } from "@mir
 import { PageHeader } from "../../../../components/page-header";
 import { getBrand, updateBrand } from "../../../../lib/api/catalog";
 
-const schema = z.object({ name: z.string().min(1, "Required"), isActive: z.boolean() });
+const schema = z.object({
+  name: z.string().min(1, "Required"),
+  code: z.string().regex(/^[A-Z0-9]*$/, "Uppercase letters and numbers only").optional(),
+  isActive: z.boolean(),
+});
 type FormValues = z.infer<typeof schema>;
 
 export default function EditBrandPage({ params }: { params: { id: string } }) {
@@ -18,9 +22,9 @@ export default function EditBrandPage({ params }: { params: { id: string } }) {
   const qc = useQueryClient();
   const { data: brand, isLoading } = useQuery({ queryKey: ["brand", params.id], queryFn: () => getBrand(params.id) });
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema) });
-  React.useEffect(() => { if (brand) reset({ name: brand.name, isActive: brand.isActive }); }, [brand, reset]);
+  React.useEffect(() => { if (brand) reset({ name: brand.name, code: brand.code ?? "", isActive: brand.isActive }); }, [brand, reset]);
   const mutation = useMutation({
-    mutationFn: (v: FormValues) => updateBrand(params.id, v),
+    mutationFn: (v: FormValues) => updateBrand(params.id, { ...v, code: v.code?.trim() || undefined }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["brands"] }); toast({ title: "Updated", variant: "success" }); router.push("/brands"); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
@@ -31,6 +35,14 @@ export default function EditBrandPage({ params }: { params: { id: string } }) {
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
         <FormField label="Name" htmlFor="name" error={errors.name?.message} required>
           <Input id="name" {...register("name")} />
+        </FormField>
+        <FormField
+          label="Product ID Code"
+          htmlFor="code"
+          error={errors.code?.message}
+          hint="Used as the Product ID prefix, e.g. NIKE-000001."
+        >
+          <Input id="code" placeholder="e.g. NIKE" {...register("code")} onChange={(e) => setValue("code", e.target.value.toUpperCase())} />
         </FormField>
         <div className="flex items-center gap-2">
           <Checkbox id="isActive" checked={watch("isActive")} onCheckedChange={(v) => setValue("isActive", !!v)} />

@@ -30,11 +30,16 @@ export class BrandsService {
 
   async create(dto: CreateBrandDto) {
     const slug = await this.generateUniqueSlug(dto.name);
-    return this.repo.create({ ...dto, slug });
+    const code = await this.resolveUniqueCode(dto.code, dto.name);
+    return this.repo.create({ ...dto, slug, code });
   }
 
   async update(id: string, dto: UpdateBrandDto) {
     await this.findById(id);
+    if (dto.code) {
+      const existing = await this.repo.findByCode(dto.code);
+      if (existing && existing.id !== id) throw new ConflictException("This brand code is already in use");
+    }
     return this.repo.update(id, dto);
   }
 
@@ -56,5 +61,24 @@ export class BrandsService {
       suffix += 1;
     }
     return slug;
+  }
+
+  /** Product IDs use the brand code as their prefix, so every brand needs
+   *  one — auto-derived from the name (uppercase, alphanumeric only,
+   *  truncated to 8 chars) when the admin doesn't set one explicitly. */
+  private async resolveUniqueCode(explicitCode: string | undefined, name: string): Promise<string> {
+    if (explicitCode) {
+      const existing = await this.repo.findByCode(explicitCode);
+      if (existing) throw new ConflictException("This brand code is already in use");
+      return explicitCode;
+    }
+    const base = name.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "BRAND";
+    let code = base;
+    let suffix = 2;
+    while (await this.repo.findByCode(code)) {
+      code = `${base}${suffix}`;
+      suffix += 1;
+    }
+    return code;
   }
 }

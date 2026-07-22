@@ -5,18 +5,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Badge, Button, FormField, Skeleton, Textarea, toast } from "@mirakart/ui";
+import { Button, FormField, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { ProductImageManager } from "../../../../components/product-image-manager";
-import { getProduct, approveProduct, rejectProduct, type Product, type ProductVariant } from "../../../../lib/api/products";
+import { ConfirmDialog } from "../../../../components/confirm-dialog";
+import {
+  getProduct,
+  approveProduct,
+  rejectProduct,
+  suspendProduct,
+  activateProduct,
+  archiveProduct,
+  type Product,
+  type ProductVariant,
+} from "../../../../lib/api/products";
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 }
-
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
-  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
-};
 
 const rejectSchema = z.object({ rejectionReason: z.string().min(10, "Provide at least 10 characters") });
 type RejectForm = z.infer<typeof rejectSchema>;
@@ -24,6 +30,8 @@ type RejectForm = z.infer<typeof rejectSchema>;
 export default function AdminProductDetailPage({ params }: { params: { id: string } }) {
   const qc = useQueryClient();
   const [rejectOpen, setRejectOpen] = React.useState(false);
+  const [suspendOpen, setSuspendOpen] = React.useState(false);
+  const [archiveOpen, setArchiveOpen] = React.useState(false);
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ["admin-product", params.id],
@@ -32,21 +40,37 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<RejectForm>({ resolver: zodResolver(rejectSchema) });
 
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-product", params.id] });
+  const onError = (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" });
+
   const approveMutation = useMutation({
     mutationFn: () => approveProduct(params.id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-product", params.id] }); toast({ title: "Product approved", variant: "success" }); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+    onSuccess: () => { invalidate(); toast({ title: "Product approved", variant: "success" }); },
+    onError,
   });
 
   const rejectMutation = useMutation({
     mutationFn: (reason: string) => rejectProduct(params.id, reason),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-product", params.id] });
-      toast({ title: "Product rejected", variant: "success" });
-      setRejectOpen(false);
-      reset();
-    },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+    onSuccess: () => { invalidate(); toast({ title: "Product rejected", variant: "success" }); setRejectOpen(false); reset(); },
+    onError,
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: () => suspendProduct(params.id),
+    onSuccess: () => { invalidate(); toast({ title: "Product suspended", description: "Hidden from customers.", variant: "success" }); setSuspendOpen(false); },
+    onError,
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: () => activateProduct(params.id),
+    onSuccess: () => { invalidate(); toast({ title: "Product activated", description: "Now visible to customers.", variant: "success" }); },
+    onError,
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: () => archiveProduct(params.id),
+    onSuccess: () => { invalidate(); toast({ title: "Product archived", variant: "success" }); setArchiveOpen(false); },
+    onError,
   });
 
   if (isLoading) return <div className="flex flex-col gap-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-64 w-full" /></div>;
@@ -65,13 +89,25 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
               <Button variant="outline" onClick={() => setRejectOpen(true)}>Reject</Button>
               <Button onClick={() => approveMutation.mutate()} isLoading={approveMutation.isPending}>Approve</Button>
             </div>
-          ) : null
+          ) : (
+            <div className="flex gap-2">
+              {product.status !== "ARCHIVED" && (
+                <Button variant="outline" onClick={() => setArchiveOpen(true)}>Archive</Button>
+              )}
+              {product.status === "APPROVED" ? (
+                <Button variant="danger" onClick={() => setSuspendOpen(true)}>Suspend</Button>
+              ) : (
+                <Button onClick={() => activateMutation.mutate()} isLoading={activateMutation.isPending}>Activate</Button>
+              )}
+            </div>
+          )
         }
       />
 
       {/* Product details */}
       <div className="rounded-xl border border-border bg-white p-6 grid grid-cols-2 gap-4">
-        <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={STATUS_VARIANT[product.status] ?? "default"}>{product.status}</Badge></div>
+        <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={product.status} /></div>
+        <div><p className="text-xs text-muted-foreground">Product ID</p><code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{product.productCode}</code></div>
         <div><p className="text-xs text-muted-foreground">Merchant</p><p className="text-sm">{product.merchant?.storeName ?? "—"}</p></div>
         <div><p className="text-xs text-muted-foreground">Category</p><p className="text-sm">{product.category?.name ?? "—"}</p></div>
         <div><p className="text-xs text-muted-foreground">Brand</p><p className="text-sm">{product.brand?.name ?? "—"}</p></div>
@@ -151,6 +187,26 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={suspendOpen}
+        title="Suspend product"
+        description={`"${product.name}" will be hidden from customers immediately. You can activate it again anytime.`}
+        confirmLabel="Suspend"
+        isLoading={suspendMutation.isPending}
+        onConfirm={() => suspendMutation.mutate()}
+        onCancel={() => setSuspendOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={archiveOpen}
+        title="Archive product"
+        description={`Archive "${product.name}"? It will no longer be visible to customers.`}
+        confirmLabel="Archive"
+        isLoading={archiveMutation.isPending}
+        onConfirm={() => archiveMutation.mutate()}
+        onCancel={() => setArchiveOpen(false)}
+      />
     </div>
   );
 }

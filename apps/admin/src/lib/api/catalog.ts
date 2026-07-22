@@ -70,6 +70,7 @@ export interface Brand {
   id: string;
   name: string;
   slug: string;
+  code: string | null;
   isActive: boolean;
   logoMedia?: { url: string } | null;
   createdAt: string;
@@ -85,12 +86,12 @@ export async function getBrand(id: string): Promise<Brand> {
   return res.data.data as Brand;
 }
 
-export async function createBrand(data: { name: string; isActive?: boolean }): Promise<Brand> {
+export async function createBrand(data: { name: string; code?: string; isActive?: boolean }): Promise<Brand> {
   const res = await apiClient.post("/brands", data);
   return res.data.data as Brand;
 }
 
-export async function updateBrand(id: string, data: { name?: string; isActive?: boolean }): Promise<Brand> {
+export async function updateBrand(id: string, data: { name?: string; code?: string; isActive?: boolean }): Promise<Brand> {
   const res = await apiClient.patch(`/brands/${id}`, data);
   return res.data.data as Brand;
 }

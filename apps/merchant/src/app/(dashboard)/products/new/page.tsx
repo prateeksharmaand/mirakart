@@ -28,7 +28,7 @@ const schema = z.object({
   basePrice: z.coerce.number().positive("Must be positive"),
   compareAtPrice: z.coerce.number().optional(),
   sku: z.string().optional(),
-  status: z.enum(["DRAFT", "PENDING_APPROVAL"]).default("DRAFT"),
+  status: z.enum(["DRAFT", "APPROVED"]).default("APPROVED"),
   tagIds: z.array(z.string()).default([]),
   variants: z.array(variantSchema).min(1, "Add at least one variant"),
 });
@@ -44,7 +44,7 @@ export default function NewProductPage() {
   const { register, handleSubmit, setValue, watch, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      status: "DRAFT",
+      status: "APPROVED",
       tagIds: [],
       variants: [{ sku: "", price: 0, stock: 0, attrs: {} }],
     },
@@ -190,12 +190,12 @@ export default function NewProductPage() {
             <FormField label="SKU" htmlFor="sku">
               <Input id="sku" placeholder="Optional" {...register("sku")} />
             </FormField>
-            <FormField label="Status" htmlFor="status">
-              <Select defaultValue="DRAFT" onValueChange={(v) => setValue("status", v as "DRAFT" | "PENDING_APPROVAL")}>
+            <FormField label="Status" htmlFor="status" hint="Published products go live immediately — no approval needed.">
+              <Select defaultValue="APPROVED" onValueChange={(v) => setValue("status", v as "DRAFT" | "APPROVED")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="PENDING_APPROVAL">Submit for Approval</SelectItem>
+                  <SelectItem value="APPROVED">Publish (live immediately)</SelectItem>
+                  <SelectItem value="DRAFT">Save as Draft</SelectItem>
                 </SelectContent>
               </Select>
             </FormField>

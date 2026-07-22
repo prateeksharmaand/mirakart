@@ -50,6 +50,27 @@ export class AdminProductsController {
     return this.service.setFeatured(id, dto.isFeatured);
   }
 
+  @Patch(":id/suspend")
+  @AdminAuth("product.edit")
+  @ApiOkResponse()
+  suspend(@Param("id") id: string) {
+    return this.service.suspend(id);
+  }
+
+  @Patch(":id/activate")
+  @AdminAuth("product.edit")
+  @ApiOkResponse()
+  activate(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.activate(id, user.id);
+  }
+
+  @Patch(":id/archive")
+  @AdminAuth("product.edit")
+  @ApiOkResponse()
+  archive(@Param("id") id: string) {
+    return this.service.archive(id);
+  }
+
   // --- Images ---
 
   @Get(":id/images")

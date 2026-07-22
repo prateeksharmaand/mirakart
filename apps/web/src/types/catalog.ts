@@ -80,6 +80,7 @@ export interface ProductListItem {
   id: string;
   name: string;
   slug: string;
+  productCode: string;
   basePrice: string;
   compareAtPrice: string | null;
   isFeatured: boolean;

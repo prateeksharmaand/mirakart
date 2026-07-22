@@ -15,9 +15,12 @@ describe("ProductsService", () => {
       findById: jest.fn(),
       findByIdWithDetail: jest.fn(),
       findBySlug: jest.fn(),
+      findBrandCode: jest.fn().mockResolvedValue(null),
+      countByBrand: jest.fn().mockResolvedValue(0),
       create: jest.fn(),
       update: jest.fn(),
       setApprovalStatus: jest.fn(),
+      setStatus: jest.fn(),
       softDelete: jest.fn(),
       findVariantById: jest.fn(),
       findVariantBySku: jest.fn(),
@@ -47,7 +50,7 @@ describe("ProductsService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it("disambiguates the slug and defaults status to DRAFT", async () => {
+    it("disambiguates the slug and defaults status to APPROVED (live immediately)", async () => {
       repo.findBySlug.mockResolvedValueOnce({ id: "existing" } as never).mockResolvedValueOnce(null);
       repo.create.mockResolvedValue({ id: "p1" } as never);
       await service.create("m1", {
@@ -57,7 +60,7 @@ describe("ProductsService", () => {
         basePrice: 100,
       });
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: "shoe-2", status: "DRAFT", merchantId: "m1" }),
+        expect.objectContaining({ slug: "shoe-2", status: "APPROVED", merchantId: "m1", productCode: "PRD-000001" }),
       );
     });
   });
@@ -81,6 +84,19 @@ describe("ProductsService", () => {
 
     it("leaves status untouched when updating a DRAFT product", async () => {
       repo.findById.mockResolvedValue({ id: "p1", merchantId: "m1", status: "DRAFT" } as never);
+      repo.update.mockResolvedValue({ id: "p1" } as never);
+      await service.update("p1", "m1", { name: "New name" });
+      expect(repo.update).toHaveBeenCalledWith("p1", { name: "New name" });
+    });
+
+    it("blocks a merchant from changing status off SUSPENDED themselves", async () => {
+      repo.findById.mockResolvedValue({ id: "p1", merchantId: "m1", status: "SUSPENDED" } as never);
+      await expect(service.update("p1", "m1", { status: "APPROVED" })).rejects.toBeInstanceOf(BadRequestException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("still allows editing other fields while SUSPENDED, as long as status isn't touched", async () => {
+      repo.findById.mockResolvedValue({ id: "p1", merchantId: "m1", status: "SUSPENDED" } as never);
       repo.update.mockResolvedValue({ id: "p1" } as never);
       await service.update("p1", "m1", { name: "New name" });
       expect(repo.update).toHaveBeenCalledWith("p1", { name: "New name" });
@@ -122,6 +138,29 @@ describe("ProductsService", () => {
     it("only allows rejecting a PENDING_APPROVAL product", async () => {
       repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "DRAFT" } as never);
       await expect(service.reject("p1", "admin1", "bad photos")).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe("admin visibility levers", () => {
+    it("suspend() hides a product regardless of its current status", async () => {
+      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "APPROVED" } as never);
+      await service.suspend("p1");
+      expect(repo.setStatus).toHaveBeenCalledWith("p1", "SUSPENDED");
+    });
+
+    it("activate() works from SUSPENDED, unlike approve() which requires PENDING_APPROVAL", async () => {
+      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "SUSPENDED" } as never);
+      await service.activate("p1", "admin1");
+      expect(repo.setApprovalStatus).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ status: "APPROVED", approvedById: "admin1" }),
+      );
+    });
+
+    it("archive() sets ARCHIVED", async () => {
+      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "APPROVED" } as never);
+      await service.archive("p1");
+      expect(repo.setStatus).toHaveBeenCalledWith("p1", "ARCHIVED");
     });
   });
 });

@@ -2,20 +2,11 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@mirakart/ui";
+import { Badge, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { TableActions } from "../../../components/table-actions";
 import { listProducts, type Product } from "../../../lib/api/products";
-
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
-  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  APPROVED: "Approved", PENDING_APPROVAL: "Pending Review", REJECTED: "Rejected",
-  DRAFT: "Draft", ARCHIVED: "Archived",
-};
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -42,6 +33,7 @@ export default function ProductsPage() {
           )}
           <div>
             <p className="font-medium">{r.name}</p>
+            <p className="text-xs text-muted-foreground font-mono">{r.productCode}</p>
             {r.merchant && <p className="text-xs text-muted-foreground">{r.merchant.storeName}</p>}
           </div>
         </div>
@@ -70,7 +62,7 @@ export default function ProductsPage() {
           <span className="text-sm">{r.stockCount ?? 0}</span>
         ),
     },
-    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{STATUS_LABELS[r.status] ?? r.status}</Badge> },
+    { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
     {
       key: "actions", header: "", className: "w-16",
       cell: (r) => <TableActions viewHref={`/products/${r.id}`} />,
@@ -87,7 +79,8 @@ export default function ProductsPage() {
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="PENDING_APPROVAL">Pending Review</SelectItem>
-            <SelectItem value="APPROVED">Approved</SelectItem>
+            <SelectItem value="APPROVED">Active</SelectItem>
+            <SelectItem value="SUSPENDED">Suspended</SelectItem>
             <SelectItem value="REJECTED">Rejected</SelectItem>
             <SelectItem value="DRAFT">Draft</SelectItem>
             <SelectItem value="ARCHIVED">Archived</SelectItem>

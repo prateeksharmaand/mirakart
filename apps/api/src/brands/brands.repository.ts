@@ -31,13 +31,17 @@ export class BrandsRepository {
     return this.prisma.brand.findFirst({ where: { id, deletedAt: null }, include: brandMediaInclude });
   }
 
-  create(data: { name: string; slug: string; description?: string; logoMediaId?: string }) {
+  findByCode(code: string) {
+    return this.prisma.brand.findFirst({ where: { code } });
+  }
+
+  create(data: { name: string; slug: string; code: string; description?: string; logoMediaId?: string }) {
     return this.prisma.brand.create({ data });
   }
 
   update(
     id: string,
-    data: Partial<{ name: string; description: string; logoMediaId: string; isActive: boolean }>,
+    data: Partial<{ name: string; code: string; description: string; logoMediaId: string; isActive: boolean }>,
   ) {
     return this.prisma.brand.update({ where: { id }, data });
   }

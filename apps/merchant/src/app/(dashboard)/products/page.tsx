@@ -4,21 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { Badge, Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@mirakart/ui";
+import { Badge, Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { listMerchantProducts, deleteProduct, type Product } from "../../../lib/api/products";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@mirakart/ui";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
-  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  APPROVED: "Approved", PENDING_APPROVAL: "Pending Review", REJECTED: "Rejected",
-  DRAFT: "Draft", ARCHIVED: "Archived",
-};
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -58,6 +49,7 @@ export default function MerchantProductsPage() {
           {r.images?.[0] && <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 rounded object-cover" />}
           <div>
             <p className="font-medium">{r.name}</p>
+            <p className="text-xs text-muted-foreground font-mono">{r.productCode}</p>
             <p className="text-xs text-muted-foreground">{r.category?.name ?? "—"}</p>
           </div>
         </div>
@@ -77,7 +69,7 @@ export default function MerchantProductsPage() {
           <span className="text-sm">{r.stockCount ?? 0}</span>
         ),
     },
-    { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{STATUS_LABELS[r.status] ?? r.status}</Badge> },
+    { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
     {
       key: "actions",
       header: "",
@@ -114,9 +106,8 @@ export default function MerchantProductsPage() {
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="PENDING_APPROVAL">Pending Review</SelectItem>
-            <SelectItem value="APPROVED">Approved</SelectItem>
-            <SelectItem value="REJECTED">Rejected</SelectItem>
+            <SelectItem value="APPROVED">Active</SelectItem>
+            <SelectItem value="SUSPENDED">Suspended</SelectItem>
             <SelectItem value="ARCHIVED">Archived</SelectItem>
           </SelectContent>
         </Select>

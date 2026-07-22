@@ -6,28 +6,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Badge, Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, toast } from "@mirakart/ui";
+import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags, listCategoryAttributes, type AttributeWithValues } from "../../../../../lib/api/profile";
 import { Plus, Trash2, Check, X } from "lucide-react";
 
-type ProductStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "ARCHIVED";
+const STATUS_LABELS = { DRAFT: "Draft", APPROVED: "Publish (live)", ARCHIVED: "Archived" } as const;
 
-const STATUS_LABELS: Record<ProductStatus, string> = {
-  DRAFT: "Draft",
-  PENDING_APPROVAL: "Pending Review",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  ARCHIVED: "Archived",
-};
-
-const STATUS_VARIANT: Record<ProductStatus, "default" | "success" | "warning" | "danger"> = {
-  APPROVED: "success", PENDING_APPROVAL: "warning", REJECTED: "danger", DRAFT: "default", ARCHIVED: "default",
-};
-
-const MERCHANT_EDITABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL", "ARCHIVED"] as const;
+// Merchants freely manage DRAFT/APPROVED/ARCHIVED themselves; SUSPENDED is an
+// admin enforcement action they can't self-reactivate out of (see
+// ProductsService.update's guard), and PENDING_APPROVAL/REJECTED are legacy
+// states from the old approval flow, shown read-only if they occur.
+const MERCHANT_EDITABLE_STATUSES = ["DRAFT", "APPROVED", "ARCHIVED"] as const;
 type MerchantStatus = typeof MERCHANT_EDITABLE_STATUSES[number];
 
 const schema = z.object({
@@ -37,7 +29,7 @@ const schema = z.object({
   brandId: z.string().optional(),
   price: z.coerce.number().positive(),
   comparePrice: z.coerce.number().optional(),
-  status: z.enum(["DRAFT", "PENDING_APPROVAL", "ARCHIVED"]).optional(),
+  status: z.enum(["DRAFT", "APPROVED", "ARCHIVED"]).optional(),
   tagIds: z.array(z.string()).default([]),
   dealEndsAt: z.string().optional(),
 });
@@ -68,7 +60,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   });
 
   const selectedTagIds = watch("tagIds") ?? [];
-  const isAdminControlled = product?.status === "APPROVED" || product?.status === "REJECTED";
+  const isAdminControlled =
+    product?.status === "SUSPENDED" || product?.status === "REJECTED" || product?.status === "PENDING_APPROVAL";
 
   React.useEffect(() => {
     if (product) {
@@ -185,13 +178,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               )}
             </div>
           </FormField>
+          <FormField label="Product ID">
+            <p className="flex h-9 items-center font-mono text-sm text-foreground-muted">{product?.productCode}</p>
+          </FormField>
           <FormField label="Status">
             {isAdminControlled ? (
               <div className="flex items-center gap-2 h-9">
-                <Badge variant={STATUS_VARIANT[product!.status as ProductStatus]}>
-                  {STATUS_LABELS[product!.status as ProductStatus]}
-                </Badge>
-                <span className="text-xs text-foreground-muted">(set by admin)</span>
+                <StatusBadge status={product!.status} />
+                <span className="text-xs text-foreground-muted">
+                  {product?.status === "SUSPENDED" ? "(suspended by admin — contact support)" : "(set by admin)"}
+                </span>
               </div>
             ) : (
               <Select

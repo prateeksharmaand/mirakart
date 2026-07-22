@@ -12,6 +12,7 @@ describe("BrandsService", () => {
       findAllForAdmin: jest.fn(),
       findBySlug: jest.fn(),
       findById: jest.fn(),
+      findByCode: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),

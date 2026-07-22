@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsArray, IsIn, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
 import { Type } from "class-transformer";
 
-const CREATABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL"] as const;
+const CREATABLE_STATUSES = ["DRAFT", "APPROVED"] as const;
 
 export class CreateProductDto {
   @ApiProperty()
@@ -59,7 +59,7 @@ export class CreateProductDto {
   @IsString()
   metaDescription?: string;
 
-  @ApiPropertyOptional({ enum: CREATABLE_STATUSES, default: "DRAFT" })
+  @ApiPropertyOptional({ enum: CREATABLE_STATUSES, default: "APPROVED" })
   @IsOptional()
   @IsIn(CREATABLE_STATUSES)
   status?: (typeof CREATABLE_STATUSES)[number];

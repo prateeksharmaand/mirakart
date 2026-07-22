@@ -119,7 +119,13 @@ export class ProductsRepository {
           }
         : {}),
       ...(filter.search
-        ? { OR: [{ name: { contains: filter.search, mode: "insensitive" } }] }
+        ? {
+            OR: [
+              { name: { contains: filter.search, mode: "insensitive" } },
+              { productCode: { contains: filter.search, mode: "insensitive" } },
+              { sku: { contains: filter.search, mode: "insensitive" } },
+            ],
+          }
         : {}),
       ...(filter.attributeValueIds && filter.attributeValueIds.length > 0
         ? {
@@ -257,7 +263,15 @@ export class ProductsRepository {
       merchantId: filter.merchantId,
       deletedAt: null,
       ...(filter.status ? { status: filter.status } : {}),
-      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" } } : {}),
+      ...(filter.search
+        ? {
+            OR: [
+              { name: { contains: filter.search, mode: "insensitive" } },
+              { productCode: { contains: filter.search, mode: "insensitive" } },
+              { sku: { contains: filter.search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     };
     const include = {
       images: { where: { isPrimary: true }, take: 1, include: { media: true } },
@@ -296,7 +310,15 @@ export class ProductsRepository {
       deletedAt: null,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.merchantId ? { merchantId: filter.merchantId } : {}),
-      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" } } : {}),
+      ...(filter.search
+        ? {
+            OR: [
+              { name: { contains: filter.search, mode: "insensitive" } },
+              { productCode: { contains: filter.search, mode: "insensitive" } },
+              { sku: { contains: filter.search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     };
 
     const [items, totalItems] = await Promise.all([
@@ -337,6 +359,7 @@ export class ProductsRepository {
     brandId?: string;
     name: string;
     slug: string;
+    productCode: string;
     description: string;
     basePrice: number;
     compareAtPrice?: number;
@@ -347,6 +370,16 @@ export class ProductsRepository {
     status: ProductStatus;
   }) {
     return this.prisma.product.create({ data });
+  }
+
+  findBrandCode(brandId: string): Promise<string | null> {
+    return this.prisma.brand
+      .findUnique({ where: { id: brandId }, select: { code: true } })
+      .then((brand) => brand?.code ?? null);
+  }
+
+  countByBrand(brandId: string | null): Promise<number> {
+    return this.prisma.product.count({ where: { brandId } });
   }
 
   update(
@@ -376,6 +409,10 @@ export class ProductsRepository {
     data: { status: ProductStatus; approvedById?: string; approvedAt?: Date; rejectionReason?: string | null },
   ) {
     return this.prisma.product.update({ where: { id }, data });
+  }
+
+  setStatus(id: string, status: ProductStatus) {
+    return this.prisma.product.update({ where: { id }, data: { status } });
   }
 
   softDelete(id: string) {

@@ -20,6 +20,7 @@ export interface Product {
   id: string;
   name: string;
   slug: string;
+  productCode: string;
   description?: string | null;
   status: string;
   basePrice: number;
@@ -63,6 +64,18 @@ export async function rejectProduct(id: string, rejectionReason: string): Promis
 
 export async function setFeatured(id: string, isFeatured: boolean): Promise<void> {
   await apiClient.patch(`/admin/products/${id}/featured`, { isFeatured });
+}
+
+export async function suspendProduct(id: string): Promise<void> {
+  await apiClient.patch(`/admin/products/${id}/suspend`);
+}
+
+export async function activateProduct(id: string): Promise<void> {
+  await apiClient.patch(`/admin/products/${id}/activate`);
+}
+
+export async function archiveProduct(id: string): Promise<void> {
+  await apiClient.patch(`/admin/products/${id}/archive`);
 }
 
 // --- Image management ---
