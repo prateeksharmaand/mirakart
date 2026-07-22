@@ -440,49 +440,55 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
               </button>
 
-              <div
-                className={`absolute left-0 top-[calc(100%+0.5rem)] z-50 flex w-[36rem] origin-top-left rounded-md border border-border bg-background shadow-soft transition-all duration-200 ease-theme ${
-                  categoriesOpen
-                    ? "visible translate-y-0 opacity-100"
-                    : "invisible -translate-y-1 opacity-0 pointer-events-none"
-                }`}
-              >
-                {/* Left panel — top-level categories */}
-                <div className="w-64 shrink-0 border-r border-border py-2">
-                  {categories.map((category) => (
-                    <Link
-                      key={category.id}
-                      href={`/c/${category.slug}`}
-                      onClick={() => setCategoriesOpen(false)}
-                      onMouseEnter={() => setActiveCategoryId(category.children.length > 0 ? category.id : null)}
-                      className={`flex items-center justify-between gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-background-light hover:text-primary ${
-                        activeCategoryId === category.id ? "bg-background-light text-primary" : "text-foreground"
-                      }`}
-                    >
-                      {category.name}
-                      {category.children.length > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground-muted" />}
-                    </Link>
-                  ))}
-                </div>
+              {(() => {
+                const active = categories.find((c) => c.id === activeCategoryId);
+                const activeChildren = active?.children ?? [];
+                return (
+                  <div
+                    className={`absolute left-0 top-[calc(100%+0.5rem)] z-50 flex origin-top-left rounded-md border border-border bg-background shadow-soft transition-all duration-200 ease-theme ${
+                      activeChildren.length > 0 ? "w-[36rem]" : "w-64"
+                    } ${
+                      categoriesOpen
+                        ? "visible translate-y-0 opacity-100"
+                        : "invisible -translate-y-1 opacity-0 pointer-events-none"
+                    }`}
+                  >
+                    {/* Left panel — top-level categories */}
+                    <div className="w-64 shrink-0 border-r border-border py-2">
+                      {categories.map((category) => (
+                        <Link
+                          key={category.id}
+                          href={`/c/${category.slug}`}
+                          onClick={() => setCategoriesOpen(false)}
+                          onMouseEnter={() => setActiveCategoryId(category.children.length > 0 ? category.id : null)}
+                          className={`flex items-center justify-between gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-background-light hover:text-primary ${
+                            activeCategoryId === category.id ? "bg-background-light text-primary" : "text-foreground"
+                          }`}
+                        >
+                          {category.name}
+                          {category.children.length > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground-muted" />}
+                        </Link>
+                      ))}
+                    </div>
 
-                {/* Right panel — subcategories of the active category */}
-                <div className="max-h-96 flex-1 overflow-y-auto py-2">
-                  {(() => {
-                    const active = categories.find((c) => c.id === activeCategoryId);
-                    if (!active || active.children.length === 0) return null;
-                    return active.children.map((child) => (
-                      <Link
-                        key={child.id}
-                        href={`/c/${child.slug}`}
-                        onClick={() => setCategoriesOpen(false)}
-                        className="block px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-background-light hover:text-primary"
-                      >
-                        {child.name}
-                      </Link>
-                    ));
-                  })()}
-                </div>
-              </div>
+                    {/* Right panel — only rendered when the hovered category has subcategories */}
+                    {activeChildren.length > 0 && (
+                      <div className="max-h-96 flex-1 overflow-y-auto py-2">
+                        {activeChildren.map((child) => (
+                          <Link
+                            key={child.id}
+                            href={`/c/${child.slug}`}
+                            onClick={() => setCategoriesOpen(false)}
+                            className="block px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-background-light hover:text-primary"
+                          >
+                            {child.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="h-12 w-px shrink-0 bg-border" />
