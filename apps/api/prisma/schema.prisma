@@ -94,6 +94,7 @@ enum ProductStatus {
   APPROVED
   REJECTED
   ARCHIVED
+  SUSPENDED
 
   @@map("product_status")
 }
@@ -113,6 +114,7 @@ enum OrderStatus {
   ACCEPTED
   PROCESSING
   PACKED
+  READY_TO_SHIP
   SHIPPED
   OUT_FOR_DELIVERY
   DELIVERED
@@ -131,6 +133,7 @@ enum OrderItemStatus {
   ACCEPTED
   PROCESSING
   PACKED
+  READY_TO_SHIP
   SHIPPED
   OUT_FOR_DELIVERY
   DELIVERED
@@ -456,6 +459,7 @@ model Brand {
   id          String    @id @default(cuid())
   name        String
   slug        String    @unique
+  code        String?   @unique
   description String?
   logoMediaId String?
   logoMedia   Media?    @relation("BrandLogo", fields: [logoMediaId], references: [id])
@@ -535,6 +539,7 @@ model Product {
   brand           Brand?        @relation(fields: [brandId], references: [id])
   name            String
   slug            String        @unique
+  productCode     String        @unique
   description     String
   status          ProductStatus @default(DRAFT)
   rejectionReason String?
