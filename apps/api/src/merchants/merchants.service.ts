@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ReportsService } from "../reports/reports.service";
 import { MerchantsRepository } from "./merchants.repository";
 import type { CreateMerchantDocumentDto } from "./dto/create-merchant-document.dto";
 import type { MerchantQueryDto } from "./dto/merchant-query.dto";
@@ -11,6 +12,7 @@ export class MerchantsService {
   constructor(
     private readonly repo: MerchantsRepository,
     private readonly notifications: NotificationsService,
+    private readonly reports: ReportsService,
   ) {}
 
   async list(query: MerchantQueryDto) {
@@ -104,5 +106,25 @@ export class MerchantsService {
     const document = await this.repo.findDocumentById(documentId);
     if (!document) throw new NotFoundException("Document not found");
     return this.repo.updateDocumentStatus(documentId, dto.status);
+  }
+
+  /** CRM merchant analytics — product/order counts computed here, revenue/
+   *  stock/best-seller reused from ReportsService rather than re-querying
+   *  the same aggregations a second time. */
+  async getStats(id: string) {
+    await this.findOne(id);
+    const [counts, stockSummary, salesSummary, topProducts] = await Promise.all([
+      this.repo.getCounts(id),
+      this.reports.merchantStockSummary(id),
+      this.reports.merchantSalesSummary(id, {}),
+      this.reports.topProducts({ limit: 1 }, id),
+    ]);
+    return {
+      ...counts,
+      outOfStockProducts: stockSummary.outOfStockCount,
+      lowStockProducts: stockSummary.lowStockCount,
+      totalRevenue: salesSummary.totalRevenue,
+      bestSellingProduct: topProducts[0]?.product ?? null,
+    };
   }
 }

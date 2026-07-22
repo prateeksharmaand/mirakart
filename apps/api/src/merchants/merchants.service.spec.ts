@@ -5,6 +5,7 @@ import { MerchantsService } from "./merchants.service";
 describe("MerchantsService", () => {
   let service: MerchantsService;
   let repo: jest.Mocked<MerchantsRepository>;
+  let reports: { merchantStockSummary: jest.Mock; merchantSalesSummary: jest.Mock; topProducts: jest.Mock };
 
   beforeEach(() => {
     repo = {
@@ -16,9 +17,11 @@ describe("MerchantsService", () => {
       findDocuments: jest.fn(),
       findDocumentById: jest.fn(),
       updateDocumentStatus: jest.fn(),
+      getCounts: jest.fn(),
     } as unknown as jest.Mocked<MerchantsRepository>;
     const notifications = { create: jest.fn().mockResolvedValue(undefined) } as never;
-    service = new MerchantsService(repo, notifications);
+    reports = { merchantStockSummary: jest.fn(), merchantSalesSummary: jest.fn(), topProducts: jest.fn() };
+    service = new MerchantsService(repo, notifications, reports as never);
   });
 
   describe("approve", () => {
@@ -81,6 +84,36 @@ describe("MerchantsService", () => {
       repo.findById.mockResolvedValue({ id: "m1", status: "APPROVED" } as never);
       await service.suspend("m1");
       expect(repo.setStatus).toHaveBeenCalledWith("m1", { status: "SUSPENDED" });
+    });
+  });
+
+  describe("getStats", () => {
+    it("combines counts with reused Reports figures", async () => {
+      repo.findById.mockResolvedValue({ id: "m1", status: "APPROVED" } as never);
+      repo.getCounts.mockResolvedValue({
+        totalProducts: 10,
+        activeProducts: 8,
+        suspendedProducts: 1,
+        totalOrders: 20,
+        completedOrders: 15,
+        cancelledOrders: 2,
+        pendingOrders: 3,
+      } as never);
+      reports.merchantStockSummary.mockResolvedValue({ lowStockCount: 2, outOfStockCount: 1 });
+      reports.merchantSalesSummary.mockResolvedValue({ totalOrders: 20, totalRevenue: 5000, totalReturns: 1 });
+      reports.topProducts.mockResolvedValue([{ product: { id: "p1", name: "Shoe" }, unitsSold: 5, revenue: 500 }]);
+
+      const stats = await service.getStats("m1");
+
+      expect(stats).toEqual(
+        expect.objectContaining({
+          totalProducts: 10,
+          outOfStockProducts: 1,
+          lowStockProducts: 2,
+          totalRevenue: 5000,
+          bestSellingProduct: { id: "p1", name: "Shoe" },
+        }),
+      );
     });
   });
 });

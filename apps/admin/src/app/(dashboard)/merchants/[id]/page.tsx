@@ -6,10 +6,23 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Package, ShoppingCart, IndianRupee, PackageX, CheckCircle2, XCircle } from "lucide-react";
 import { Badge, Button, FormField, Input, Skeleton, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { ConfirmDialog } from "../../../../components/confirm-dialog";
-import { getMerchant, getMerchantDocuments, approveMerchant, rejectMerchant, suspendMerchant } from "../../../../lib/api/merchants";
+import { StatsCard } from "../../../../components/stats-card";
+import {
+  getMerchant,
+  getMerchantDocuments,
+  getMerchantStats,
+  approveMerchant,
+  rejectMerchant,
+  suspendMerchant,
+} from "../../../../lib/api/merchants";
+
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+}
 
 const rejectSchema = z.object({ rejectionReason: z.string().min(10, "Provide at least 10 characters") });
 type RejectForm = z.infer<typeof rejectSchema>;
@@ -31,6 +44,10 @@ export default function MerchantDetailPage({ params }: { params: { id: string } 
   const { data: docs } = useQuery({
     queryKey: ["merchant-docs", params.id],
     queryFn: () => getMerchantDocuments(params.id),
+  });
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["merchant-stats", params.id],
+    queryFn: () => getMerchantStats(params.id),
   });
 
   const { register, handleSubmit, formState: { errors } } = useForm<RejectForm>({ resolver: zodResolver(rejectSchema) });
@@ -85,6 +102,23 @@ export default function MerchantDetailPage({ params }: { params: { id: string } 
         {merchant.rejectionReason && (
           <div className="col-span-2"><p className="text-xs text-muted-foreground">Rejection Reason</p><p className="text-sm text-danger">{merchant.rejectionReason}</p></div>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <StatsCard title="Products" value={stats?.totalProducts ?? "—"} icon={Package} isLoading={statsLoading}
+          subtitle={stats ? `${stats.activeProducts} active · ${stats.suspendedProducts} suspended` : undefined} />
+        <StatsCard title="Out of Stock" value={stats?.outOfStockProducts ?? "—"} icon={PackageX} iconColor="text-red-600" isLoading={statsLoading} />
+        <StatsCard title="Total Orders" value={stats?.totalOrders ?? "—"} icon={ShoppingCart} isLoading={statsLoading} />
+        <StatsCard title="Completed Orders" value={stats?.completedOrders ?? "—"} icon={CheckCircle2} iconColor="text-green-600" isLoading={statsLoading} />
+        <StatsCard title="Pending Orders" value={stats?.pendingOrders ?? "—"} icon={ShoppingCart} iconColor="text-amber-600" isLoading={statsLoading} />
+        <StatsCard title="Cancelled Orders" value={stats?.cancelledOrders ?? "—"} icon={XCircle} iconColor="text-red-600" isLoading={statsLoading} />
+        <StatsCard title="Revenue" value={stats ? formatCurrency(stats.totalRevenue) : "—"} icon={IndianRupee} iconColor="text-green-600" isLoading={statsLoading} />
+        <StatsCard
+          title="Best Seller"
+          value={stats?.bestSellingProduct?.name ?? "—"}
+          icon={Package}
+          isLoading={statsLoading}
+        />
       </div>
 
       {docs && docs.length > 0 && (

@@ -48,6 +48,7 @@ export default function MerchantsPage() {
       header: "Status",
       cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge>,
     },
+    { key: "products", header: "Products", cell: (r) => r._count?.products ?? 0 },
     { key: "joined", header: "Joined", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
       key: "actions",

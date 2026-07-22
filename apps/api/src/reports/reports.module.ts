@@ -7,5 +7,6 @@ import { ReportsService } from "./reports.service";
 @Module({
   controllers: [AdminReportsController, MerchantReportsController],
   providers: [ReportsService, ReportsRepository],
+  exports: [ReportsService],
 })
 export class ReportsModule {}

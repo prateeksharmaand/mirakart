@@ -14,6 +14,21 @@ export interface Merchant {
   rejectionReason?: string | null;
   createdAt: string;
   logoMedia?: { url: string } | null;
+  _count?: { products: number };
+}
+
+export interface MerchantStats {
+  totalProducts: number;
+  activeProducts: number;
+  suspendedProducts: number;
+  outOfStockProducts: number;
+  lowStockProducts: number;
+  totalOrders: number;
+  completedOrders: number;
+  pendingOrders: number;
+  cancelledOrders: number;
+  totalRevenue: number;
+  bestSellingProduct: { id: string; name: string; slug: string } | null;
 }
 
 export interface MerchantDocument {
@@ -32,6 +47,11 @@ export async function listMerchants(params: { page?: number; limit?: number; sea
 export async function getMerchant(id: string): Promise<Merchant> {
   const res = await apiClient.get(`/merchants/${id}`);
   return res.data.data as Merchant;
+}
+
+export async function getMerchantStats(id: string): Promise<MerchantStats> {
+  const res = await apiClient.get(`/merchants/${id}/stats`);
+  return res.data.data as MerchantStats;
 }
 
 export async function getMerchantDocuments(id: string): Promise<MerchantDocument[]> {

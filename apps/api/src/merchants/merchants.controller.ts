@@ -61,6 +61,13 @@ export class MerchantsController {
     return this.service.findOne(id);
   }
 
+  @Get(":id/stats")
+  @AdminAuth("merchant.view")
+  @ApiOkResponse()
+  stats(@Param("id") id: string) {
+    return this.service.getStats(id);
+  }
+
   @Get(":id/documents")
   @AdminAuth("merchant.view")
   @ApiOkResponse()

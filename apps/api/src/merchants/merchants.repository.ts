@@ -36,7 +36,7 @@ export class MerchantsRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.merchant.findMany({
         where,
-        include: merchantMediaInclude,
+        include: { ...merchantMediaInclude, _count: { select: { products: true } } },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
         orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, MERCHANT_SORT_FIELDS, "createdAt"),
@@ -96,5 +96,29 @@ export class MerchantsRepository {
 
   updateDocumentStatus(id: string, status: MerchantDocumentStatus) {
     return this.prisma.merchantDocument.update({ where: { id }, data: { status } });
+  }
+
+  // Product/order counts — direct Prisma aggregation, same style as
+  // ReportsRepository (which is reused for the sales/stock/best-seller
+  // figures rather than duplicated here — see MerchantsService.getStats).
+  async getCounts(merchantId: string) {
+    const [totalProducts, activeProducts, suspendedProducts, totalOrders, completedOrders, cancelledOrders] =
+      await Promise.all([
+        this.prisma.product.count({ where: { merchantId, deletedAt: null } }),
+        this.prisma.product.count({ where: { merchantId, status: "APPROVED", deletedAt: null } }),
+        this.prisma.product.count({ where: { merchantId, status: "SUSPENDED", deletedAt: null } }),
+        this.prisma.order.count({ where: { items: { some: { merchantId } }, deletedAt: null } }),
+        this.prisma.order.count({ where: { items: { some: { merchantId } }, status: "COMPLETED", deletedAt: null } }),
+        this.prisma.order.count({ where: { items: { some: { merchantId } }, status: "CANCELLED", deletedAt: null } }),
+      ]);
+    return {
+      totalProducts,
+      activeProducts,
+      suspendedProducts,
+      totalOrders,
+      completedOrders,
+      cancelledOrders,
+      pendingOrders: totalOrders - completedOrders - cancelledOrders,
+    };
   }
 }
