@@ -44,6 +44,8 @@ export async function listProducts(params: {
   status?: string;
   merchantId?: string;
   categoryId?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 } = {}) {
   const res = await apiClient.get("/admin/products", { params });
   return res.data as { data: Product[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };

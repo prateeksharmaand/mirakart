@@ -40,7 +40,15 @@ export interface Product {
 export type StockStatusFilter = "LOW_STOCK" | "OUT_OF_STOCK";
 
 export async function listMerchantProducts(
-  params: { page?: number; limit?: number; search?: string; status?: string; stockStatus?: StockStatusFilter } = {},
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    stockStatus?: StockStatusFilter;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  } = {},
 ) {
   const res = await apiClient.get("/merchants/me/products", { params });
   return res.data as { data: Product[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };

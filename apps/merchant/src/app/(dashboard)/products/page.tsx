@@ -20,10 +20,12 @@ export default function MerchantProductsPage() {
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [stockStatus, setStockStatus] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("createdAt");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["merchant-products", page, search, status, stockStatus],
+    queryKey: ["merchant-products", page, search, status, stockStatus, sortBy, sortOrder],
     queryFn: () =>
       listMerchantProducts({
         page,
@@ -31,8 +33,20 @@ export default function MerchantProductsPage() {
         search: search || undefined,
         status: status === "all" ? undefined : status,
         stockStatus: stockStatus === "all" ? undefined : (stockStatus as "LOW_STOCK" | "OUT_OF_STOCK"),
+        sortBy,
+        sortOrder,
       }),
   });
+
+  function handleSortChange(key: string) {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
@@ -42,8 +56,9 @@ export default function MerchantProductsPage() {
 
   const columns: Column<Product>[] = [
     {
-      key: "product",
+      key: "name",
       header: "Product",
+      sortable: true,
       cell: (r) => (
         <div className="flex items-center gap-3">
           {r.images?.[0] && <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 rounded object-cover" />}
@@ -55,7 +70,7 @@ export default function MerchantProductsPage() {
         </div>
       ),
     },
-    { key: "price", header: "Price", cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
+    { key: "basePrice", header: "Price", sortable: true, cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
     { key: "variants", header: "Variants", cell: (r) => r.variants?.length ?? 0 },
     {
       key: "stock",
@@ -69,7 +84,7 @@ export default function MerchantProductsPage() {
           <span className="text-sm">{r.stockCount ?? 0}</span>
         ),
     },
-    { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} labelOverrides={PRODUCT_STATUS_LABELS} /> },
+    { key: "status", header: "Status", sortable: true, cell: (r) => <StatusBadge status={r.status} labelOverrides={PRODUCT_STATUS_LABELS} /> },
     {
       key: "actions",
       header: "",
@@ -120,7 +135,15 @@ export default function MerchantProductsPage() {
           </SelectContent>
         </Select>
       </div>
-      <DataTable columns={columns} data={data?.data ?? []} keyField="id" isLoading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={data?.data ?? []}
+        keyField="id"
+        isLoading={isLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
+      />
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}
