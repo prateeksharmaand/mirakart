@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -10,6 +11,7 @@ import type { ActorType } from "@prisma/client";
 import * as argon2 from "argon2";
 import { AuthRepository } from "./auth.repository";
 import type { AdminLoginDto } from "./dto/admin-login.dto";
+import type { ChangePasswordDto } from "./dto/change-password.dto";
 import type { CustomerLoginDto } from "./dto/customer-login.dto";
 import type { CustomerRegisterDto } from "./dto/customer-register.dto";
 import type { ForgotPasswordDto } from "./dto/forgot-password.dto";
@@ -222,6 +224,22 @@ export class AuthService {
     await this.repo.updatePrincipalPasswordHash(dto.principalType, record.principalId, passwordHash);
     await this.repo.markPasswordResetTokenUsed(record.id);
     await this.repo.revokeAllRefreshTokensForPrincipal(dto.principalType, record.principalId);
+  }
+
+  /** Self-service password change — requires the current password and, unlike
+   *  resetPassword, is called from an authenticated session rather than an
+   *  emailed token. Revokes all sessions the same way reset does, since the
+   *  password just changed. */
+  async changePassword(type: ActorType, id: string, dto: ChangePasswordDto): Promise<void> {
+    const principal = await this.findActivePrincipal(type, id);
+    if (!principal) throw new NotFoundException("Account not found");
+
+    const valid = await argon2.verify(principal.passwordHash, dto.currentPassword);
+    if (!valid) throw new UnauthorizedException("Current password is incorrect");
+
+    const passwordHash = await argon2.hash(dto.newPassword);
+    await this.repo.updatePrincipalPasswordHash(type, id, passwordHash);
+    await this.repo.revokeAllRefreshTokensForPrincipal(type, id);
   }
 
   // --- Internal helpers ------------------------------------------------------

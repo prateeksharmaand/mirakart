@@ -45,3 +45,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 export async function logout(refreshToken: string): Promise<void> {
   await apiClient.post("/auth/logout", { refreshToken });
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post("/auth/customer/change-password", { currentPassword, newPassword });
+}
