@@ -64,11 +64,15 @@ export default function MerchantProductsPage() {
           {r.images?.[0] && <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 rounded object-cover" />}
           <div>
             <p className="font-medium">{r.name}</p>
-            <p className="text-xs text-muted-foreground font-mono">{r.productCode}</p>
             <p className="text-xs text-muted-foreground">{r.category?.name ?? "—"}</p>
           </div>
         </div>
       ),
+    },
+    {
+      key: "productCode",
+      header: "Product ID",
+      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
     },
     { key: "basePrice", header: "Price", sortable: true, cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
     { key: "variants", header: "Variants", cell: (r) => r.variants?.length ?? 0 },

@@ -54,11 +54,15 @@ export default function ProductsPage() {
           )}
           <div>
             <p className="font-medium">{r.name}</p>
-            <p className="text-xs text-muted-foreground font-mono">{r.productCode}</p>
             {r.merchant && <p className="text-xs text-muted-foreground">{r.merchant.storeName}</p>}
           </div>
         </div>
       ),
+    },
+    {
+      key: "productCode",
+      header: "Product ID",
+      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
     },
     { key: "category", header: "Category", cell: (r) => r.category?.name ?? "—" },
     {
