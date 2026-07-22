@@ -54,7 +54,9 @@ export interface MerchantOrder {
   }>;
 }
 
-export async function listMerchantOrders(params: { page?: number; limit?: number; status?: string } = {}) {
+export async function listMerchantOrders(
+  params: { page?: number; limit?: number; status?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+) {
   const res = await apiClient.get("/merchants/me/orders", { params });
   return res.data as { data: MerchantOrder[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }

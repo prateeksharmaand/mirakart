@@ -237,7 +237,14 @@ export class OrdersRepository {
     return { items, totalItems };
   }
 
-  async findMerchantOrders(merchantId: string, page: number, limit: number, itemStatus?: OrderItemStatus) {
+  async findMerchantOrders(
+    merchantId: string,
+    page: number,
+    limit: number,
+    itemStatus?: OrderItemStatus,
+    sortBy?: string,
+    sortOrder?: "asc" | "desc",
+  ) {
     const where: Prisma.OrderWhereInput = {
       deletedAt: null,
       items: { some: { merchantId, ...(itemStatus ? { status: itemStatus } : {}) } },
@@ -246,12 +253,12 @@ export class OrdersRepository {
       this.prisma.order.findMany({
         where,
         include: {
-          items: { where: { merchantId } },
+          items: { where: { merchantId }, include: orderItemProductInclude },
           customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
         },
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: buildOrderBy(sortBy, sortOrder, ORDER_SORT_FIELDS, "createdAt"),
       }),
       this.prisma.order.count({ where }),
     ]);

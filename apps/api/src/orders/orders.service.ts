@@ -571,8 +571,15 @@ export class OrdersService {
   // Merchant / admin listing & legacy per-item status update
   // ===========================================================
 
-  async listForMerchant(merchantId: string, page: number, limit: number, itemStatus?: OrderItemStatus) {
-    const { items, totalItems } = await this.repo.findMerchantOrders(merchantId, page, limit, itemStatus);
+  async listForMerchant(
+    merchantId: string,
+    page: number,
+    limit: number,
+    itemStatus?: OrderItemStatus,
+    sortBy?: string,
+    sortOrder?: "asc" | "desc",
+  ) {
+    const { items, totalItems } = await this.repo.findMerchantOrders(merchantId, page, limit, itemStatus, sortBy, sortOrder);
     return { data: items, meta: paginate(page, limit, totalItems) };
   }
 

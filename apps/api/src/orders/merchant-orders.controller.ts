@@ -18,7 +18,7 @@ export class MerchantOrdersController {
   @Get()
   @ApiOkResponse()
   list(@Query() query: MerchantOrderQueryDto, @CurrentUser() user: AuthenticatedPrincipal) {
-    return this.service.listForMerchant(user.id, query.page, query.limit, query.status);
+    return this.service.listForMerchant(user.id, query.page, query.limit, query.status, query.sortBy, query.sortOrder);
   }
 
   @Get(":id")
