@@ -8,7 +8,7 @@ import { useAuthStore } from "../../stores/auth-store";
 import type { OrderStatus } from "../../types/order";
 
 const PENDING_CONFIRMATION_STATUSES: OrderStatus[] = ["PENDING", "PENDING_CONFIRMATION"];
-const CURRENT_STATUSES: OrderStatus[] = ["CONFIRMED", "ACCEPTED", "PROCESSING", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"];
+const CURRENT_STATUSES: OrderStatus[] = ["CONFIRMED", "ACCEPTED", "PROCESSING", "PACKED", "READY_TO_SHIP", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"];
 const COMPLETED_STATUSES: OrderStatus[] = ["COMPLETED"];
 
 function SummaryCard({ href, label, count }: { href: string; label: string; count: number }) {

@@ -23,6 +23,7 @@ import { ConfirmDialog } from "../../../../components/confirm-dialog";
 import {
   acceptOrder,
   cancelOrder,
+  completeOrder,
   getMerchantOrder,
   markCodRefused,
   rejectOrder,
@@ -37,7 +38,10 @@ type ReasonForm = z.infer<typeof reasonSchema>;
 const NEXT_FULFILLMENT_STATUS: Partial<Record<string, { status: FulfillmentStatus; label: string }>> = {
   ACCEPTED: { status: "PROCESSING", label: "Mark Processing" },
   PROCESSING: { status: "PACKED", label: "Mark Packed" },
-  PACKED: { status: "SHIPPED", label: "Mark Shipped" },
+  PACKED: { status: "READY_TO_SHIP", label: "Mark Ready To Ship" },
+  READY_TO_SHIP: { status: "SHIPPED", label: "Mark Shipped" },
+  SHIPPED: { status: "OUT_FOR_DELIVERY", label: "Mark Out For Delivery" },
+  OUT_FOR_DELIVERY: { status: "DELIVERED", label: "Mark Delivered" },
 };
 
 function formatCurrency(n: number) {
@@ -91,6 +95,12 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
+  const completeMutation = useMutation({
+    mutationFn: () => completeOrder(params.id),
+    onSuccess: () => { invalidate(); toast({ title: "Order completed", variant: "success" }); },
+    onError: (e: Error) => toast({ title: "Couldn't complete order", description: e.message, variant: "danger" }),
+  });
+
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!order) return <p>Order not found.</p>;
 
@@ -99,6 +109,7 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
   const myItemStatus = myItems[0]?.status;
   const awaitingAcceptance = myItems.length > 0 && myItems.every((i) => i.status === "CONFIRMED");
   const nextStage = myItemStatus ? NEXT_FULFILLMENT_STATUS[myItemStatus] : undefined;
+  const canComplete = myItemStatus === "DELIVERED";
   const canRefuse = order.status === "DELIVERED";
   const canCancel = myItems.length > 0 && !["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED", "CANCELLED", "FAILED_DELIVERY", "COD_REFUSED"].includes(myItemStatus ?? "");
 
@@ -116,6 +127,11 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
               </>
             )}
             {nextStage && <Button onClick={() => setAdvanceOpen(true)}>{nextStage.label}</Button>}
+            {canComplete && (
+              <Button onClick={() => completeMutation.mutate()} isLoading={completeMutation.isPending}>
+                Complete Order
+              </Button>
+            )}
             {canRefuse && <Button variant="outline" onClick={() => setRefuseOpen(true)}>Mark COD Refused</Button>}
             {canCancel && <Button variant="danger" onClick={() => setCancelOpen(true)}>Cancel</Button>}
           </div>
@@ -129,24 +145,55 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
           <>
             <div><p className="text-xs text-muted-foreground">Customer</p><p className="text-sm">{order.customer.firstName} {order.customer.lastName}</p></div>
             <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm">{order.customer.email}</p></div>
+            <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm">{order.customer.phone}</p></div>
           </>
         )}
       </div>
+
+      {order.shippingAddress && (
+        <div className="rounded-xl border border-border bg-white p-6">
+          <h2 className="mb-3 text-sm font-semibold">Shipping Address</h2>
+          <p className="text-sm">{order.shippingAddress.fullName}</p>
+          <p className="text-sm text-muted-foreground">
+            {order.shippingAddress.line1}
+            {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+          </p>
+          <p className="text-sm text-muted-foreground">{order.shippingAddress.country}</p>
+          <p className="text-sm text-muted-foreground">{order.shippingAddress.phone}</p>
+        </div>
+      )}
 
       {myItems.length > 0 && (
         <div className="rounded-xl border border-border bg-white p-6">
           <h2 className="mb-4 text-sm font-semibold">Your Items in This Order</h2>
           <div className="flex flex-col gap-3">
-            {myItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
-                <div>
-                  <p className="text-sm font-medium">{item.productNameSnapshot}</p>
-                  <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
-                  <div className="mt-1"><StatusBadge status={item.status} /></div>
+            {myItems.map((item) => {
+              const image = item.product?.images[0]?.media.url;
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-14 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image} alt="" className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{item.productNameSnapshot}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[item.product?.productCode, item.product?.category?.name].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
+                      <div className="mt-1"><StatusBadge status={item.status} /></div>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
                 </div>
-                <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="mt-4 border-t border-border pt-3 flex justify-between">
             <span className="text-sm font-semibold">Your Total</span>

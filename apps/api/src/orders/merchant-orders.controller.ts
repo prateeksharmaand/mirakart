@@ -49,6 +49,12 @@ export class MerchantOrdersController {
     return this.service.merchantUpdateFulfillment(id, user.id, dto.status);
   }
 
+  @Post(":id/complete")
+  @ApiOkResponse()
+  complete(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.merchantCompleteOrder(id, user.id);
+  }
+
   @Post(":id/mark-cod-refused")
   @ApiOkResponse()
   markCodRefused(

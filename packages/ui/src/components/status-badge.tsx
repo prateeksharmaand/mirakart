@@ -9,6 +9,7 @@ const STATUS_VARIANT: Record<string, NonNullable<BadgeProps["variant"]>> = {
   ACCEPTED: "info",
   PROCESSING: "info",
   PACKED: "info",
+  READY_TO_SHIP: "info",
   SHIPPED: "info",
   OUT_FOR_DELIVERY: "info",
   DELIVERED: "success",

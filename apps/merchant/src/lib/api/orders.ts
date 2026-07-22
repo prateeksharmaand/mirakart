@@ -7,6 +7,7 @@ export type OrderStatus =
   | "ACCEPTED"
   | "PROCESSING"
   | "PACKED"
+  | "READY_TO_SHIP"
   | "SHIPPED"
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
@@ -16,7 +17,7 @@ export type OrderStatus =
   | "FAILED_DELIVERY"
   | "COD_REFUSED";
 
-export type FulfillmentStatus = "PROCESSING" | "PACKED" | "SHIPPED";
+export type FulfillmentStatus = "PROCESSING" | "PACKED" | "READY_TO_SHIP" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED";
 
 export interface MerchantOrder {
   id: string;
@@ -24,7 +25,17 @@ export interface MerchantOrder {
   status: OrderStatus;
   total: number;
   createdAt: string;
-  customer?: { id: string; firstName: string; lastName: string; email: string } | null;
+  customer?: { id: string; firstName: string; lastName: string; email: string; phone: string } | null;
+  shippingAddress?: {
+    fullName: string;
+    phone: string;
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  } | null;
   items?: Array<{
     id: string;
     productNameSnapshot: string;
@@ -34,6 +45,12 @@ export interface MerchantOrder {
     totalPrice: number;
     status: OrderStatus;
     merchantId: string;
+    product?: {
+      productCode: string;
+      brand: { name: string } | null;
+      category: { name: string } | null;
+      images: { media: { url: string } }[];
+    } | null;
   }>;
 }
 
@@ -63,6 +80,11 @@ export async function rejectOrder(id: string, reason: string): Promise<MerchantO
 
 export async function updateFulfillmentStatus(id: string, status: FulfillmentStatus): Promise<MerchantOrder> {
   const res = await apiClient.patch(`/merchants/me/orders/${id}/fulfillment-status`, { status });
+  return res.data.data as MerchantOrder;
+}
+
+export async function completeOrder(id: string): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/complete`);
   return res.data.data as MerchantOrder;
 }
 

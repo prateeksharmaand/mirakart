@@ -7,6 +7,7 @@ const HAPPY_PATH_STEPS: { status: OrderStatus; label: string }[] = [
   { status: "ACCEPTED", label: "Accepted" },
   { status: "PROCESSING", label: "Processing" },
   { status: "PACKED", label: "Packed" },
+  { status: "READY_TO_SHIP", label: "Ready to Ship" },
   { status: "SHIPPED", label: "Shipped" },
   { status: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
   { status: "DELIVERED", label: "Delivered" },

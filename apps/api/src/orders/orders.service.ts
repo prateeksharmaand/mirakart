@@ -91,13 +91,24 @@ export class OrdersService {
     }
 
     if (dto.paymentMethod === "COD") {
-      for (const adminId of await this.repo.listActiveAdminIds()) {
+      // COD orders are confirmed the moment they're created (no admin gate)
+      // — notify the customer and every merchant immediately, same as what
+      // adminConfirmOrder used to send once an admin acted on it.
+      this.notify(
+        "CUSTOMER",
+        customerId,
+        "ORDER_CONFIRMED",
+        `Order #${order.orderNumber} confirmed`,
+        `Your order #${order.orderNumber} has been confirmed and will be processed soon.`,
+        { orderId: order.id },
+      );
+      for (const merchantId of this.distinctMerchantIds(order.items)) {
         this.notify(
-          "ADMIN",
-          adminId,
-          "NEW_COD_ORDER",
-          "New COD order awaiting confirmation",
-          `Order #${order.orderNumber} was placed via Cash on Delivery and needs confirmation.`,
+          "MERCHANT",
+          merchantId,
+          "NEW_ORDER",
+          `New order #${order.orderNumber}`,
+          "You have a new confirmed order to fulfill.",
           { orderId: order.id },
         );
       }
@@ -156,6 +167,7 @@ export class OrdersService {
       paymentStatus: query.paymentStatus,
       paymentMethod: query.paymentMethod,
       customerId: query.customerId,
+      search: query.search,
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
@@ -405,7 +417,10 @@ export class OrdersService {
     const labels: Record<FulfillmentStatus, string> = {
       PROCESSING: "is being processed",
       PACKED: "has been packed",
+      READY_TO_SHIP: "is ready to ship",
       SHIPPED: "has been shipped",
+      OUT_FOR_DELIVERY: "is out for delivery",
+      DELIVERED: "has been delivered",
     };
     const full = await this.repo.findOrderDetail(orderId);
     if (full) {
@@ -416,6 +431,41 @@ export class OrdersService {
         `Order #${full.orderNumber} ${labels[status]}`,
         `Your order #${full.orderNumber} ${labels[status]}.`,
         { orderId, status },
+      );
+    }
+    return this.findForMerchant(orderId, merchantId);
+  }
+
+  /** Merchant-driven completion for delivered items — gated on payment being
+   *  actually settled, preserving the original COD invariant ("no Completed
+   *  while unpaid") even though merchants no longer wait on an admin
+   *  confirmation step for anything else. COD orders complete automatically
+   *  via markCodReceived instead, once the admin collects payment. */
+  async merchantCompleteOrder(orderId: string, merchantId: string) {
+    const order = await this.findForMerchant(orderId, merchantId);
+    const deliveredItems = order.items.filter((i) => i.status === "DELIVERED");
+    if (deliveredItems.length === 0) {
+      throw new ConflictException("No delivered items to complete");
+    }
+    if (!order.payment || order.payment.status !== "PAID") {
+      throw new ConflictException(
+        order.payment?.method === "COD"
+          ? "This is a Cash on Delivery order — it completes automatically once payment is collected."
+          : "Payment for this order has not been settled yet.",
+      );
+    }
+    await this.repo.updateItemsStatusForMerchant(orderId, merchantId, ["DELIVERED"], "COMPLETED");
+    await this.recomputeGatedOrderStatus(orderId, { type: "MERCHANT", id: merchantId });
+
+    const full = await this.repo.findOrderDetail(orderId);
+    if (full) {
+      this.notify(
+        "CUSTOMER",
+        full.customerId,
+        "ORDER_STATUS_CHANGED",
+        `Order #${full.orderNumber} completed`,
+        `Your order #${full.orderNumber} is now complete. Thanks for shopping with us!`,
+        { orderId },
       );
     }
     return this.findForMerchant(orderId, merchantId);

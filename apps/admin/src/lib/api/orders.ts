@@ -7,6 +7,7 @@ export type OrderStatus =
   | "ACCEPTED"
   | "PROCESSING"
   | "PACKED"
+  | "READY_TO_SHIP"
   | "SHIPPED"
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
@@ -19,6 +20,25 @@ export type OrderStatus =
 export type PaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "UNPAID" | "PAID";
 export type PaymentMethodFilter = "COD" | "ONLINE";
 
+export interface OrderAddress {
+  fullName: string;
+  phone: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+export interface OrderStatusHistoryEntry {
+  id: string;
+  status: OrderStatus;
+  note: string | null;
+  changedAt: string;
+  changedByType: "ADMIN" | "MERCHANT" | "CUSTOMER" | "SYSTEM" | null;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -27,16 +47,25 @@ export interface Order {
   createdAt: string;
   rejectionReason?: string | null;
   cancelReason?: string | null;
-  customer?: { id: string; firstName: string; lastName: string; email: string } | null;
+  customer?: { id: string; firstName: string; lastName: string; email: string; phone: string } | null;
+  shippingAddress?: OrderAddress | null;
+  billingAddress?: OrderAddress | null;
+  statusHistory?: OrderStatusHistoryEntry[];
   items?: Array<{
     id: string;
     productNameSnapshot: string;
     variantSnapshot: { sku: string; attributes: { attributeName: string; value: string }[] };
     merchantId: string;
+    merchant?: { storeName: string } | null;
     quantity: number;
     unitPrice: number;
     totalPrice: number;
     status: OrderStatus;
+    product?: {
+      productCode: string;
+      brand: { name: string } | null;
+      images: { media: { url: string } }[];
+    } | null;
   }>;
   payment?: {
     status: PaymentStatus;

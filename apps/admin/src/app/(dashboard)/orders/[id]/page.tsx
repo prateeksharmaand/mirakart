@@ -159,6 +159,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           <>
             <div><p className="text-xs text-muted-foreground">Customer</p><p className="text-sm">{order.customer.firstName} {order.customer.lastName}</p></div>
             <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm">{order.customer.email}</p></div>
+            <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm">{order.customer.phone}</p></div>
           </>
         )}
         {order.payment && (
@@ -189,14 +190,81 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         <div className="rounded-xl border border-border bg-white p-6">
           <h2 className="mb-4 text-sm font-semibold">Items</h2>
           <div className="flex flex-col gap-3">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
-                <div>
-                  <p className="text-sm font-medium">{item.productNameSnapshot}</p>
-                  <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
-                  <StatusBadge status={item.status} />
+            {order.items.map((item) => {
+              const image = item.product?.images[0]?.media.url;
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-14 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image} alt="" className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{item.productNameSnapshot}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[item.product?.productCode, item.merchant?.storeName].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
+                      <StatusBadge status={item.status} />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
                 </div>
-                <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {(order.shippingAddress || order.billingAddress) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {order.shippingAddress && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-3 text-sm font-semibold">Shipping Address</h2>
+              <p className="text-sm">{order.shippingAddress.fullName}</p>
+              <p className="text-sm text-muted-foreground">
+                {order.shippingAddress.line1}{order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+              </p>
+              <p className="text-sm text-muted-foreground">{order.shippingAddress.country}</p>
+              <p className="text-sm text-muted-foreground">{order.shippingAddress.phone}</p>
+            </div>
+          )}
+          {order.billingAddress && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-3 text-sm font-semibold">Billing Address</h2>
+              <p className="text-sm">{order.billingAddress.fullName}</p>
+              <p className="text-sm text-muted-foreground">
+                {order.billingAddress.line1}{order.billingAddress.line2 ? `, ${order.billingAddress.line2}` : ""}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.postalCode}
+              </p>
+              <p className="text-sm text-muted-foreground">{order.billingAddress.country}</p>
+              <p className="text-sm text-muted-foreground">{order.billingAddress.phone}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {order.statusHistory && order.statusHistory.length > 0 && (
+        <div className="rounded-xl border border-border bg-white p-6">
+          <h2 className="mb-4 text-sm font-semibold">Order Timeline</h2>
+          <div className="flex flex-col gap-3">
+            {order.statusHistory.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={entry.status} />
+                  {entry.note && <span className="text-xs text-muted-foreground">{entry.note}</span>}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(entry.changedAt).toLocaleString()}
+                  {entry.changedByType ? ` · ${entry.changedByType}` : ""}
+                </span>
               </div>
             ))}
           </div>
@@ -215,6 +283,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               <SelectItem value="ACCEPTED">Accepted</SelectItem>
               <SelectItem value="PROCESSING">Processing</SelectItem>
               <SelectItem value="PACKED">Packed</SelectItem>
+              <SelectItem value="READY_TO_SHIP">Ready To Ship</SelectItem>
               <SelectItem value="SHIPPED">Shipped</SelectItem>
               <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
               <SelectItem value="DELIVERED">Delivered</SelectItem>

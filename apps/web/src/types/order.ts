@@ -1,3 +1,5 @@
+import type { CustomerAddress } from "./customer";
+
 export type OrderStatus =
   | "PENDING"
   | "PENDING_CONFIRMATION"
@@ -5,6 +7,7 @@ export type OrderStatus =
   | "ACCEPTED"
   | "PROCESSING"
   | "PACKED"
+  | "READY_TO_SHIP"
   | "SHIPPED"
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
@@ -27,6 +30,11 @@ export interface OrderItem {
   unitPrice: string;
   totalPrice: string;
   status: OrderItemStatus;
+  product?: {
+    productCode: string;
+    brand: { name: string } | null;
+    images: { media: { url: string } }[];
+  } | null;
 }
 
 export interface OrderStatusHistoryEntry {
@@ -50,6 +58,7 @@ export interface Order {
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
   payment?: { method: string; status: PaymentStatus } | null;
+  shippingAddress?: CustomerAddress | null;
   cancelReason?: string | null;
   rejectionReason?: string | null;
 }

@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PaymentsRepository } from "./payments.repository";
 import { RazorpayService } from "./razorpay.service";
 
@@ -20,6 +21,7 @@ export class PaymentsService {
     private readonly repo: PaymentsRepository,
     private readonly razorpay: RazorpayService,
     private readonly config: ConfigService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async initiate(orderId: string, customerId: string) {
@@ -93,12 +95,33 @@ export class PaymentsService {
     if (payment.status !== "PENDING") return; // already resolved — idempotent no-op
 
     if (body.event === "payment.captured") {
-      await this.repo.markResolved(
+      const { merchantIds } = await this.repo.markResolved(
         payment.id,
         payment.orderId,
         { status: "CAPTURED", providerPaymentId: entity.id, paidAt: new Date() },
         "CONFIRMED",
       );
+      // Order just went straight to CONFIRMED (no admin gate) — same
+      // notifications OrdersService.checkout sends for a COD order,
+      // triggered here instead since online orders wait for payment first.
+      void this.notifications.create(
+        "CUSTOMER",
+        payment.order.customerId,
+        "ORDER_CONFIRMED",
+        `Order #${payment.order.orderNumber} confirmed`,
+        `Your order #${payment.order.orderNumber} has been confirmed and will be processed soon.`,
+        { orderId: payment.orderId },
+      );
+      for (const merchantId of merchantIds) {
+        void this.notifications.create(
+          "MERCHANT",
+          merchantId,
+          "NEW_ORDER",
+          `New order #${payment.order.orderNumber}`,
+          "You have a new confirmed order to fulfill.",
+          { orderId: payment.orderId },
+        );
+      }
     } else if (body.event === "payment.failed") {
       await this.repo.markResolved(payment.id, payment.orderId, { status: "FAILED" });
     }

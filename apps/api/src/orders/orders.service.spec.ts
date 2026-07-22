@@ -91,7 +91,10 @@ describe("OrdersService", () => {
         items: [{ variantId: "v1", quantity: 2 }],
       } as never);
       repo.findVariantForCheckout.mockResolvedValue(approvedVariant as never);
-      repo.createOrder.mockResolvedValue({ order: { id: "order1" }, lowStockAlerts: [] } as never);
+      repo.createOrder.mockResolvedValue({
+        order: { id: "order1", items: [{ merchantId: "m1" }] },
+        lowStockAlerts: [],
+      } as never);
 
       const result = await service.checkout("c1", dto);
 
@@ -103,7 +106,7 @@ describe("OrdersService", () => {
         }),
       );
       expect(cartRepo.clearItems).toHaveBeenCalledWith("cart1");
-      expect(result).toEqual({ id: "order1" });
+      expect(result).toEqual({ id: "order1", items: [{ merchantId: "m1" }] });
     });
 
     it("translates a race-condition stock failure into ConflictException and doesn't clear the cart", async () => {
@@ -134,11 +137,14 @@ describe("OrdersService", () => {
       });
       repo.createOrder
         .mockRejectedValueOnce(collision)
-        .mockResolvedValueOnce({ order: { id: "order1" }, lowStockAlerts: [] } as never);
+        .mockResolvedValueOnce({
+          order: { id: "order1", items: [{ merchantId: "m1" }] },
+          lowStockAlerts: [],
+        } as never);
 
       const result = await service.checkout("c1", dto);
       expect(repo.createOrder).toHaveBeenCalledTimes(2);
-      expect(result).toEqual({ id: "order1" });
+      expect(result).toEqual({ id: "order1", items: [{ merchantId: "m1" }] });
     });
   });
 
@@ -167,6 +173,51 @@ describe("OrdersService", () => {
       repo.findOrderItemById.mockResolvedValue({ id: "item1", orderId: "order1", merchantId: "m1" } as never);
       await service.updateItemStatus("order1", "item1", "SHIPPED", { type: "ADMIN", id: "a1" });
       expect(repo.updateOrderItemStatus).toHaveBeenCalledWith("item1", "SHIPPED");
+    });
+  });
+
+  describe("merchantCompleteOrder", () => {
+    it("blocks completing a COD order that hasn't been collected yet", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        items: [{ id: "item1", merchantId: "m1", status: "DELIVERED" }],
+        payment: { method: "COD", status: "UNPAID" },
+      } as never);
+      await expect(service.merchantCompleteOrder("order1", "m1")).rejects.toBeInstanceOf(ConflictException);
+      expect(repo.updateItemsStatusForMerchant).not.toHaveBeenCalled();
+    });
+
+    it("blocks completing an online order whose payment hasn't settled", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        items: [{ id: "item1", merchantId: "m1", status: "DELIVERED" }],
+        payment: { method: "CARD", status: "PENDING" },
+      } as never);
+      await expect(service.merchantCompleteOrder("order1", "m1")).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("completes a delivered, paid order", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        customerId: "c1",
+        items: [{ id: "item1", merchantId: "m1", status: "DELIVERED" }],
+        payment: { method: "CARD", status: "PAID" },
+      } as never);
+      repo.findItemsForOrder.mockResolvedValue([{ status: "COMPLETED" }] as never);
+      await service.merchantCompleteOrder("order1", "m1");
+      expect(repo.updateItemsStatusForMerchant).toHaveBeenCalledWith("order1", "m1", ["DELIVERED"], "COMPLETED");
+    });
+
+    it("rejects when there are no delivered items to complete", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        items: [{ id: "item1", merchantId: "m1", status: "SHIPPED" }],
+        payment: { method: "CARD", status: "PAID" },
+      } as never);
+      await expect(service.merchantCompleteOrder("order1", "m1")).rejects.toBeInstanceOf(ConflictException);
     });
   });
 

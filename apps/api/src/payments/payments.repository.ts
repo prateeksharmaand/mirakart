@@ -26,11 +26,21 @@ export class PaymentsRepository {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.update({ where: { id }, data });
+      let merchantIds: string[] = [];
       if (orderStatus) {
         await tx.order.update({ where: { id: orderId }, data: { status: orderStatus } });
         await tx.orderStatusHistory.create({ data: { orderId, status: orderStatus } });
+        if (orderStatus === "CONFIRMED") {
+          // Mirrors COD checkout, which now creates orders CONFIRMED with
+          // items already CONFIRMED — online orders reach the same state
+          // one step later (on successful payment), so items need the same
+          // bump here for merchantAcceptOrder's precondition to ever pass.
+          await tx.orderItem.updateMany({ where: { orderId, status: "PENDING" }, data: { status: "CONFIRMED" } });
+          const items = await tx.orderItem.findMany({ where: { orderId }, select: { merchantId: true } });
+          merchantIds = [...new Set(items.map((i) => i.merchantId))];
+        }
       }
-      return payment;
+      return { payment, merchantIds };
     });
   }
 

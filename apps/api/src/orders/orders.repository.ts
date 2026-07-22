@@ -30,12 +30,32 @@ export interface LowStockAlert {
   quantity: number;
 }
 
+// Historical order items intentionally freeze name/price/attributes into
+// productNameSnapshot/variantSnapshot at checkout time — but image, brand,
+// merchant name, and Product ID are stable reference data (a product's
+// picture or which store sold it doesn't retroactively change), so those
+// are safe to live-join instead of also snapshotting.
+const orderItemProductInclude = {
+  product: {
+    select: {
+      productCode: true,
+      brand: { select: { name: true } },
+      category: { select: { name: true } },
+      images: { where: { isPrimary: true }, take: 1, include: { media: true } },
+    },
+  },
+  merchant: { select: { storeName: true } },
+};
+
 const orderDetailInclude = {
-  items: true,
+  items: { include: orderItemProductInclude },
   payment: true,
   statusHistory: { orderBy: { changedAt: "asc" as const } },
   shippingAddress: true,
   billingAddress: true,
+  // Never actually included before — admin/merchant detail pages have long
+  // had a `customer` field in their types with no query ever populating it.
+  customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
 };
 
 @Injectable()
@@ -75,11 +95,13 @@ export class OrdersRepository {
     const subtotal = data.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
     const total = subtotal; // shippingFee/tax/discount default to 0 — no shipping/tax engine in scope yet
 
-    // COD orders start life awaiting admin confirmation with an unpaid
-    // balance; every other payment method keeps the existing PENDING ->
-    // (webhook) -> CONFIRMED/CAPTURED flow untouched.
+    // COD orders are confirmed immediately — no admin gate — with an unpaid
+    // balance collected on delivery; every other payment method keeps the
+    // existing PENDING -> (webhook) -> CONFIRMED/CAPTURED flow untouched,
+    // since it must wait for the payment to actually succeed.
     const isCod = data.paymentMethod === "COD";
-    const initialOrderStatus: OrderStatus = isCod ? "PENDING_CONFIRMATION" : "PENDING";
+    const initialOrderStatus: OrderStatus = isCod ? "CONFIRMED" : "PENDING";
+    const initialItemStatus: OrderItemStatus = isCod ? "CONFIRMED" : "PENDING";
     const initialPaymentStatus: PaymentStatus = isCod ? "UNPAID" : "PENDING";
 
     return this.prisma.$transaction(async (tx) => {
@@ -102,7 +124,7 @@ export class OrdersRepository {
               quantity: line.quantity,
               unitPrice: line.unitPrice,
               totalPrice: line.unitPrice * line.quantity,
-              status: "PENDING",
+              status: initialItemStatus,
             })),
           },
           payment: {
@@ -150,7 +172,7 @@ export class OrdersRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.order.findMany({
         where,
-        include: { items: true },
+        include: { items: { include: orderItemProductInclude }, payment: true },
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -165,6 +187,7 @@ export class OrdersRepository {
     paymentStatus?: PaymentStatus;
     paymentMethod?: PaymentMethodFilter;
     customerId?: string;
+    search?: string;
     page: number;
     limit: number;
     sortBy?: string;
@@ -174,6 +197,16 @@ export class OrdersRepository {
       deletedAt: null,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.customerId ? { customerId: filter.customerId } : {}),
+      ...(filter.search
+        ? {
+            OR: [
+              { orderNumber: { contains: filter.search, mode: "insensitive" } },
+              { customer: { firstName: { contains: filter.search, mode: "insensitive" } } },
+              { customer: { lastName: { contains: filter.search, mode: "insensitive" } } },
+              { customer: { email: { contains: filter.search, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
       ...(filter.paymentStatus || filter.paymentMethod
         ? {
             payment: {
@@ -190,7 +223,11 @@ export class OrdersRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.order.findMany({
         where,
-        include: { items: true, payment: true },
+        include: {
+          items: true,
+          payment: true,
+          customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
         orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, ORDER_SORT_FIELDS, "createdAt"),
@@ -208,7 +245,10 @@ export class OrdersRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.order.findMany({
         where,
-        include: { items: { where: { merchantId } } },
+        include: {
+          items: { where: { merchantId } },
+          customer: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: "desc" },

@@ -27,4 +27,9 @@ export class AdminOrderQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   customerId?: string;
+
+  @ApiPropertyOptional({ description: "Free-text search by order number or customer name/email" })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
