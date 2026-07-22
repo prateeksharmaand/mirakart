@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
+import { Button, FormField, PRODUCT_STATUS_LABELS, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { ProductImageManager } from "../../../../components/product-image-manager";
 import { ConfirmDialog } from "../../../../components/confirm-dialog";
@@ -106,7 +106,7 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
 
       {/* Product details */}
       <div className="rounded-xl border border-border bg-white p-6 grid grid-cols-2 gap-4">
-        <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={product.status} /></div>
+        <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={product.status} labelOverrides={PRODUCT_STATUS_LABELS} /></div>
         <div><p className="text-xs text-muted-foreground">Product ID</p><code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{product.productCode}</code></div>
         <div><p className="text-xs text-muted-foreground">Merchant</p><p className="text-sm">{product.merchant?.storeName ?? "—"}</p></div>
         <div><p className="text-xs text-muted-foreground">Category</p><p className="text-sm">{product.category?.name ?? "—"}</p></div>

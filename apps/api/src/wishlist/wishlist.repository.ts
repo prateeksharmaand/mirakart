@@ -20,9 +20,13 @@ const productListSelect = {
 export class WishlistRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Only surfaces items whose product is still ACTIVE — a suspended/archived
+  // product shouldn't show up in a customer's wishlist as if still
+  // purchasable. The wishlist row itself is untouched, so it reappears
+  // automatically if the product is reactivated.
   findByCustomer(customerId: string) {
     return this.prisma.wishlistItem.findMany({
-      where: { customerId },
+      where: { customerId, product: { status: "APPROVED", deletedAt: null } },
       orderBy: { createdAt: "desc" },
       include: { product: { select: productListSelect } },
     });
@@ -48,7 +52,9 @@ export class WishlistRepository {
   }
 
   countByCustomer(customerId: string): Promise<number> {
-    return this.prisma.wishlistItem.count({ where: { customerId } });
+    return this.prisma.wishlistItem.count({
+      where: { customerId, product: { status: "APPROVED", deletedAt: null } },
+    });
   }
 
   getProductIds(customerId: string): Promise<{ productId: string }[]> {

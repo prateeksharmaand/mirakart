@@ -46,9 +46,11 @@ export class RecentlyViewedRepository {
     }
   }
 
+  // Only surfaces items whose product is still ACTIVE — same reasoning as
+  // WishlistRepository.findByCustomer.
   findByCustomer(customerId: string, limit = 20) {
     return this.prisma.recentlyViewed.findMany({
-      where: { customerId },
+      where: { customerId, product: { status: "APPROVED", deletedAt: null } },
       orderBy: { viewedAt: "desc" },
       take: limit,
       include: { product: { select: productSelect } },

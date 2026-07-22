@@ -42,3 +42,19 @@ export async function getCodSummary(): Promise<CodSummary> {
   const res = await apiClient.get("/admin/reports/cod-summary");
   return res.data.data as CodSummary;
 }
+
+export interface AdminOrderStats {
+  totalOrders: number;
+  todaysOrders: number;
+  pendingOrders: number;
+  processingOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  codOrders: number;
+  onlineOrders: number;
+}
+
+export async function getAdminOrderStats(): Promise<AdminOrderStats> {
+  const res = await apiClient.get("/admin/reports/order-stats");
+  return res.data.data as AdminOrderStats;
+}

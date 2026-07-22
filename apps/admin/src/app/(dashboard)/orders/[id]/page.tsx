@@ -14,11 +14,6 @@ import {
   DialogTitle,
   FormField,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   StatusBadge,
   Textarea,
@@ -26,19 +21,7 @@ import {
 } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { ConfirmDialog } from "../../../../components/confirm-dialog";
-import {
-  cancelOrder,
-  confirmOrder,
-  getOrder,
-  markCodReceived,
-  markCodRefused,
-  markOrderDelivered,
-  rejectOrder,
-  updateOrderStatus,
-} from "../../../../lib/api/orders";
-
-const reasonSchema = z.object({ reason: z.string().min(10, "Provide at least 10 characters") });
-type ReasonForm = z.infer<typeof reasonSchema>;
+import { cancelOrder, getOrder, markCodReceived } from "../../../../lib/api/orders";
 
 const codReceivedSchema = z.object({
   amountReceived: z.coerce.number().positive("Enter the amount received"),
@@ -53,24 +36,11 @@ function formatCurrency(n: number) {
 
 export default function OrderDetailPage({ params }: { params: { id: string } }) {
   const qc = useQueryClient();
-  const [newStatus, setNewStatus] = React.useState("");
-  const [note, setNote] = React.useState("");
-
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
-  const [rejectOpen, setRejectOpen] = React.useState(false);
-  const [deliverOpen, setDeliverOpen] = React.useState(false);
   const [codReceivedOpen, setCodReceivedOpen] = React.useState(false);
-  const [codRefusedOpen, setCodRefusedOpen] = React.useState(false);
   const [cancelOpen, setCancelOpen] = React.useState(false);
 
   const { data: order, isLoading } = useQuery({ queryKey: ["order", params.id], queryFn: () => getOrder(params.id) });
 
-  React.useEffect(() => {
-    if (order) setNewStatus(order.status);
-  }, [order]);
-
-  const rejectForm = useForm<ReasonForm>({ resolver: zodResolver(reasonSchema) });
-  const refuseForm = useForm<ReasonForm>({ resolver: zodResolver(reasonSchema) });
   const codReceivedForm = useForm<CodReceivedForm>({
     resolver: zodResolver(codReceivedSchema),
     defaultValues: { receivedDate: new Date().toISOString().slice(0, 10) },
@@ -80,39 +50,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     qc.invalidateQueries({ queryKey: ["order", params.id] });
   }
 
-  const mutation = useMutation({
-    mutationFn: () => updateOrderStatus(params.id, newStatus, note || undefined),
-    onSuccess: () => { invalidate(); toast({ title: "Order status updated", variant: "success" }); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
-  });
-
-  const confirmMutation = useMutation({
-    mutationFn: () => confirmOrder(params.id),
-    onSuccess: () => { invalidate(); toast({ title: "Order confirmed", variant: "success" }); setConfirmOpen(false); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: (reason: string) => rejectOrder(params.id, reason),
-    onSuccess: () => { invalidate(); toast({ title: "Order rejected", variant: "success" }); setRejectOpen(false); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
-  });
-
-  const deliverMutation = useMutation({
-    mutationFn: () => markOrderDelivered(params.id),
-    onSuccess: () => { invalidate(); toast({ title: "Order marked delivered", variant: "success" }); setDeliverOpen(false); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
-  });
-
   const codReceivedMutation = useMutation({
     mutationFn: (v: CodReceivedForm) => markCodReceived(params.id, v),
     onSuccess: () => { invalidate(); toast({ title: "COD payment recorded — order completed", variant: "success" }); setCodReceivedOpen(false); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
-  });
-
-  const codRefusedMutation = useMutation({
-    mutationFn: (reason: string) => markCodRefused(params.id, reason),
-    onSuccess: () => { invalidate(); toast({ title: "Marked as COD refused", variant: "success" }); setCodRefusedOpen(false); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
@@ -126,9 +66,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
   if (!order) return <p>Order not found.</p>;
 
   const isCod = order.payment?.method === "COD";
-  const canDeliver = order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY";
   const canCollectCod = isCod && order.status === "DELIVERED" && order.payment?.status === "UNPAID";
-  const canRefuse = isCod && order.status === "DELIVERED";
   const isTerminal = ["CANCELLED", "REFUNDED", "COMPLETED", "FAILED_DELIVERY", "COD_REFUSED"].includes(order.status);
 
   return (
@@ -138,15 +76,10 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Orders", href: "/orders" }, { label: `#${order.orderNumber}` }]}
         action={
           <div className="flex flex-wrap gap-2">
-            {order.status === "PENDING_CONFIRMATION" && (
-              <>
-                <Button variant="outline" onClick={() => setRejectOpen(true)}>Reject</Button>
-                <Button onClick={() => setConfirmOpen(true)}>Confirm Order</Button>
-              </>
-            )}
-            {canDeliver && <Button onClick={() => setDeliverOpen(true)}>Mark Delivered</Button>}
+            {/* Fulfillment (Accept/Processing/Packed/Shipped/Delivered/Complete) belongs
+                to the merchant now — admin keeps only financial reconciliation and
+                exception handling here. */}
             {canCollectCod && <Button onClick={() => setCodReceivedOpen(true)}>Mark COD Payment Received</Button>}
-            {canRefuse && <Button variant="outline" onClick={() => setCodRefusedOpen(true)}>Mark COD Refused</Button>}
             {!isTerminal && <Button variant="danger" onClick={() => setCancelOpen(true)}>Cancel Order</Button>}
           </div>
         }
@@ -271,59 +204,6 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold">Update Status</h2>
-        <div className="flex flex-col gap-3">
-          <Select value={newStatus} onValueChange={setNewStatus}>
-            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="PENDING_CONFIRMATION">Pending Confirmation</SelectItem>
-              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-              <SelectItem value="ACCEPTED">Accepted</SelectItem>
-              <SelectItem value="PROCESSING">Processing</SelectItem>
-              <SelectItem value="PACKED">Packed</SelectItem>
-              <SelectItem value="READY_TO_SHIP">Ready To Ship</SelectItem>
-              <SelectItem value="SHIPPED">Shipped</SelectItem>
-              <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
-              <SelectItem value="DELIVERED">Delivered</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              <SelectItem value="FAILED_DELIVERY">Failed Delivery</SelectItem>
-              <SelectItem value="COD_REFUSED">COD Refused</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-          <div>
-            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={newStatus === order.status}>
-              Update Status
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Confirm order"
-        description={`Confirm order #${order.orderNumber}? The merchant will be notified to begin fulfillment.`}
-        confirmLabel="Confirm Order"
-        variant="primary"
-        isLoading={confirmMutation.isPending}
-        onConfirm={() => confirmMutation.mutate()}
-        onCancel={() => setConfirmOpen(false)}
-      />
-
-      <ConfirmDialog
-        open={deliverOpen}
-        title="Mark delivered"
-        description={`Mark order #${order.orderNumber} as delivered?`}
-        confirmLabel="Mark Delivered"
-        variant="primary"
-        isLoading={deliverMutation.isPending}
-        onConfirm={() => deliverMutation.mutate()}
-        onCancel={() => setDeliverOpen(false)}
-      />
-
       <ConfirmDialog
         open={cancelOpen}
         title="Cancel order"
@@ -333,36 +213,6 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         onConfirm={() => cancelMutation.mutate()}
         onCancel={() => setCancelOpen(false)}
       />
-
-      <Dialog open={rejectOpen} onOpenChange={(o) => !o && setRejectOpen(false)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Reject order</DialogTitle></DialogHeader>
-          <form onSubmit={rejectForm.handleSubmit((v) => rejectMutation.mutate(v.reason))}>
-            <FormField label="Reason" htmlFor="reject-reason" error={rejectForm.formState.errors.reason?.message} required>
-              <Textarea id="reject-reason" rows={3} {...rejectForm.register("reason")} />
-            </FormField>
-            <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="danger" isLoading={rejectMutation.isPending}>Reject Order</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={codRefusedOpen} onOpenChange={(o) => !o && setCodRefusedOpen(false)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Mark COD refused</DialogTitle></DialogHeader>
-          <form onSubmit={refuseForm.handleSubmit((v) => codRefusedMutation.mutate(v.reason))}>
-            <FormField label="Reason" htmlFor="refuse-reason" error={refuseForm.formState.errors.reason?.message} required>
-              <Textarea id="refuse-reason" rows={3} {...refuseForm.register("reason")} />
-            </FormField>
-            <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => setCodRefusedOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="danger" isLoading={codRefusedMutation.isPending}>Mark Refused</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={codReceivedOpen} onOpenChange={(o) => !o && setCodReceivedOpen(false)}>
         <DialogContent>

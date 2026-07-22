@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, DollarSign, Store, Users, Package, RotateCcw, Clock, Wallet } from "lucide-react";
+import { ShoppingCart, DollarSign, Store, Users, Package, RotateCcw, Clock, Wallet, CalendarClock, Truck, CheckCircle2, XCircle, Banknote, CreditCard } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "../../components/page-header";
 import { StatsCard } from "../../components/stats-card";
@@ -12,6 +12,7 @@ import {
   getMerchantCount,
   getCustomerCount,
   getCodSummary,
+  getAdminOrderStats,
 } from "../../lib/api/reports";
 
 function formatCurrency(n: number) {
@@ -42,6 +43,11 @@ export default function DashboardPage() {
   const { data: codSummary, isLoading: codLoading } = useQuery({
     queryKey: ["cod-summary"],
     queryFn: getCodSummary,
+  });
+
+  const { data: orderStats, isLoading: orderStatsLoading } = useQuery({
+    queryKey: ["admin-order-stats"],
+    queryFn: getAdminOrderStats,
   });
 
   const chartData = (topProducts ?? []).map((p) => ({
@@ -98,13 +104,6 @@ export default function DashboardPage() {
           iconColor="text-slate-600"
         />
         <StatsCard
-          title="Pending Confirmation"
-          value={codSummary?.pendingConfirmationCount ?? "—"}
-          icon={Clock}
-          isLoading={codLoading}
-          iconColor="text-amber-600"
-        />
-        <StatsCard
           title="Today's COD Orders"
           value={codSummary?.todaysCodOrders ?? "—"}
           icon={ShoppingCart}
@@ -117,6 +116,55 @@ export default function DashboardPage() {
           icon={Wallet}
           isLoading={codLoading}
           iconColor="text-red-600"
+        />
+        <StatsCard
+          title="Today's Orders"
+          value={orderStats?.todaysOrders ?? "—"}
+          icon={CalendarClock}
+          isLoading={orderStatsLoading}
+          iconColor="text-teal-600"
+        />
+        <StatsCard
+          title="Pending Orders"
+          value={orderStats?.pendingOrders ?? "—"}
+          icon={Clock}
+          isLoading={orderStatsLoading}
+          iconColor="text-amber-600"
+        />
+        <StatsCard
+          title="Processing Orders"
+          value={orderStats?.processingOrders ?? "—"}
+          icon={Truck}
+          isLoading={orderStatsLoading}
+          iconColor="text-blue-600"
+        />
+        <StatsCard
+          title="Delivered Orders"
+          value={orderStats?.deliveredOrders ?? "—"}
+          icon={CheckCircle2}
+          isLoading={orderStatsLoading}
+          iconColor="text-green-600"
+        />
+        <StatsCard
+          title="Cancelled Orders"
+          value={orderStats?.cancelledOrders ?? "—"}
+          icon={XCircle}
+          isLoading={orderStatsLoading}
+          iconColor="text-red-600"
+        />
+        <StatsCard
+          title="COD Orders"
+          value={orderStats?.codOrders ?? "—"}
+          icon={Banknote}
+          isLoading={orderStatsLoading}
+          iconColor="text-amber-600"
+        />
+        <StatsCard
+          title="Online Payment Orders"
+          value={orderStats?.onlineOrders ?? "—"}
+          icon={CreditCard}
+          isLoading={orderStatsLoading}
+          iconColor="text-indigo-600"
         />
       </div>
 

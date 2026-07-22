@@ -29,4 +29,11 @@ export class AdminReportsController {
   codSummary() {
     return this.service.codOrderStats();
   }
+
+  @Get("order-stats")
+  @AdminAuth("report.view")
+  @ApiOkResponse()
+  orderStats() {
+    return this.service.adminOrderStats();
+  }
 }

@@ -92,14 +92,42 @@ export class ReportsRepository {
     };
   }
 
+  async adminOrderStats() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const base = { deletedAt: null } as const;
+
+    const [totalOrders, todaysOrders, pendingOrders, processingOrders, deliveredOrders, cancelledOrders, codOrders, onlineOrders] =
+      await Promise.all([
+        this.prisma.order.count({ where: base }),
+        this.prisma.order.count({ where: { ...base, createdAt: { gte: startOfToday } } }),
+        this.prisma.order.count({ where: { ...base, status: "CONFIRMED" } }),
+        this.prisma.order.count({
+          where: { ...base, status: { in: ["ACCEPTED", "PROCESSING", "PACKED", "READY_TO_SHIP", "SHIPPED", "OUT_FOR_DELIVERY"] } },
+        }),
+        this.prisma.order.count({ where: { ...base, status: "DELIVERED" } }),
+        this.prisma.order.count({ where: { ...base, status: "CANCELLED" } }),
+        this.prisma.order.count({ where: { ...base, payment: { method: "COD" } } }),
+        this.prisma.order.count({ where: { ...base, payment: { method: { not: "COD" } } } }),
+      ]);
+
+    return { totalOrders, todaysOrders, pendingOrders, processingOrders, deliveredOrders, cancelledOrders, codOrders, onlineOrders };
+  }
+
   async merchantOrderStatusSummary(merchantId: string) {
-    const [pending, processing, packed, shipped] = await Promise.all([
+    // newOrders = items at CONFIRMED, i.e. handed to the merchant and
+    // awaiting Accept — the "New Order" step at the top of the fulfillment
+    // ladder in order-workflow.util.ts.
+    const [newOrders, processing, packed, shipped, delivered, completed, cancelled] = await Promise.all([
       this.prisma.orderItem.count({ where: { merchantId, status: "CONFIRMED" } }),
       this.prisma.orderItem.count({ where: { merchantId, status: "PROCESSING" } }),
       this.prisma.orderItem.count({ where: { merchantId, status: "PACKED" } }),
       this.prisma.orderItem.count({ where: { merchantId, status: "SHIPPED" } }),
+      this.prisma.orderItem.count({ where: { merchantId, status: "DELIVERED" } }),
+      this.prisma.orderItem.count({ where: { merchantId, status: "COMPLETED" } }),
+      this.prisma.orderItem.count({ where: { merchantId, status: "CANCELLED" } }),
     ]);
-    return { pending, processing, packed, shipped };
+    return { newOrders, processing, packed, shipped, delivered, completed, cancelled };
   }
 
   async merchantStockSummary(merchantId: string) {

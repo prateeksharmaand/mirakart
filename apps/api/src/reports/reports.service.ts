@@ -29,6 +29,10 @@ export class ReportsService {
     return this.repo.codOrderStats();
   }
 
+  adminOrderStats() {
+    return this.repo.adminOrderStats();
+  }
+
   merchantOrderStatusSummary(merchantId: string) {
     return this.repo.merchantOrderStatusSummary(merchantId);
   }

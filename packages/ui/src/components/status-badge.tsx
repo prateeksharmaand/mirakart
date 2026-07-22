@@ -39,6 +39,11 @@ const STATUS_VARIANT: Record<string, NonNullable<BadgeProps["variant"]>> = {
   FAILED: "danger",
 };
 
+/** Product status badges read "Active" instead of "Approved" — the DB enum
+ *  value stays APPROVED (shared with merchant/return "Approved" states,
+ *  where that word is still correct) to avoid an enum rename. */
+export const PRODUCT_STATUS_LABELS: Record<string, string> = { APPROVED: "Active" };
+
 function formatStatusLabel(status: string): string {
   return status
     .toLowerCase()
@@ -47,6 +52,17 @@ function formatStatusLabel(status: string): string {
     .join(" ");
 }
 
-export function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={STATUS_VARIANT[status] ?? "default"}>{formatStatusLabel(status)}</Badge>;
+export function StatusBadge({
+  status,
+  labelOverrides,
+}: {
+  status: string;
+  /** Per-context label overrides — e.g. a product's APPROVED status reads as
+   *  "Active" without renaming the shared enum value used by merchants/
+   *  returns/etc, where "Approved" is still the correct word. */
+  labelOverrides?: Record<string, string>;
+}) {
+  return (
+    <Badge variant={STATUS_VARIANT[status] ?? "default"}>{labelOverrides?.[status] ?? formatStatusLabel(status)}</Badge>
+  );
 }

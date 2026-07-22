@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
+import { Button, FormField, Input, PRODUCT_STATUS_LABELS, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
@@ -184,7 +184,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           <FormField label="Status">
             {isAdminControlled ? (
               <div className="flex items-center gap-2 h-9">
-                <StatusBadge status={product!.status} />
+                <StatusBadge status={product!.status} labelOverrides={PRODUCT_STATUS_LABELS} />
                 <span className="text-xs text-foreground-muted">
                   {product?.status === "SUSPENDED" ? "(suspended by admin — contact support)" : "(set by admin)"}
                 </span>

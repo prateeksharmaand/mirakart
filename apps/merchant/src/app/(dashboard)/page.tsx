@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, DollarSign, RotateCcw, Package, Clock, Box, Truck, AlertTriangle, PackageX } from "lucide-react";
+import { ShoppingCart, DollarSign, RotateCcw, Package, Clock, Box, Truck, AlertTriangle, PackageX, CheckCircle2, XCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "../../components/page-header";
 import { getMerchantSalesSummary, getMerchantTopProducts, getOrderStatusSummary, getStockSummary } from "../../lib/api/dashboard";
@@ -64,10 +64,13 @@ export default function MerchantDashboardPage() {
         <StatsCard title="Total Revenue" value={summary ? formatCurrency(summary.totalRevenue) : "—"} icon={DollarSign} iconColor="text-green-600" isLoading={summaryLoading} />
         <StatsCard title="Orders" value={summary?.totalOrders ?? "—"} icon={ShoppingCart} isLoading={summaryLoading} />
         <StatsCard title="Returns" value={summary?.totalReturns ?? "—"} icon={RotateCcw} iconColor="text-orange-500" isLoading={summaryLoading} />
-        <StatsCard title="Pending Orders" value={orderStatusSummary?.pending ?? "—"} icon={Clock} iconColor="text-amber-600" isLoading={orderStatusLoading} />
+        <StatsCard title="New Orders" value={orderStatusSummary?.newOrders ?? "—"} icon={Clock} iconColor="text-amber-600" isLoading={orderStatusLoading} />
         <StatsCard title="Processing" value={orderStatusSummary?.processing ?? "—"} icon={Package} iconColor="text-blue-600" isLoading={orderStatusLoading} />
         <StatsCard title="Packed" value={orderStatusSummary?.packed ?? "—"} icon={Box} iconColor="text-purple-600" isLoading={orderStatusLoading} />
         <StatsCard title="Shipped" value={orderStatusSummary?.shipped ?? "—"} icon={Truck} iconColor="text-teal-600" isLoading={orderStatusLoading} />
+        <StatsCard title="Delivered" value={orderStatusSummary?.delivered ?? "—"} icon={CheckCircle2} iconColor="text-green-600" isLoading={orderStatusLoading} />
+        <StatsCard title="Completed" value={orderStatusSummary?.completed ?? "—"} icon={CheckCircle2} iconColor="text-green-700" isLoading={orderStatusLoading} />
+        <StatsCard title="Cancelled" value={orderStatusSummary?.cancelled ?? "—"} icon={XCircle} iconColor="text-red-600" isLoading={orderStatusLoading} />
         <StatsCard title="Low Stock" value={stockSummary?.lowStockCount ?? "—"} icon={AlertTriangle} iconColor="text-amber-600" isLoading={stockLoading} />
         <StatsCard title="Out of Stock" value={stockSummary?.outOfStockCount ?? "—"} icon={PackageX} iconColor="text-red-600" isLoading={stockLoading} />
       </div>

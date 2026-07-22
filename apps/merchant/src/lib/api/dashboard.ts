@@ -23,10 +23,13 @@ export async function getMerchantTopProducts(params: { dateFrom?: string; dateTo
 }
 
 export interface OrderStatusSummary {
-  pending: number;
+  newOrders: number;
   processing: number;
   packed: number;
   shipped: number;
+  delivered: number;
+  completed: number;
+  cancelled: number;
 }
 
 export async function getOrderStatusSummary(): Promise<OrderStatusSummary> {
