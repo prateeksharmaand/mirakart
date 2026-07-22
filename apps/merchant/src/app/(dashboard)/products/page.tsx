@@ -56,6 +56,11 @@ export default function MerchantProductsPage() {
 
   const columns: Column<Product>[] = [
     {
+      key: "productCode",
+      header: "Product ID",
+      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
+    },
+    {
       key: "name",
       header: "Product",
       sortable: true,
@@ -68,11 +73,6 @@ export default function MerchantProductsPage() {
           </div>
         </div>
       ),
-    },
-    {
-      key: "productCode",
-      header: "Product ID",
-      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
     },
     { key: "basePrice", header: "Price", sortable: true, cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
     { key: "variants", header: "Variants", cell: (r) => r.variants?.length ?? 0 },

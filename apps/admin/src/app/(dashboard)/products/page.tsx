@@ -44,6 +44,11 @@ export default function ProductsPage() {
 
   const columns: Column<Product>[] = [
     {
+      key: "productCode",
+      header: "Product ID",
+      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
+    },
+    {
       key: "name",
       header: "Product",
       sortable: true,
@@ -58,11 +63,6 @@ export default function ProductsPage() {
           </div>
         </div>
       ),
-    },
-    {
-      key: "productCode",
-      header: "Product ID",
-      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
     },
     { key: "category", header: "Category", cell: (r) => r.category?.name ?? "—" },
     {
