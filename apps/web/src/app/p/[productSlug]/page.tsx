@@ -146,7 +146,7 @@ export default async function ProductPage({ params }: PageProps) {
               </span>
             )}
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+              <h1 className="text-xl font-semibold leading-tight text-foreground sm:text-2xl">
                 {product.name}
               </h1>
               <div className="flex shrink-0 gap-2">

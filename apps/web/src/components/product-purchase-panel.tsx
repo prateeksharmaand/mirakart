@@ -155,13 +155,6 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
         )}
       </div>
 
-      {/* Short description excerpt */}
-      {product.description && (
-        <p className="line-clamp-3 text-sm leading-relaxed text-foreground-muted">
-          {product.description}
-        </p>
-      )}
-
       {/* Variant attributes */}
       {attributes.map((attribute, index) => {
         const isColor = attribute.type === "COLOR";
