@@ -44,7 +44,7 @@ export function SiteFooter({ categories = [] }: { categories?: Category[] }) {
           {/* Support + App Download */}
           <div className="flex flex-col items-center">
             <p className="text-sm font-medium text-background/60">Need help?</p>
-            <p className="mt-1 text-3xl font-bold text-background">+91 98765 43210</p>
+            <p className="mt-1 text-3xl font-bold text-background">+91 8890547456</p>
             <p className="mt-1 text-sm text-background/60">We are available 8:00am – 7:00pm</p>
             <div className="mt-6 flex items-center justify-center gap-3">
               <Link href="#" aria-label="Download on App Store">
