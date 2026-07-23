@@ -11,16 +11,16 @@ export function SiteFooter({ categories = [] }: { categories?: Category[] }) {
     <footer>
       {/* Dark Newsletter + Support + App Download Strip */}
       <div className="bg-foreground text-background">
-        <div className="mx-auto grid max-w-site grid-cols-1 gap-10 px-gutter py-12 md:grid-cols-2 md:gap-20">
+        <div className="mx-auto grid max-w-site grid-cols-1 gap-10 px-gutter py-12 text-center md:grid-cols-2 md:gap-20">
           {/* Newsletter */}
-          <div>
+          <div className="flex flex-col items-center">
             <h3 className="text-xl font-semibold leading-snug text-background sm:text-2xl">
               Get our emails for info on<br />new items, sales and more.
             </h3>
             <p className="mt-2 text-sm text-background/60">
               We'll email you a voucher worth ₹100 off your first order above ₹999.
             </p>
-            <form className="mt-5 flex" onSubmit={(e) => e.preventDefault()}>
+            <form className="mt-5 flex w-full max-w-md" onSubmit={(e) => e.preventDefault()}>
               <input
                 type="email"
                 placeholder="Enter your email address"
@@ -42,11 +42,11 @@ export function SiteFooter({ categories = [] }: { categories?: Category[] }) {
           </div>
 
           {/* Support + App Download */}
-          <div>
+          <div className="flex flex-col items-center">
             <p className="text-sm font-medium text-background/60">Need help?</p>
             <p className="mt-1 text-3xl font-bold text-background">+91 98765 43210</p>
             <p className="mt-1 text-sm text-background/60">We are available 8:00am – 7:00pm</p>
-            <div className="mt-6 flex items-center gap-3">
+            <div className="mt-6 flex items-center justify-center gap-3">
               <Link href="#" aria-label="Download on App Store">
                 <Image src="/app-store.png" alt="App Store" width={130} height={40} className="h-10 w-auto rounded border border-background/20 object-contain" />
               </Link>
@@ -54,7 +54,7 @@ export function SiteFooter({ categories = [] }: { categories?: Category[] }) {
                 <Image src="/google-play.png" alt="Google Play" width={130} height={40} className="h-10 w-auto rounded border border-background/20 object-contain" />
               </Link>
             </div>
-            <p className="mt-3 text-xs text-background/40">
+            <p className="mt-3 max-w-sm text-xs text-background/40">
               <span className="font-semibold text-background/60">Shopping App:</span>{" "}
               Try our View in Your Room feature, manage registries and save payment info.
             </p>
@@ -77,7 +77,7 @@ export function SiteFooter({ categories = [] }: { categories?: Category[] }) {
                 <Link href="/terms" className="underline">termapol</Link>.
               </p>
               <p className="mt-4 text-sm text-foreground-muted">
-                +91 98765 43210 — support@mirakart.com
+                +91 8890547456 — support@mirakart.com
               </p>
               <div className="mt-5 flex items-center gap-3">
                 {[
