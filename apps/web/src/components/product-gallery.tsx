@@ -68,9 +68,35 @@ export function ProductGallery({ images, productName }: Props) {
 
   return (
     <>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:flex-row">
+        {/* Thumbnails — horizontal row below the image on mobile, vertical column on the left on desktop */}
+        {sorted.length > 1 && (
+          <div className="order-2 flex gap-2 overflow-x-auto pb-1 lg:order-1 lg:w-20 lg:shrink-0 lg:flex-col lg:overflow-x-visible lg:overflow-y-auto lg:pb-0 lg:max-h-[600px] lg:scrollbar-thin">
+            {sorted.map((image, index) => (
+              <button
+                key={image.id}
+                type="button"
+                onClick={() => setSelectedIdx(index)}
+                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded bg-background-light transition-all focus:outline-none lg:h-20 lg:w-20 ${
+                  selectedIdx === index
+                    ? "ring-2 ring-primary ring-offset-1"
+                    : "opacity-50 hover:opacity-90"
+                }`}
+              >
+                <Image
+                  src={image.media.url}
+                  alt={`${productName} — ${index + 1}`}
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Main image */}
-        <div className="relative">
+        <div className="relative order-1 min-w-0 flex-1 lg:order-2">
           <div
             className="relative aspect-square w-full cursor-zoom-in overflow-hidden rounded-md bg-background-light"
             onMouseMove={handleMouseMove}
@@ -121,32 +147,6 @@ export function ProductGallery({ images, productName }: Props) {
             </>
           )}
         </div>
-
-        {/* Thumbnails */}
-        {sorted.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {sorted.map((image, index) => (
-              <button
-                key={image.id}
-                type="button"
-                onClick={() => setSelectedIdx(index)}
-                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded bg-background-light transition-all focus:outline-none ${
-                  selectedIdx === index
-                    ? "ring-2 ring-primary ring-offset-1"
-                    : "opacity-50 hover:opacity-90"
-                }`}
-              >
-                <Image
-                  src={image.media.url}
-                  alt={`${productName} — ${index + 1}`}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Lightbox */}
