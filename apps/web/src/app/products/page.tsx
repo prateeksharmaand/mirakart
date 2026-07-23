@@ -133,7 +133,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
         {/* Sidebar — on mobile shows the drawer trigger button */}
-        <aside>
+        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-1 lg:scrollbar-thin">
           <Suspense fallback={null}>
             <FilterSidebar
               categoryTree={categoryTree}
