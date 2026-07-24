@@ -148,7 +148,7 @@ export class ProductsRepository {
       this.prisma.product.findMany({
         where,
         include: {
-          images: { where: { isPrimary: true }, take: 1, include: { media: true } },
+          images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 5, include: { media: true } },
           brand: true,
           variants: { where: { deletedAt: null }, select: { id: true, inventory: { select: { quantity: true } } } },
         },

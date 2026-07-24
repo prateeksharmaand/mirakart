@@ -10,8 +10,8 @@ const productListSelect = {
   compareAtPrice: true,
   isFeatured: true,
   images: {
-    where: { isPrimary: true },
-    take: 1,
+    orderBy: [{ isPrimary: "desc" as const }, { sortOrder: "asc" as const }],
+    take: 5,
     include: { media: true },
   },
   brand: { select: { id: true, name: true, slug: true } },

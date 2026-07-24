@@ -1,14 +1,13 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { formatPrice } from "../lib/format";
 import { WishlistButton } from "./wishlist-button";
 import { QuickAddButton } from "./quick-add-button";
+import { HoverImageSlider } from "./hover-image-slider";
 import type { ProductListItem } from "../types/catalog";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
-  const image = product.images[0]?.media;
-  const secondImage = product.images[1]?.media;
+  const images = product.images.map((img) => img.media);
   const onSale = product.compareAtPrice && Number(product.compareAtPrice) > Number(product.basePrice);
   const discount = onSale
     ? Math.round(((Number(product.compareAtPrice) - Number(product.basePrice)) / Number(product.compareAtPrice)) * 100)
@@ -20,30 +19,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
       {/* Image Container */}
       <div className="relative block aspect-[3/4] w-full overflow-hidden rounded-sm bg-background-light">
         <Link href={`/p/${product.slug}`} className="absolute inset-0 z-0" aria-label={product.name}>
-          {image ? (
-            <>
-              <Image
-                src={image.url}
-                alt={product.name}
-                fill
-                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                className={`object-cover transition-all duration-500 ease-theme ${isOutOfStock ? "opacity-50 grayscale" : secondImage ? "group-hover:opacity-0" : "group-hover:scale-105"}`}
-              />
-              {secondImage && !isOutOfStock && (
-                <Image
-                  src={secondImage.url}
-                  alt={product.name}
-                  fill
-                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                  className="object-cover opacity-0 transition-all duration-500 ease-theme group-hover:opacity-100"
-                />
-              )}
-            </>
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background-light">
-              <ShoppingBag className="h-8 w-8 text-border" />
-            </div>
-          )}
+          <HoverImageSlider images={images} alt={product.name} isOutOfStock={isOutOfStock} />
         </Link>
 
         {/* Badges */}
