@@ -49,6 +49,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         {/* Quick Add */}
         <QuickAddButton
           productSlug={product.slug}
+          productName={product.name}
           singleVariantId={product.singleVariantId}
           variantCount={product.variantCount}
           isOutOfStock={isOutOfStock}

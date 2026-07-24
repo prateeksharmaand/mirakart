@@ -16,11 +16,15 @@ export function useCart() {
 export function useAddCartItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ variantId, quantity }: { variantId: string; quantity: number }) =>
+    mutationFn: ({ variantId, quantity }: { variantId: string; quantity: number; productName?: string }) =>
       addCartItem(variantId, quantity),
-    onSuccess: (cart) => {
+    onSuccess: (cart, variables) => {
       queryClient.setQueryData(CART_KEY, cart);
-      toast({ title: "Added to cart", variant: "success" });
+      toast({
+        title: variables.productName ? `“${variables.productName}” has been added to your cart.` : "Added to cart",
+        variant: "success",
+        action: { label: "View cart", href: "/cart" },
+      });
     },
     onError: (error: Error) => toast({ title: "Couldn't add to cart", description: error.message, variant: "danger" }),
   });

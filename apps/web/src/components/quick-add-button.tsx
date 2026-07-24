@@ -9,6 +9,7 @@ import { useAuthStore } from "../stores/auth-store";
 
 interface QuickAddButtonProps {
   productSlug: string;
+  productName: string;
   /** Exactly one variant on the product — enables adding to cart directly from the grid. */
   singleVariantId?: string | null;
   variantCount?: number;
@@ -16,7 +17,7 @@ interface QuickAddButtonProps {
   className?: string;
 }
 
-export function QuickAddButton({ productSlug, singleVariantId, variantCount, isOutOfStock, className = "" }: QuickAddButtonProps) {
+export function QuickAddButton({ productSlug, productName, singleVariantId, variantCount, isOutOfStock, className = "" }: QuickAddButtonProps) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
   const addToCart = useAddCartItem();
@@ -42,7 +43,7 @@ export function QuickAddButton({ productSlug, singleVariantId, variantCount, isO
       router.push(`/login?next=/p/${productSlug}`);
       return;
     }
-    addToCart.mutate({ variantId: singleVariantId as string, quantity: 1 });
+    addToCart.mutate({ variantId: singleVariantId as string, quantity: 1, productName });
   }
 
   return (

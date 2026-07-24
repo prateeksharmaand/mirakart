@@ -114,7 +114,7 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
     }
     if (!matchedVariant) return;
     addToCart.mutate(
-      { variantId: matchedVariant.id, quantity },
+      { variantId: matchedVariant.id, quantity, productName: product.name },
       {
         onSuccess: () => {
           setAddedFeedback(true);
@@ -131,7 +131,7 @@ export function ProductPurchasePanel({ product }: { product: ProductDetail }) {
     }
     if (!matchedVariant) return;
     addToCart.mutate(
-      { variantId: matchedVariant.id, quantity },
+      { variantId: matchedVariant.id, quantity, productName: product.name },
       { onSuccess: () => router.push("/checkout") },
     );
   }

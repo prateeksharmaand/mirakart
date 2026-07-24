@@ -7,6 +7,7 @@ export interface ToastItem {
   title: string;
   description?: string;
   variant?: "default" | "success" | "danger";
+  action?: { label: string; href: string };
 }
 
 type Listener = (toasts: ToastItem[]) => void;
