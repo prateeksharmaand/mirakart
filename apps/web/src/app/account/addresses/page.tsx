@@ -54,6 +54,13 @@ export default function AddressesPage() {
         <Button onClick={openCreate}>Add address</Button>
       </div>
 
+      {addresses && addresses.length > 0 && (
+        <p className="text-sm text-foreground-muted">
+          The address marked <span className="font-medium text-foreground">Default</span> is used to pre-fill checkout.
+          You can add multiple addresses and switch the default at any time.
+        </p>
+      )}
+
       {!addresses || addresses.length === 0 ? (
         <EmptyState title="No addresses yet" description="Add an address to speed up checkout." />
       ) : (
