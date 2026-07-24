@@ -105,6 +105,20 @@ const clotyaPreset: Partial<Config> = {
         "gutter-md": "1.25rem",
         "gutter-lg": "1.875rem",
       },
+      keyframes: {
+        "toast-in": {
+          from: { transform: "translateX(100%)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
+        "toast-out": {
+          from: { transform: "translateX(0)", opacity: "1" },
+          to: { transform: "translateX(100%)", opacity: "0" },
+        },
+      },
+      animation: {
+        "toast-in": "toast-in 0.3s cubic-bezier(0.16,1,0.3,1)",
+        "toast-out": "toast-out 0.2s ease-in forwards",
+      },
     },
   },
 };
