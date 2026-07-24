@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { formatPrice } from "../lib/format";
 import { WishlistButton } from "./wishlist-button";
 import { QuickAddButton } from "./quick-add-button";
+import { QuickViewButton } from "./quick-view-button";
 import { HoverImageSlider } from "./hover-image-slider";
 import type { ProductListItem } from "../types/catalog";
 
@@ -42,6 +43,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         {/* Hover Actions */}
         <div className="absolute right-2.5 top-2.5 z-10 flex translate-x-8 flex-col gap-2 opacity-0 transition-all duration-300 ease-theme group-hover:translate-x-0 group-hover:opacity-100">
           <WishlistButton productId={product.id} productSlug={product.slug} />
+          <QuickViewButton productSlug={product.slug} />
         </div>
 
         {/* Quick Add */}
