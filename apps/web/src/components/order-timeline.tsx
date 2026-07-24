@@ -1,17 +1,57 @@
 import { Check } from "lucide-react";
 import type { OrderStatus } from "../types/order";
 
-const HAPPY_PATH_STEPS: { status: OrderStatus; label: string }[] = [
-  { status: "PENDING_CONFIRMATION", label: "Pending Confirmation" },
-  { status: "CONFIRMED", label: "Confirmed" },
-  { status: "ACCEPTED", label: "Accepted" },
-  { status: "PROCESSING", label: "Processing" },
-  { status: "PACKED", label: "Packed" },
-  { status: "READY_TO_SHIP", label: "Ready to Ship" },
-  { status: "SHIPPED", label: "Shipped" },
-  { status: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
-  { status: "DELIVERED", label: "Delivered" },
-  { status: "COMPLETED", label: "Completed" },
+const HAPPY_PATH_STEPS: { status: OrderStatus; label: string; description: string }[] = [
+  {
+    status: "PENDING_CONFIRMATION",
+    label: "Pending Confirmation",
+    description: "We've received your order and it's waiting to be confirmed.",
+  },
+  {
+    status: "CONFIRMED",
+    label: "Confirmed",
+    description: "Your order is confirmed and has been sent to the seller.",
+  },
+  {
+    status: "ACCEPTED",
+    label: "Accepted",
+    description: "The seller has accepted your order and will start preparing it.",
+  },
+  {
+    status: "PROCESSING",
+    label: "Processing",
+    description: "Your items are being picked and prepared for packing.",
+  },
+  {
+    status: "PACKED",
+    label: "Packed",
+    description: "Your order has been packed and is ready to be shipped.",
+  },
+  {
+    status: "READY_TO_SHIP",
+    label: "Ready to Ship",
+    description: "Your package is ready and waiting for pickup by the courier.",
+  },
+  {
+    status: "SHIPPED",
+    label: "Shipped",
+    description: "Your order has been handed to the courier and is on its way.",
+  },
+  {
+    status: "OUT_FOR_DELIVERY",
+    label: "Out for Delivery",
+    description: "Your package is with the delivery agent and will arrive soon.",
+  },
+  {
+    status: "DELIVERED",
+    label: "Delivered",
+    description: "Your order has been delivered successfully.",
+  },
+  {
+    status: "COMPLETED",
+    label: "Completed",
+    description: "This order is complete. Thanks for shopping with us!",
+  },
 ];
 
 const TERMINAL_INFO: Partial<Record<OrderStatus, { label: string; description: string }>> = {
@@ -71,7 +111,8 @@ export function OrderTimeline({ status, history = [] }: OrderTimelineProps) {
               <p className={`text-sm font-medium ${isActive || isCompleted ? "text-foreground" : "text-foreground-muted"}`}>
                 {step.label}
               </p>
-              {timestamp && <p className="text-xs text-foreground-muted">{new Date(timestamp).toLocaleString()}</p>}
+              <p className="mt-0.5 text-xs text-foreground-muted">{step.description}</p>
+              {timestamp && <p className="mt-0.5 text-xs text-foreground-muted">{new Date(timestamp).toLocaleString()}</p>}
             </div>
           </div>
         );
