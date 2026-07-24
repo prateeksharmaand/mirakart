@@ -150,7 +150,7 @@ export class ProductsRepository {
         include: {
           images: { where: { isPrimary: true }, take: 1, include: { media: true } },
           brand: true,
-          variants: { where: { deletedAt: null }, select: { inventory: { select: { quantity: true } } } },
+          variants: { where: { deletedAt: null }, select: { id: true, inventory: { select: { quantity: true } } } },
         },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
@@ -176,10 +176,12 @@ export class ProductsRepository {
     );
 
     return {
-      items: items.map((item) => ({
+      items: items.map(({ variants, ...item }) => ({
         ...item,
         ...(statsByProductId.get(item.id) ?? { averageRating: 0, reviewCount: 0 }),
-        availableCount: item.variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0),
+        availableCount: variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0),
+        variantCount: variants.length,
+        singleVariantId: variants.length === 1 ? (variants[0]?.id ?? null) : null,
       })),
       totalItems,
     };

@@ -91,6 +91,8 @@ export interface ProductListItem {
   // Only populated by list endpoints (findPublicList) — undefined on
   // ProductDetail, which derives stock per-variant from `variants` instead.
   availableCount?: number;
+  variantCount?: number;
+  singleVariantId?: string | null;
 }
 
 export interface ProductDetail extends ProductListItem {

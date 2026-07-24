@@ -5,6 +5,7 @@ const productListSelect = {
   id: true,
   name: true,
   slug: true,
+  productCode: true,
   basePrice: true,
   compareAtPrice: true,
   isFeatured: true,
@@ -14,6 +15,7 @@ const productListSelect = {
     include: { media: true },
   },
   brand: { select: { id: true, name: true, slug: true } },
+  variants: { where: { deletedAt: null }, select: { id: true, inventory: { select: { quantity: true } } } },
 };
 
 @Injectable()
@@ -24,12 +26,39 @@ export class WishlistRepository {
   // product shouldn't show up in a customer's wishlist as if still
   // purchasable. The wishlist row itself is untouched, so it reappears
   // automatically if the product is reactivated.
-  findByCustomer(customerId: string) {
-    return this.prisma.wishlistItem.findMany({
+  async findByCustomer(customerId: string) {
+    const items = await this.prisma.wishlistItem.findMany({
       where: { customerId, product: { status: "APPROVED", deletedAt: null } },
       orderBy: { createdAt: "desc" },
       include: { product: { select: productListSelect } },
     });
+
+    const reviewStats =
+      items.length > 0
+        ? await this.prisma.review.groupBy({
+            by: ["productId"],
+            where: { productId: { in: items.map((item) => item.productId) }, isApproved: true, deletedAt: null },
+            _avg: { rating: true },
+            _count: { id: true },
+          })
+        : [];
+    const statsByProductId = new Map(
+      reviewStats.map((stat) => [
+        stat.productId,
+        { averageRating: stat._avg.rating ? Number(stat._avg.rating.toFixed(1)) : 0, reviewCount: stat._count.id },
+      ]),
+    );
+
+    return items.map(({ product: { variants, ...product }, ...item }) => ({
+      ...item,
+      product: {
+        ...product,
+        ...(statsByProductId.get(product.id) ?? { averageRating: 0, reviewCount: 0 }),
+        availableCount: variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0),
+        variantCount: variants.length,
+        singleVariantId: variants.length === 1 ? (variants[0]?.id ?? null) : null,
+      },
+    }));
   }
 
   findItem(customerId: string, productId: string) {

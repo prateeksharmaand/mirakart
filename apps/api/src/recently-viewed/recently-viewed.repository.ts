@@ -5,6 +5,7 @@ const productSelect = {
   id: true,
   name: true,
   slug: true,
+  productCode: true,
   basePrice: true,
   compareAtPrice: true,
   isFeatured: true,
@@ -14,6 +15,7 @@ const productSelect = {
     include: { media: true },
   },
   brand: { select: { id: true, name: true, slug: true } },
+  variants: { where: { deletedAt: null }, select: { id: true, inventory: { select: { quantity: true } } } },
 };
 
 @Injectable()
@@ -48,13 +50,40 @@ export class RecentlyViewedRepository {
 
   // Only surfaces items whose product is still ACTIVE — same reasoning as
   // WishlistRepository.findByCustomer.
-  findByCustomer(customerId: string, limit = 20) {
-    return this.prisma.recentlyViewed.findMany({
+  async findByCustomer(customerId: string, limit = 20) {
+    const items = await this.prisma.recentlyViewed.findMany({
       where: { customerId, product: { status: "APPROVED", deletedAt: null } },
       orderBy: { viewedAt: "desc" },
       take: limit,
       include: { product: { select: productSelect } },
     });
+
+    const reviewStats =
+      items.length > 0
+        ? await this.prisma.review.groupBy({
+            by: ["productId"],
+            where: { productId: { in: items.map((item) => item.productId) }, isApproved: true, deletedAt: null },
+            _avg: { rating: true },
+            _count: { id: true },
+          })
+        : [];
+    const statsByProductId = new Map(
+      reviewStats.map((stat) => [
+        stat.productId,
+        { averageRating: stat._avg.rating ? Number(stat._avg.rating.toFixed(1)) : 0, reviewCount: stat._count.id },
+      ]),
+    );
+
+    return items.map(({ product: { variants, ...product }, ...item }) => ({
+      ...item,
+      product: {
+        ...product,
+        ...(statsByProductId.get(product.id) ?? { averageRating: 0, reviewCount: 0 }),
+        availableCount: variants.reduce((sum, v) => sum + (v.inventory?.quantity ?? 0), 0),
+        variantCount: variants.length,
+        singleVariantId: variants.length === 1 ? (variants[0]?.id ?? null) : null,
+      },
+    }));
   }
 
   clear(customerId: string) {

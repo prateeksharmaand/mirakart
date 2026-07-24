@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShoppingBag, Star } from "lucide-react";
 import { formatPrice } from "../lib/format";
 import { WishlistButton } from "./wishlist-button";
+import { QuickAddButton } from "./quick-add-button";
 import type { ProductListItem } from "../types/catalog";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
@@ -68,12 +69,12 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </div>
 
         {/* Quick Add */}
-        <Link
-          href={`/p/${product.slug}`}
-          className="absolute bottom-0 left-0 right-0 z-10 translate-y-full bg-foreground py-2.5 text-center text-xs font-medium uppercase tracking-wider text-background opacity-0 transition-all duration-300 ease-theme hover:bg-primary group-hover:translate-y-0 group-hover:opacity-100"
-        >
-          Quick View
-        </Link>
+        <QuickAddButton
+          productSlug={product.slug}
+          singleVariantId={product.singleVariantId}
+          variantCount={product.variantCount}
+          isOutOfStock={isOutOfStock}
+        />
       </div>
 
       {/* Info */}
