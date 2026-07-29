@@ -36,6 +36,7 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     mutationFn: () => updateRole(params.id, { name, permissionIds: Array.from(selected) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["roles"] });
+      qc.invalidateQueries({ queryKey: ["role", params.id] });
       toast({ title: "Role updated", variant: "success" });
       router.push("/roles");
     },
