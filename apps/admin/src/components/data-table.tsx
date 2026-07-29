@@ -7,7 +7,7 @@ import { Skeleton } from "@mirakart/ui";
 export interface Column<T> {
   key: string;
   header: string;
-  cell: (row: T) => React.ReactNode;
+  cell: (row: T, index: number) => React.ReactNode;
   className?: string;
   /** Set to make this column's header clickable — toggles sortBy/sortOrder via onSortChange. */
   sortable?: boolean;
@@ -85,11 +85,11 @@ export function DataTable<T>({
               </td>
             </tr>
           ) : (
-            data.map((row) => (
+            data.map((row, index) => (
               <tr key={String(row[keyField])} className="border-b border-border last:border-0 hover:bg-gray-50 transition-colors">
                 {columns.map((col) => (
                   <td key={col.key} className={`px-4 py-3 ${col.className ?? ""}`}>
-                    {col.cell(row)}
+                    {col.cell(row, index)}
                   </td>
                 ))}
               </tr>

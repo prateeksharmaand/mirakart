@@ -37,6 +37,12 @@ export default function AdminUsersPage() {
 
   const columns: Column<AdminUser>[] = [
     {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_row, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
+    {
       key: "name",
       header: "Name",
       cell: (row) => (
@@ -59,7 +65,7 @@ export default function AdminUsersPage() {
     },
     {
       key: "actions",
-      header: "",
+      header: "Action",
       className: "w-16",
       cell: (row) => (
         <TableActions

@@ -24,11 +24,12 @@ export default function RolesPage() {
   });
 
   const columns: Column<Role>[] = [
+    { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
     { key: "name", header: "Name", cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: "system", header: "Type", cell: (r) => r.isSystem ? <Badge variant="primary">System</Badge> : <Badge variant="default">Custom</Badge> },
     { key: "perms", header: "Permissions", cell: (r) => r.permissions?.length ?? "—" },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => r.isSystem
         ? <Lock className="h-4 w-4 text-muted-foreground mx-auto" />
         : <TableActions editHref={`/roles/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
