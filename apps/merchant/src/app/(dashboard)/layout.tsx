@@ -27,12 +27,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0">
         <Sidebar className="flex-1" />
       </div>
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center gap-3 border-b border-border bg-white px-4 lg:hidden">
           <MobileSidebar />
           <span className="font-semibold">Seller Center</span>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

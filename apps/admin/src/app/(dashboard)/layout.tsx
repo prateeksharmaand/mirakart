@@ -34,14 +34,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
         <header className="flex h-14 items-center gap-3 border-b border-border bg-white px-4 lg:hidden">
           <MobileSidebar />
           <span className="font-semibold text-foreground">Mirakart Admin</span>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>
