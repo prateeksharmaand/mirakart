@@ -14,8 +14,8 @@ describe("PermissionsService", () => {
 
     const grouped = await service.listGroupedByModule();
 
-    expect(Object.keys(grouped)).toEqual(["product", "order"]);
-    expect(grouped.product).toHaveLength(2);
-    expect(grouped.order).toHaveLength(1);
+    expect(grouped.map((g) => g.module)).toEqual(["product", "order"]);
+    expect(grouped.find((g) => g.module === "product")?.permissions).toHaveLength(2);
+    expect(grouped.find((g) => g.module === "order")?.permissions).toHaveLength(1);
   });
 });
