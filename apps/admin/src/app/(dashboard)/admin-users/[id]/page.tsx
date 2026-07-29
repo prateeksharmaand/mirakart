@@ -11,19 +11,33 @@ import { PageHeader } from "../../../../components/page-header";
 import { getAdminUser, updateAdminUser } from "../../../../lib/api/admin-users";
 import { listRoles } from "../../../../lib/api/roles";
 
-const schema = z.object({
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
+const baseSchema = {
+  firstName: z.string().min(1, "First name is required").max(60, "Must be 60 characters or fewer"),
+  lastName: z.string().min(1, "Last name is required").max(60, "Must be 60 characters or fewer"),
   status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]),
-  roleId: z.string().optional(),
-});
-type FormValues = z.infer<typeof schema>;
+};
+interface FormValues {
+  firstName: string;
+  lastName: string;
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  roleId?: string;
+}
 
 export default function EditAdminUserPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const qc = useQueryClient();
   const { data: user, isLoading } = useQuery({ queryKey: ["admin-user", params.id], queryFn: () => getAdminUser(params.id) });
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+
+  // Role is required for everyone except super admins, who don't have a role field at all.
+  const schema = React.useMemo(
+    () =>
+      z.object({
+        ...baseSchema,
+        roleId: user?.isSuperAdmin ? z.string().optional() : z.string().min(1, "Role is required"),
+      }),
+    [user?.isSuperAdmin],
+  );
 
   const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -76,9 +90,9 @@ export default function EditAdminUserPage({ params }: { params: { id: string } }
             </Select>
           </FormField>
           {!user?.isSuperAdmin && (
-            <FormField label="Role" htmlFor="roleId">
-              <Select defaultValue={user?.role?.id} onValueChange={(v) => setValue("roleId", v)}>
-                <SelectTrigger><SelectValue placeholder="No role" /></SelectTrigger>
+            <FormField label="Role" htmlFor="roleId" error={errors.roleId?.message} required>
+              <Select defaultValue={user?.role?.id} onValueChange={(v) => setValue("roleId", v, { shouldValidate: true })}>
+                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
                   {roles?.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                 </SelectContent>
