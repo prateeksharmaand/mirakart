@@ -83,8 +83,14 @@ export class AdminUsersService {
   }
 
   private translatePrismaError(error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return new BadRequestException("The selected role does not exist");
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2003") {
+        return new BadRequestException("The selected role does not exist");
+      }
+      // Race-safety net alongside the findByEmail pre-check in create().
+      if (error.code === "P2002" && (error.meta?.target as string[] | undefined)?.includes("email")) {
+        return new ConflictException("Email is already registered");
+      }
     }
     return error;
   }

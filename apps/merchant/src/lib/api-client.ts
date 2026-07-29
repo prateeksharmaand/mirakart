@@ -46,7 +46,11 @@ apiClient.interceptors.response.use(
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = error.response?.data as any;
-    const message = data?.error?.message ?? data?.message ?? error.message ?? "Something went wrong";
+    // DTO validation failures carry the real reason in error.details (per-field
+    // messages) while error.message is just the generic "Validation failed" —
+    // prefer the specific detail message when present.
+    const detailMessage = data?.error?.details ? Object.values(data.error.details).flat()[0] : undefined;
+    const message = detailMessage ?? data?.error?.message ?? data?.message ?? error.message ?? "Something went wrong";
     return Promise.reject(new Error(message));
   },
 );
