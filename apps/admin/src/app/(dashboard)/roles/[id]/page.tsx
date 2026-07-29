@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, FormField, Input, Label, Skeleton, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { getRole, updateRole, assignPermissions, listPermissions } from "../../../../lib/api/roles";
+import { getRole, updateRole, listPermissions } from "../../../../lib/api/roles";
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -33,10 +33,7 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
   }
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      await updateRole(params.id, { name });
-      await assignPermissions(params.id, Array.from(selected));
-    },
+    mutationFn: () => updateRole(params.id, { name, permissionIds: Array.from(selected) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["roles"] });
       toast({ title: "Role updated", variant: "success" });

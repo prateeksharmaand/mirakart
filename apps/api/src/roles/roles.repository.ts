@@ -11,16 +11,26 @@ const roleWithPermissionsSelect = {
   permissions: { select: { permission: { select: { id: true, code: true, module: true, action: true } } } },
 } as const;
 
+// Prisma returns the junction rows as `{ permission: {...} }[]` — flatten to
+// the plain Permission[] shape the API contract (and frontend) expect.
+function flattenPermissions<T extends { permissions: { permission: unknown }[] }>(
+  role: T,
+): Omit<T, "permissions"> & { permissions: T["permissions"][number]["permission"][] } {
+  return { ...role, permissions: role.permissions.map((rp) => rp.permission) };
+}
+
 @Injectable()
 export class RolesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findMany() {
-    return this.prisma.role.findMany({ select: roleWithPermissionsSelect, orderBy: { name: "asc" } });
+  async findMany() {
+    const roles = await this.prisma.role.findMany({ select: roleWithPermissionsSelect, orderBy: { name: "asc" } });
+    return roles.map(flattenPermissions);
   }
 
-  findById(id: string) {
-    return this.prisma.role.findUnique({ where: { id }, select: roleWithPermissionsSelect });
+  async findById(id: string) {
+    const role = await this.prisma.role.findUnique({ where: { id }, select: roleWithPermissionsSelect });
+    return role ? flattenPermissions(role) : null;
   }
 
   findByName(name: string) {
@@ -36,11 +46,11 @@ export class RolesRepository {
       },
       select: roleWithPermissionsSelect,
     });
-    return role;
+    return flattenPermissions(role);
   }
 
   async update(id: string, data: { name?: string; description?: string; permissionIds?: string[] }) {
-    return this.prisma.$transaction(async (tx) => {
+    const role = await this.prisma.$transaction(async (tx) => {
       if (data.permissionIds) {
         await tx.rolePermission.deleteMany({ where: { roleId: id } });
       }
@@ -56,6 +66,7 @@ export class RolesRepository {
         select: roleWithPermissionsSelect,
       });
     });
+    return flattenPermissions(role);
   }
 
   delete(id: string) {

@@ -25,7 +25,6 @@ export default function RolesPage() {
 
   const columns: Column<Role>[] = [
     { key: "name", header: "Name", cell: (r) => <span className="font-medium">{r.name}</span> },
-    { key: "code", header: "Code", cell: (r) => <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{r.code}</code> },
     { key: "system", header: "Type", cell: (r) => r.isSystem ? <Badge variant="primary">System</Badge> : <Badge variant="default">Custom</Badge> },
     { key: "perms", header: "Permissions", cell: (r) => r.permissions?.length ?? "—" },
     {
