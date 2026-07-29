@@ -23,7 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!merchant || merchant.status !== "APPROVED") return null;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       <div className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0">
         <Sidebar className="flex-1" />
       </div>

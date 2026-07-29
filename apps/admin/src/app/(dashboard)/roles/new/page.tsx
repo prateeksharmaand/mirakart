@@ -2,19 +2,20 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Checkbox, FormField, Input, Label, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { createRole, listPermissions } from "../../../../lib/api/roles";
+import { createRole, listPermissions, type Role } from "../../../../lib/api/roles";
 
 const schema = z.object({ name: z.string().min(1, "Required") });
 type FormValues = z.infer<typeof schema>;
 
 export default function NewRolePage() {
   const router = useRouter();
+  const qc = useQueryClient();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const { data: groups } = useQuery({ queryKey: ["permissions"], queryFn: listPermissions });
 
@@ -31,7 +32,12 @@ export default function NewRolePage() {
 
   const mutation = useMutation({
     mutationFn: (v: FormValues) => createRole({ name: v.name, permissionIds: Array.from(selected) }),
-    onSuccess: () => { toast({ title: "Role created", variant: "success" }); router.push("/roles"); },
+    onSuccess: async (created) => {
+      qc.setQueryData<Role[]>(["roles"], (prev) => (prev ? [...prev, created] : prev));
+      await qc.invalidateQueries({ queryKey: ["roles"] });
+      toast({ title: "Role created", variant: "success" });
+      router.push("/roles");
+    },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 

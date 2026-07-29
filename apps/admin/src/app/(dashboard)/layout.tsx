@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!admin) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0">
         <Sidebar className="flex-1" />
