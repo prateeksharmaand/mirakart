@@ -33,7 +33,6 @@ export async function getCustomerCount(): Promise<number> {
 }
 
 export interface CodSummary {
-  pendingConfirmationCount: number;
   todaysCodOrders: number;
   outstandingCodAmount: number;
 }

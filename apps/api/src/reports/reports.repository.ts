@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import type { PaymentStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+
+const PAID_STATUSES: PaymentStatus[] = ["CAPTURED", "PAID"];
 
 export interface DateRange {
   dateFrom?: Date;
@@ -10,6 +13,12 @@ export interface DateRange {
 export class ReportsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Revenue reflects money actually collected — online payments that were
+  // captured, or COD orders the merchant/admin has marked as received —
+  // not the gross value of every placed order (which would count unpaid
+  // COD and not-yet-captured online orders as "revenue").
+  private static readonly PAID_FILTER = { payment: { is: { status: { in: PAID_STATUSES } } } };
+
   async adminSalesSummary(range: DateRange) {
     const where = {
       deletedAt: null,
@@ -18,7 +27,7 @@ export class ReportsRepository {
     };
     const [totalOrders, revenue, totalReturns] = await Promise.all([
       this.prisma.order.count({ where }),
-      this.prisma.order.aggregate({ where, _sum: { total: true } }),
+      this.prisma.order.aggregate({ where: { ...where, ...ReportsRepository.PAID_FILTER }, _sum: { total: true } }),
       this.prisma.return.count({ where: { createdAt: { gte: range.dateFrom, lte: range.dateTo } } }),
     ]);
     return { totalOrders, totalRevenue: Number(revenue._sum.total ?? 0), totalReturns };
@@ -32,7 +41,10 @@ export class ReportsRepository {
     };
     const [distinctOrders, revenue, totalReturns] = await Promise.all([
       this.prisma.orderItem.findMany({ where: itemWhere, distinct: ["orderId"], select: { orderId: true } }),
-      this.prisma.orderItem.aggregate({ where: itemWhere, _sum: { totalPrice: true } }),
+      this.prisma.orderItem.aggregate({
+        where: { ...itemWhere, order: { ...itemWhere.order, ...ReportsRepository.PAID_FILTER } },
+        _sum: { totalPrice: true },
+      }),
       this.prisma.return.count({
         where: { merchantId, createdAt: { gte: range.dateFrom, lte: range.dateTo } },
       }),
@@ -50,7 +62,7 @@ export class ReportsRepository {
       where: {
         ...(merchantId ? { merchantId } : {}),
         status: { not: "CANCELLED" },
-        order: { deletedAt: null, createdAt: { gte: range.dateFrom, lte: range.dateTo } },
+        order: { deletedAt: null, createdAt: { gte: range.dateFrom, lte: range.dateTo }, ...ReportsRepository.PAID_FILTER },
       },
       _sum: { quantity: true, totalPrice: true },
       orderBy: { _sum: { quantity: "desc" } },
@@ -75,8 +87,7 @@ export class ReportsRepository {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const [pendingConfirmationCount, todaysCodOrders, outstanding] = await Promise.all([
-      this.prisma.order.count({ where: { deletedAt: null, status: "PENDING_CONFIRMATION" } }),
+    const [todaysCodOrders, outstanding] = await Promise.all([
       this.prisma.order.count({
         where: { deletedAt: null, payment: { method: "COD" }, createdAt: { gte: startOfToday } },
       }),
@@ -86,7 +97,6 @@ export class ReportsRepository {
       }),
     ]);
     return {
-      pendingConfirmationCount,
       todaysCodOrders,
       outstandingCodAmount: Number(outstanding._sum.total ?? 0),
     };
