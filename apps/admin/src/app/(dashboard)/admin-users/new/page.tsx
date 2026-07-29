@@ -6,18 +6,28 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@mirakart/ui";
+import { Button, FormField, Input, PasswordInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import { createAdminUser } from "../../../../lib/api/admin-users";
 import { listRoles } from "../../../../lib/api/roles";
 
-const schema = z.object({
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
-  email: z.string().email("Invalid email"),
-  password: z.string().min(8, "At least 8 characters"),
-  roleId: z.string().optional(),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, "First name is required").max(60, "Must be 60 characters or fewer"),
+    lastName: z.string().min(1, "Last name is required").max(60, "Must be 60 characters or fewer"),
+    email: z.string().min(1, "Email is required").email("Enter a valid email address"),
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .min(8, "At least 8 characters")
+      .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
+    confirmPassword: z.string().min(1, "Please confirm the password"),
+    roleId: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 type FormValues = z.infer<typeof schema>;
 
 export default function NewAdminUserPage() {
@@ -30,7 +40,10 @@ export default function NewAdminUserPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: createAdminUser,
+    mutationFn: (v: FormValues) => {
+      const { confirmPassword: _confirmPassword, ...input } = v;
+      return createAdminUser(input);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       toast({ title: "Admin user created", variant: "success" });
@@ -57,8 +70,17 @@ export default function NewAdminUserPage() {
         <FormField label="Email" htmlFor="email" error={errors.email?.message} required>
           <Input id="email" type="email" {...register("email")} />
         </FormField>
-        <FormField label="Password" htmlFor="password" error={errors.password?.message} required>
-          <Input id="password" type="password" {...register("password")} />
+        <FormField
+          label="Password"
+          htmlFor="password"
+          error={errors.password?.message}
+          hint="At least 8 characters, with a letter and a number"
+          required
+        >
+          <PasswordInput id="password" {...register("password")} />
+        </FormField>
+        <FormField label="Confirm Password" htmlFor="confirmPassword" error={errors.confirmPassword?.message} required>
+          <PasswordInput id="confirmPassword" {...register("confirmPassword")} />
         </FormField>
         <FormField label="Role" htmlFor="roleId">
           <Select onValueChange={(v) => setValue("roleId", v)}>
