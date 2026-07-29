@@ -22,7 +22,7 @@ const schema = z
       .min(8, "At least 8 characters")
       .regex(/(?=.*[A-Za-z])(?=.*\d)/, "Must include a letter and a number"),
     confirmPassword: z.string().min(1, "Please confirm the password"),
-    roleId: z.string().optional(),
+    roleId: z.string().min(1, "Role is required"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -82,9 +82,9 @@ export default function NewAdminUserPage() {
         <FormField label="Confirm Password" htmlFor="confirmPassword" error={errors.confirmPassword?.message} required>
           <PasswordInput id="confirmPassword" {...register("confirmPassword")} />
         </FormField>
-        <FormField label="Role" htmlFor="roleId">
-          <Select onValueChange={(v) => setValue("roleId", v)}>
-            <SelectTrigger><SelectValue placeholder="Select role (optional)" /></SelectTrigger>
+        <FormField label="Role" htmlFor="roleId" error={errors.roleId?.message} required>
+          <Select onValueChange={(v) => setValue("roleId", v, { shouldValidate: true })}>
+            <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
             <SelectContent>
               {roles?.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
             </SelectContent>

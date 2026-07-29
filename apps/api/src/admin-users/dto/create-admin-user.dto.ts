@@ -29,8 +29,7 @@ export class CreateAdminUserDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ description: "Role to assign. Omit for a role-less admin (no permissions until assigned)." })
-  @IsOptional()
+  @ApiProperty({ description: "Role to assign to the new admin user." })
   @IsString()
-  roleId?: string;
+  roleId!: string;
 }

@@ -27,6 +27,7 @@ describe("AdminUsersService", () => {
           password: "password1",
           firstName: "A",
           lastName: "B",
+          roleId: "role-1",
         }),
       ).rejects.toBeInstanceOf(ConflictException);
     });

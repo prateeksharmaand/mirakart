@@ -34,7 +34,7 @@ export async function createAdminUser(data: {
   password: string;
   firstName: string;
   lastName: string;
-  roleId?: string;
+  roleId: string;
 }): Promise<AdminUser> {
   const res = await apiClient.post("/admin-users", data);
   return res.data.data as AdminUser;
