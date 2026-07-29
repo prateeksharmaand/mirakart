@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,6 +22,7 @@ type FormValues = z.infer<typeof schema>;
 
 export default function NewAdminUserPage() {
   const router = useRouter();
+  const qc = useQueryClient();
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: listRoles });
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>({
@@ -31,6 +32,7 @@ export default function NewAdminUserPage() {
   const mutation = useMutation({
     mutationFn: createAdminUser,
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
       toast({ title: "Admin user created", variant: "success" });
       router.push("/admin-users");
     },

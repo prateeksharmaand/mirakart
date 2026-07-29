@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,13 +14,14 @@ import { listRoles } from "../../../../lib/api/roles";
 const schema = z.object({
   firstName: z.string().min(1, "Required"),
   lastName: z.string().min(1, "Required"),
-  status: z.enum(["ACTIVE", "SUSPENDED"]),
+  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]),
   roleId: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
 export default function EditAdminUserPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const qc = useQueryClient();
   const { data: user, isLoading } = useQuery({ queryKey: ["admin-user", params.id], queryFn: () => getAdminUser(params.id) });
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: listRoles });
 
@@ -30,13 +31,16 @@ export default function EditAdminUserPage({ params }: { params: { id: string } }
 
   React.useEffect(() => {
     if (user) {
-      reset({ firstName: user.firstName, lastName: user.lastName, status: user.status as "ACTIVE" | "SUSPENDED", roleId: user.role?.id });
+      reset({ firstName: user.firstName, lastName: user.lastName, status: user.status as "ACTIVE" | "INACTIVE" | "SUSPENDED", roleId: user.role?.id });
     }
   }, [user, reset]);
 
   const mutation = useMutation({
     mutationFn: (v: FormValues) => updateAdminUser(params.id, v),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      qc.setQueryData(["admin-user", params.id], updated);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-user", params.id] });
       toast({ title: "Updated", variant: "success" });
       router.push("/admin-users");
     },
@@ -62,10 +66,11 @@ export default function EditAdminUserPage({ params }: { params: { id: string } }
             </FormField>
           </div>
           <FormField label="Status" htmlFor="status" error={errors.status?.message} required>
-            <Select defaultValue={user?.status} onValueChange={(v) => setValue("status", v as "ACTIVE" | "SUSPENDED")}>
+            <Select defaultValue={user?.status} onValueChange={(v) => setValue("status", v as "ACTIVE" | "INACTIVE" | "SUSPENDED")}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
                 <SelectItem value="SUSPENDED">Suspended</SelectItem>
               </SelectContent>
             </Select>

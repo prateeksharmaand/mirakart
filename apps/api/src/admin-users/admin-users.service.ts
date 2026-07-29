@@ -1,5 +1,6 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import * as argon2 from "argon2";
+import { Prisma } from "@prisma/client";
 import { AdminUsersRepository } from "./admin-users.repository";
 import type { AdminUserQueryDto } from "./dto/admin-user-query.dto";
 import type { CreateAdminUserDto } from "./dto/create-admin-user.dto";
@@ -41,14 +42,18 @@ export class AdminUsersService {
     if (existing) throw new ConflictException("Email is already registered");
 
     const passwordHash = await argon2.hash(dto.password);
-    return this.repo.create({
-      email: dto.email,
-      passwordHash,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      phone: dto.phone,
-      roleId: dto.roleId,
-    });
+    try {
+      return await this.repo.create({
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        roleId: dto.roleId,
+      });
+    } catch (error) {
+      throw this.translatePrismaError(error);
+    }
   }
 
   async update(id: string, dto: UpdateAdminUserDto, currentAdminId: string) {
@@ -56,13 +61,17 @@ export class AdminUsersService {
     if (id === currentAdminId && dto.status && dto.status !== "ACTIVE") {
       throw new ForbiddenException("You cannot deactivate your own account");
     }
-    return this.repo.update(id, {
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      phone: dto.phone,
-      status: dto.status,
-      roleId: dto.roleId,
-    });
+    try {
+      return await this.repo.update(id, {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        status: dto.status,
+        roleId: dto.roleId,
+      });
+    } catch (error) {
+      throw this.translatePrismaError(error);
+    }
   }
 
   async remove(id: string, currentAdminId: string): Promise<void> {
@@ -71,5 +80,12 @@ export class AdminUsersService {
       throw new ForbiddenException("You cannot delete your own account");
     }
     await this.repo.softDelete(id);
+  }
+
+  private translatePrismaError(error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return new BadRequestException("The selected role does not exist");
+    }
+    return error;
   }
 }

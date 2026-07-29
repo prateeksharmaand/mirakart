@@ -12,7 +12,7 @@ import { TableActions } from "../../../components/table-actions";
 import { listAdminUsers, deleteAdminUser, type AdminUser } from "../../../lib/api/admin-users";
 
 const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default"> = {
-  ACTIVE: "success", SUSPENDED: "danger", INVITED: "warning",
+  ACTIVE: "success", SUSPENDED: "danger", INACTIVE: "default",
 };
 
 export default function AdminUsersPage() {
