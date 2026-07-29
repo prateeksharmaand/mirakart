@@ -25,12 +25,18 @@ export default function BrandsPage() {
   });
 
   const columns: Column<Brand>[] = [
+    {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
     { key: "name", header: "Name", cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: "slug", header: "Slug", cell: (r) => <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{r.slug}</code> },
     { key: "code", header: "Code", cell: (r) => <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{r.code ?? "—"}</code> },
     { key: "status", header: "Status", cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Active" : "Inactive"}</Badge> },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions editHref={`/brands/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
     },
   ];

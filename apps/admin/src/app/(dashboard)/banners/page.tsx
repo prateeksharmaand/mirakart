@@ -24,6 +24,7 @@ export default function BannersPage() {
   });
 
   const columns: Column<Banner>[] = [
+    { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
     {
       key: "image",
       header: "Image",
@@ -37,7 +38,7 @@ export default function BannersPage() {
     { key: "sort", header: "Sort", cell: (r) => r.sortOrder },
     { key: "status", header: "Active", cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Yes" : "No"}</Badge> },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions editHref={`/banners/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
     },
   ];

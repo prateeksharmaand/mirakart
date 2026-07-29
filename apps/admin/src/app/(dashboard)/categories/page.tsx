@@ -24,6 +24,7 @@ export default function CategoriesPage() {
   });
 
   const columns: Column<Category>[] = [
+    { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
     {
       key: "name",
       header: "Name",
@@ -37,7 +38,7 @@ export default function CategoriesPage() {
     { key: "slug", header: "Slug", cell: (r) => <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{r.slug}</code> },
     { key: "status", header: "Status", cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Active" : "Inactive"}</Badge> },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions editHref={`/categories/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
     },
   ];

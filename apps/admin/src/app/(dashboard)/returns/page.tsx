@@ -23,6 +23,12 @@ export default function ReturnsPage() {
 
   const columns: Column<Return>[] = [
     {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
+    {
       key: "return",
       header: "Return",
       cell: (r) => (
@@ -37,7 +43,7 @@ export default function ReturnsPage() {
     { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge> },
     { key: "date", header: "Date", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions viewHref={`/returns/${r.id}`} />,
     },
   ];

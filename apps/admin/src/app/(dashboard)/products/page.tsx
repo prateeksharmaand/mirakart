@@ -44,6 +44,12 @@ export default function ProductsPage() {
 
   const columns: Column<Product>[] = [
     {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
+    {
       key: "productCode",
       header: "Product ID",
       cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
@@ -90,7 +96,7 @@ export default function ProductsPage() {
     },
     { key: "status", header: "Status", sortable: true, cell: (r) => <StatusBadge status={r.status} labelOverrides={PRODUCT_STATUS_LABELS} /> },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions viewHref={`/products/${r.id}`} />,
     },
   ];

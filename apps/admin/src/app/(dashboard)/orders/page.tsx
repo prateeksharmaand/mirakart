@@ -50,6 +50,12 @@ export default function OrdersPage() {
 
   const columns: Column<Order>[] = [
     {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
+    {
       key: "order",
       header: "Order",
       cell: (r) => (
@@ -76,7 +82,7 @@ export default function OrdersPage() {
     },
     { key: "date", header: "Date", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions viewHref={`/orders/${r.id}`} />,
     },
   ];

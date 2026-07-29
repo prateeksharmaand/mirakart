@@ -25,6 +25,12 @@ export default function AttributesPage() {
   });
 
   const columns: Column<Attribute>[] = [
+    {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
     { key: "name", header: "Name", cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: "type", header: "Type", cell: (r) => <Badge variant="default">{r.type}</Badge> },
     {
@@ -40,7 +46,7 @@ export default function AttributesPage() {
       ),
     },
     {
-      key: "actions", header: "", className: "w-16",
+      key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions editHref={`/attributes/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
     },
   ];

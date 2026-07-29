@@ -20,6 +20,12 @@ export default function CustomersPage() {
 
   const columns: Column<Customer>[] = [
     {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
+    {
       key: "name",
       header: "Name",
       cell: (r) => (
@@ -38,7 +44,7 @@ export default function CustomersPage() {
     { key: "joined", header: "Joined", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
       key: "actions",
-      header: "",
+      header: "Action",
       className: "w-16",
       cell: (r) => <TableActions viewHref={`/customers/${r.id}`} />,
     },
