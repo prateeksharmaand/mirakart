@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, FormField, Input, Label, Skeleton, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { getRole, updateRole, listPermissions } from "../../../../lib/api/roles";
+import { getRole, updateRole, listPermissions, type Role } from "../../../../lib/api/roles";
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -34,9 +34,18 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
 
   const mutation = useMutation({
     mutationFn: () => updateRole(params.id, { name, permissionIds: Array.from(selected) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["roles"] });
-      qc.invalidateQueries({ queryKey: ["role", params.id] });
+    onSuccess: async (updated) => {
+      // Seed the roles-list cache with the fresh row directly (rather than
+      // only marking it stale) so the list reflects the change immediately
+      // on navigation, with no dependency on remount/refetch timing.
+      qc.setQueryData<Role[]>(["roles"], (prev) =>
+        prev ? prev.map((r) => (r.id === updated.id ? updated : r)) : prev,
+      );
+      qc.setQueryData<Role>(["role", params.id], updated);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["roles"] }),
+        qc.invalidateQueries({ queryKey: ["role", params.id] }),
+      ]);
       toast({ title: "Role updated", variant: "success" });
       router.push("/roles");
     },
