@@ -108,7 +108,7 @@ export default function OrdersPage() {
       <div className="flex flex-wrap gap-3">
         <Input placeholder="Search by order #…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-xs" />
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-56 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {ORDER_STATUSES.map((s) => (
@@ -119,7 +119,7 @@ export default function OrdersPage() {
           </SelectContent>
         </Select>
         <Select value={paymentMethod} onValueChange={(v) => { setPaymentMethod(v); setPage(1); }}>
-          <SelectTrigger className="w-48 shrink-0 whitespace-nowrap"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-48 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Methods</SelectItem>
             <SelectItem value="COD">Cash on Delivery</SelectItem>
@@ -127,7 +127,7 @@ export default function OrdersPage() {
           </SelectContent>
         </Select>
         <Select value={paymentStatus} onValueChange={(v) => { setPaymentStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-48 shrink-0 whitespace-nowrap"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-48 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Payments</SelectItem>
             <SelectItem value="PAID">Paid</SelectItem>
