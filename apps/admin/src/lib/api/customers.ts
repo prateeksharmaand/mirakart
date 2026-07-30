@@ -10,7 +10,9 @@ export interface Customer {
   createdAt: string;
 }
 
-export async function listCustomers(params: { page?: number; limit?: number; search?: string; status?: string } = {}) {
+export async function listCustomers(
+  params: { page?: number; limit?: number; search?: string; status?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+) {
   const res = await apiClient.get("/customers", { params });
   return res.data as { data: Customer[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }

@@ -39,7 +39,9 @@ export interface MerchantDocument {
   rejectionReason?: string | null;
 }
 
-export async function listMerchants(params: { page?: number; limit?: number; search?: string; status?: string } = {}) {
+export async function listMerchants(
+  params: { page?: number; limit?: number; search?: string; status?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+) {
   const res = await apiClient.get("/merchants", { params });
   return res.data as { data: Merchant[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }

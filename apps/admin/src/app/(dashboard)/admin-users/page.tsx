@@ -18,12 +18,24 @@ const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default
 export default function AdminUsersPage() {
   const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<AdminUser | null>(null);
+  const [sortBy, setSortBy] = React.useState("createdAt");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-users", page],
-    queryFn: () => listAdminUsers({ page, limit: 20 }),
+    queryKey: ["admin-users", page, sortBy, sortOrder],
+    queryFn: () => listAdminUsers({ page, limit: 20, sortBy, sortOrder }),
   });
+
+  function handleSortChange(key: string) {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdminUser(id),
@@ -43,8 +55,9 @@ export default function AdminUsersPage() {
       cell: (_row, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
     },
     {
-      key: "name",
+      key: "firstName",
       header: "Name",
+      sortable: true,
       cell: (row) => (
         <div>
           <p className="font-medium">{row.firstName} {row.lastName}</p>
@@ -56,6 +69,7 @@ export default function AdminUsersPage() {
     {
       key: "status",
       header: "Status",
+      sortable: true,
       cell: (row) => <Badge variant={STATUS_VARIANT[row.status] ?? "default"}>{row.status}</Badge>,
     },
     {
@@ -94,6 +108,9 @@ export default function AdminUsersPage() {
         keyField="id"
         isLoading={isLoading}
         emptyMessage="No admin users found"
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
       />
 
       {data?.meta && data.meta.totalPages > 1 && (

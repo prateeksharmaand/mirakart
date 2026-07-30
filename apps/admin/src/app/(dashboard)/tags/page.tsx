@@ -14,9 +14,24 @@ import { listTags, deleteTag, type Tag } from "../../../lib/api/catalog";
 export default function TagsPage() {
   const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<Tag | null>(null);
+  const [sortBy, setSortBy] = React.useState("createdAt");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({ queryKey: ["tags", page], queryFn: () => listTags({ page, limit: 20 }) });
+  const { data, isLoading } = useQuery({
+    queryKey: ["tags", page, sortBy, sortOrder],
+    queryFn: () => listTags({ page, limit: 20, sortBy, sortOrder }),
+  });
+
+  function handleSortChange(key: string) {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteTag(id),
@@ -35,9 +50,9 @@ export default function TagsPage() {
       className: "w-12",
       cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
     },
-    { key: "name", header: "Name", cell: (r) => <span className="font-medium">{r.name}</span> },
+    { key: "name", header: "Name", sortable: true, cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: "slug", header: "Slug", cell: (r) => <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{r.slug}</code> },
-    { key: "sortOrder", header: "Order", cell: (r) => <span className="text-sm text-foreground-muted">{r.sortOrder}</span> },
+    { key: "sortOrder", header: "Order", sortable: true, cell: (r) => <span className="text-sm text-foreground-muted">{r.sortOrder}</span> },
     { key: "status", header: "Status", cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Active" : "Inactive"}</Badge> },
     {
       key: "actions", header: "Action", className: "w-16",
@@ -52,7 +67,15 @@ export default function TagsPage() {
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Tags" }]}
         action={<Button asChild><Link href="/tags/new"><Plus className="mr-2 h-4 w-4" />New Tag</Link></Button>}
       />
-      <DataTable columns={columns} data={data?.data ?? []} keyField="id" isLoading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={data?.data ?? []}
+        keyField="id"
+        isLoading={isLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
+      />
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}

@@ -14,9 +14,27 @@ import { listAttributes, deleteAttribute, type Attribute } from "../../../lib/ap
 export default function AttributesPage() {
   const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<Attribute | null>(null);
+  const [sortBy, setSortBy] = React.useState("name");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("asc");
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["attributes", page], queryFn: () => listAttributes({ page, limit: 20 }) });
+
+  function handleSortChange(key: string) {
+    if (sortBy === key) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else { setSortBy(key); setSortOrder("asc"); }
+  }
+
+  const sortedAttributes = React.useMemo(() => {
+    const rows = [...(data?.data ?? [])];
+    rows.sort((a, b) => {
+      const av = sortBy === "type" ? a.type : a.name;
+      const bv = sortBy === "type" ? b.type : b.name;
+      const cmp = av.localeCompare(bv);
+      return sortOrder === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [data, sortBy, sortOrder]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAttribute(id),
@@ -31,8 +49,8 @@ export default function AttributesPage() {
       className: "w-12",
       cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
     },
-    { key: "name", header: "Name", cell: (r) => <span className="font-medium">{r.name}</span> },
-    { key: "type", header: "Type", cell: (r) => <Badge variant="default">{r.type}</Badge> },
+    { key: "name", header: "Name", sortable: true, cell: (r) => <span className="font-medium">{r.name}</span> },
+    { key: "type", header: "Type", sortable: true, cell: (r) => <Badge variant="default">{r.type}</Badge> },
     {
       key: "values",
       header: "Values",
@@ -58,7 +76,15 @@ export default function AttributesPage() {
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Attributes" }]}
         action={<Button asChild><Link href="/attributes/new"><Plus className="mr-2 h-4 w-4" />New Attribute</Link></Button>}
       />
-      <DataTable columns={columns} data={data?.data ?? []} keyField="id" isLoading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={sortedAttributes}
+        keyField="id"
+        isLoading={isLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
+      />
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}

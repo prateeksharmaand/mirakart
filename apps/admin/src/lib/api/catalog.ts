@@ -170,7 +170,9 @@ export interface Tag {
   createdAt: string;
 }
 
-export async function listTags(params: { page?: number; limit?: number; search?: string; isActive?: boolean } = {}) {
+export async function listTags(
+  params: { page?: number; limit?: number; search?: string; isActive?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+) {
   const res = await apiClient.get("/tags/admin/all", { params });
   return res.data as { data: Tag[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }

@@ -17,6 +17,8 @@ export interface AdminUserListParams {
   limit?: number;
   search?: string;
   status?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export async function listAdminUsers(params: AdminUserListParams = {}) {

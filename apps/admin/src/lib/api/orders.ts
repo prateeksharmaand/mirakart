@@ -85,6 +85,8 @@ export async function listOrders(
     status?: string;
     paymentStatus?: string;
     paymentMethod?: PaymentMethodFilter;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {},
 ) {
   const res = await apiClient.get("/admin/orders", { params });

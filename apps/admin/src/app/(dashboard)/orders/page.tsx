@@ -34,9 +34,11 @@ export default function OrdersPage() {
   const [status, setStatus] = React.useState("all");
   const [paymentMethod, setPaymentMethod] = React.useState("all");
   const [paymentStatus, setPaymentStatus] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("createdAt");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", page, search, status, paymentMethod, paymentStatus],
+    queryKey: ["orders", page, search, status, paymentMethod, paymentStatus, sortBy, sortOrder],
     queryFn: () =>
       listOrders({
         page,
@@ -45,8 +47,20 @@ export default function OrdersPage() {
         status: status === "all" ? undefined : status,
         paymentMethod: paymentMethod === "all" ? undefined : (paymentMethod as "COD" | "ONLINE"),
         paymentStatus: paymentStatus === "all" ? undefined : paymentStatus,
+        sortBy,
+        sortOrder,
       }),
   });
+
+  function handleSortChange(key: string) {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
   const columns: Column<Order>[] = [
     {
@@ -56,8 +70,9 @@ export default function OrdersPage() {
       cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
     },
     {
-      key: "order",
+      key: "orderNumber",
       header: "Order",
+      sortable: true,
       cell: (r) => (
         <div>
           <p className="font-medium">#{r.orderNumber}</p>
@@ -65,8 +80,8 @@ export default function OrdersPage() {
         </div>
       ),
     },
-    { key: "total", header: "Total", cell: (r) => <span className="font-medium">{formatCurrency(r.total)}</span> },
-    { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
+    { key: "total", header: "Total", sortable: true, cell: (r) => <span className="font-medium">{formatCurrency(r.total)}</span> },
+    { key: "status", header: "Status", sortable: true, cell: (r) => <StatusBadge status={r.status} /> },
     {
       key: "payment",
       header: "Payment",
@@ -80,7 +95,7 @@ export default function OrdersPage() {
           "—"
         ),
     },
-    { key: "date", header: "Date", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
+    { key: "createdAt", header: "Date", sortable: true, cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
       key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions viewHref={`/orders/${r.id}`} />,
@@ -122,7 +137,15 @@ export default function OrdersPage() {
           </SelectContent>
         </Select>
       </div>
-      <DataTable columns={columns} data={data?.data ?? []} keyField="id" isLoading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={data?.data ?? []}
+        keyField="id"
+        isLoading={isLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
+      />
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}

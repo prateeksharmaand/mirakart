@@ -14,11 +14,24 @@ export default function CustomersPage() {
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("createdAt");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["customers", page, search, status],
-    queryFn: () => listCustomers({ page, limit: 20, search: search || undefined, status: status === "all" ? undefined : status }),
+    queryKey: ["customers", page, search, status, sortBy, sortOrder],
+    queryFn: () =>
+      listCustomers({ page, limit: 20, search: search || undefined, status: status === "all" ? undefined : status, sortBy, sortOrder }),
   });
+
+  function handleSortChange(key: string) {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  }
 
   const columns: Column<Customer>[] = [
     {
@@ -28,8 +41,9 @@ export default function CustomersPage() {
       cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
     },
     {
-      key: "name",
+      key: "firstName",
       header: "Name",
+      sortable: true,
       cell: (r) => (
         <div>
           <p className="font-medium">{r.firstName} {r.lastName}</p>
@@ -41,9 +55,10 @@ export default function CustomersPage() {
     {
       key: "status",
       header: "Status",
+      sortable: true,
       cell: (r) => <Badge variant={r.status === "ACTIVE" ? "success" : "danger"}>{STATUS_LABEL[r.status] ?? r.status}</Badge>,
     },
-    { key: "joined", header: "Joined", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
+    { key: "createdAt", header: "Joined", sortable: true, cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
       key: "actions",
       header: "Action",
@@ -67,7 +82,15 @@ export default function CustomersPage() {
           </SelectContent>
         </Select>
       </div>
-      <DataTable columns={columns} data={data?.data ?? []} keyField="id" isLoading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={data?.data ?? []}
+        keyField="id"
+        isLoading={isLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
+      />
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}

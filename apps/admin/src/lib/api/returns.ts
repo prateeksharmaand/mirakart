@@ -12,7 +12,9 @@ export interface Return {
   images?: Array<{ id: string; media: { url: string } }>;
 }
 
-export async function listReturns(params: { page?: number; limit?: number; status?: string } = {}) {
+export async function listReturns(
+  params: { page?: number; limit?: number; status?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+) {
   const res = await apiClient.get("/admin/returns", { params });
   return res.data as { data: Return[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }
