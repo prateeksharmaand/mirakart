@@ -108,7 +108,7 @@ export default function OrdersPage() {
       <div className="flex flex-wrap gap-3">
         <Input placeholder="Search by order #…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-xs" />
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-56 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
+          <SelectTrigger className="w-60 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {ORDER_STATUSES.map((s) => (
