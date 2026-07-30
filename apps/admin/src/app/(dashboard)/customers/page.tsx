@@ -8,6 +8,8 @@ import { DataTable, type Column } from "../../../components/data-table";
 import { TableActions } from "../../../components/table-actions";
 import { listCustomers, type Customer } from "../../../lib/api/customers";
 
+const STATUS_LABEL: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Inactive", BLOCKED: "Suspended" };
+
 export default function CustomersPage() {
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState("");
@@ -39,7 +41,7 @@ export default function CustomersPage() {
     {
       key: "status",
       header: "Status",
-      cell: (r) => <Badge variant={r.status === "ACTIVE" ? "success" : "danger"}>{r.status}</Badge>,
+      cell: (r) => <Badge variant={r.status === "ACTIVE" ? "success" : "danger"}>{STATUS_LABEL[r.status] ?? r.status}</Badge>,
     },
     { key: "joined", header: "Joined", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
@@ -60,7 +62,8 @@ export default function CustomersPage() {
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="SUSPENDED">Suspended</SelectItem>
+            <SelectItem value="INACTIVE">Inactive</SelectItem>
+            <SelectItem value="BLOCKED">Suspended</SelectItem>
           </SelectContent>
         </Select>
       </div>

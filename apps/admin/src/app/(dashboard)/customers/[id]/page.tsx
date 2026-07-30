@@ -7,6 +7,8 @@ import { PageHeader } from "../../../../components/page-header";
 import { ConfirmDialog } from "../../../../components/confirm-dialog";
 import { getCustomer, suspendCustomer, activateCustomer } from "../../../../lib/api/customers";
 
+const STATUS_LABEL: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Inactive", BLOCKED: "Suspended" };
+
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const qc = useQueryClient();
   const [confirmAction, setConfirmAction] = React.useState<"suspend" | "activate" | null>(null);
@@ -17,6 +19,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     mutationFn: () => confirmAction === "suspend" ? suspendCustomer(params.id) : activateCustomer(params.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer", params.id] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
       toast({ title: confirmAction === "suspend" ? "Customer suspended" : "Customer activated", variant: "success" });
       setConfirmAction(null);
     },
@@ -38,7 +41,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         }
       />
       <div className="rounded-xl border border-border bg-white p-6 grid grid-cols-2 gap-4">
-        <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={customer.status === "ACTIVE" ? "success" : "danger"}>{customer.status}</Badge></div>
+        <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={customer.status === "ACTIVE" ? "success" : "danger"}>{STATUS_LABEL[customer.status] ?? customer.status}</Badge></div>
         <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm">{customer.email}</p></div>
         <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm">{customer.phone ?? "—"}</p></div>
         <div><p className="text-xs text-muted-foreground">Joined</p><p className="text-sm">{new Date(customer.createdAt).toLocaleDateString()}</p></div>

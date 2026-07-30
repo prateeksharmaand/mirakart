@@ -40,9 +40,14 @@ export class CustomersService {
     return this.repo.updateProfile(id, dto);
   }
 
-  async block(id: string) {
+  async suspend(id: string) {
     await this.findOne(id);
     return this.repo.setStatus(id, "BLOCKED");
+  }
+
+  async activate(id: string) {
+    await this.findOne(id);
+    return this.repo.setStatus(id, "ACTIVE");
   }
 
   listAddresses(customerId: string) {

@@ -55,16 +55,29 @@ describe("CustomersService", () => {
     });
   });
 
-  describe("block", () => {
+  describe("suspend", () => {
     it("throws NotFoundException for a missing customer", async () => {
       repo.findById.mockResolvedValue(null);
-      await expect(service.block("missing")).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.suspend("missing")).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it("sets status to BLOCKED", async () => {
       repo.findById.mockResolvedValue({ id: "c1" } as never);
-      await service.block("c1");
+      await service.suspend("c1");
       expect(repo.setStatus).toHaveBeenCalledWith("c1", "BLOCKED");
+    });
+  });
+
+  describe("activate", () => {
+    it("throws NotFoundException for a missing customer", async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.activate("missing")).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("sets status to ACTIVE", async () => {
+      repo.findById.mockResolvedValue({ id: "c1" } as never);
+      await service.activate("c1");
+      expect(repo.setStatus).toHaveBeenCalledWith("c1", "ACTIVE");
     });
   });
 });

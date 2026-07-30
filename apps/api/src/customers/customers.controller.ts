@@ -78,10 +78,17 @@ export class CustomersController {
     return this.service.findOne(id);
   }
 
-  @Patch(":id/block")
+  @Patch(":id/suspend")
   @AdminAuth("customer.edit")
   @ApiOkResponse()
-  block(@Param("id") id: string) {
-    return this.service.block(id);
+  suspend(@Param("id") id: string) {
+    return this.service.suspend(id);
+  }
+
+  @Patch(":id/activate")
+  @AdminAuth("customer.edit")
+  @ApiOkResponse()
+  activate(@Param("id") id: string) {
+    return this.service.activate(id);
   }
 }
