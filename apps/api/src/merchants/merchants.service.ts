@@ -92,6 +92,21 @@ export class MerchantsService {
     return this.repo.setStatus(id, { status: "SUSPENDED" });
   }
 
+  async activate(id: string) {
+    const merchant = await this.findOne(id);
+    if (merchant.status !== "SUSPENDED") {
+      throw new BadRequestException("Only a suspended merchant can be reinstated");
+    }
+    const updated = await this.repo.setStatus(id, { status: "APPROVED" });
+    void this.notifications.create(
+      "MERCHANT", id,
+      "MERCHANT_APPROVED",
+      "Your store has been reinstated",
+      "Your store's suspension has been lifted. You can accept orders again.",
+    );
+    return updated;
+  }
+
   async addDocument(merchantId: string, dto: CreateMerchantDocumentDto) {
     await this.findOne(merchantId);
     return this.repo.createDocument({ merchantId, mediaId: dto.mediaId, type: dto.type });

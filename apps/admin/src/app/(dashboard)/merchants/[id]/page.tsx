@@ -18,6 +18,7 @@ import {
   approveMerchant,
   rejectMerchant,
   suspendMerchant,
+  activateMerchant,
 } from "../../../../lib/api/merchants";
 
 function formatCurrency(n: number) {
@@ -52,21 +53,32 @@ export default function MerchantDetailPage({ params }: { params: { id: string } 
 
   const { register, handleSubmit, formState: { errors } } = useForm<RejectForm>({ resolver: zodResolver(rejectSchema) });
 
+  function invalidateMerchantQueries() {
+    qc.invalidateQueries({ queryKey: ["merchant", params.id] });
+    qc.invalidateQueries({ queryKey: ["merchants"] });
+  }
+
   const approveMutation = useMutation({
     mutationFn: () => approveMerchant(params.id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["merchant", params.id] }); toast({ title: "Merchant approved", variant: "success" }); },
+    onSuccess: () => { invalidateMerchantQueries(); toast({ title: "Merchant approved", variant: "success" }); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
   const rejectMutation = useMutation({
     mutationFn: (reason: string) => rejectMerchant(params.id, reason),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["merchant", params.id] }); toast({ title: "Merchant rejected", variant: "success" }); setRejectOpen(false); },
+    onSuccess: () => { invalidateMerchantQueries(); toast({ title: "Merchant rejected", variant: "success" }); setRejectOpen(false); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
   const suspendMutation = useMutation({
     mutationFn: () => suspendMerchant(params.id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["merchant", params.id] }); toast({ title: "Merchant suspended" }); setSuspendOpen(false); },
+    onSuccess: () => { invalidateMerchantQueries(); toast({ title: "Merchant suspended" }); setSuspendOpen(false); },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: () => activateMerchant(params.id),
+    onSuccess: () => { invalidateMerchantQueries(); toast({ title: "Merchant reinstated", variant: "success" }); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
@@ -88,6 +100,9 @@ export default function MerchantDetailPage({ params }: { params: { id: string } 
             )}
             {merchant.status === "APPROVED" && (
               <Button variant="danger" onClick={() => setSuspendOpen(true)}>Suspend</Button>
+            )}
+            {merchant.status === "SUSPENDED" && (
+              <Button onClick={() => activateMutation.mutate()} isLoading={activateMutation.isPending}>Activate</Button>
             )}
           </div>
         }

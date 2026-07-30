@@ -102,4 +102,11 @@ export class MerchantsController {
   suspend(@Param("id") id: string) {
     return this.service.suspend(id);
   }
+
+  @Patch(":id/activate")
+  @AdminAuth("merchant.edit")
+  @ApiOkResponse()
+  activate(@Param("id") id: string) {
+    return this.service.activate(id);
+  }
 }

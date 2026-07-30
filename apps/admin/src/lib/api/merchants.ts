@@ -74,6 +74,11 @@ export async function suspendMerchant(id: string): Promise<Merchant> {
   return res.data.data as Merchant;
 }
 
+export async function activateMerchant(id: string): Promise<Merchant> {
+  const res = await apiClient.patch(`/merchants/${id}/activate`);
+  return res.data.data as Merchant;
+}
+
 export async function reviewDocument(
   merchantId: string,
   docId: string,
