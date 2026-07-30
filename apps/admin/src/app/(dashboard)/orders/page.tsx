@@ -119,17 +119,17 @@ export default function OrdersPage() {
           </SelectContent>
         </Select>
         <Select value={paymentMethod} onValueChange={(v) => { setPaymentMethod(v); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-48 shrink-0 whitespace-nowrap"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All payment methods</SelectItem>
+            <SelectItem value="all">All Methods</SelectItem>
             <SelectItem value="COD">Cash on Delivery</SelectItem>
             <SelectItem value="ONLINE">Online</SelectItem>
           </SelectContent>
         </Select>
         <Select value={paymentStatus} onValueChange={(v) => { setPaymentStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-48 shrink-0 whitespace-nowrap"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All payment status</SelectItem>
+            <SelectItem value="all">All Payments</SelectItem>
             <SelectItem value="PAID">Paid</SelectItem>
             <SelectItem value="UNPAID">Unpaid</SelectItem>
             <SelectItem value="CAPTURED">Captured</SelectItem>
