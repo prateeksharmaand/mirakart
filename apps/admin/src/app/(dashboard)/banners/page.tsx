@@ -9,7 +9,7 @@ import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
 import { TableActions } from "../../../components/table-actions";
-import { listBanners, deleteBanner, type Banner } from "../../../lib/api/banners";
+import { listBanners, deleteBanner, updateBanner, type Banner } from "../../../lib/api/banners";
 
 export default function BannersPage() {
   const [deleteTarget, setDeleteTarget] = React.useState<Banner | null>(null);
@@ -43,6 +43,15 @@ export default function BannersPage() {
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => updateBanner(id, { isActive }),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ["banners"] });
+      toast({ title: updated.isActive ? "Banner activated" : "Banner deactivated", variant: "success" });
+    },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+  });
+
   const columns: Column<Banner>[] = [
     { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
     {
@@ -56,7 +65,27 @@ export default function BannersPage() {
     { key: "title", header: "Title", sortable: true, cell: (r) => r.title ?? <span className="text-muted-foreground text-xs">No title</span> },
     { key: "position", header: "Position", sortable: true, cell: (r) => <Badge variant="default">{r.position}</Badge> },
     { key: "sort", header: "Sort", sortable: true, cell: (r) => r.sortOrder },
-    { key: "status", header: "Active", sortable: true, cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Yes" : "No"}</Badge> },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      cell: (r) => {
+        const isPending = toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === r.id;
+        return (
+          <button
+            type="button"
+            onClick={() => toggleActiveMutation.mutate({ id: r.id, isActive: !r.isActive })}
+            disabled={isPending}
+            title={r.isActive ? "Click to deactivate" : "Click to activate"}
+            className="disabled:opacity-50"
+          >
+            <Badge variant={r.isActive ? "success" : "default"} className="cursor-pointer">
+              {isPending ? "…" : r.isActive ? "Active" : "Inactive"}
+            </Badge>
+          </button>
+        );
+      },
+    },
     {
       key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions editHref={`/banners/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
