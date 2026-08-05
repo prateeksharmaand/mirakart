@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
@@ -83,10 +84,10 @@ export default function OrdersPage() {
       header: "Order",
       sortable: true,
       cell: (r) => (
-        <div>
+        <Link href={`/orders/${r.id}`} className="block hover:text-primary">
           <p className="font-medium">#{r.orderNumber}</p>
           <p className="text-xs text-muted-foreground">{r.customer ? `${r.customer.firstName} ${r.customer.lastName}` : "—"}</p>
-        </div>
+        </Link>
       ),
     },
     { key: "total", header: "Total", sortable: true, cell: (r) => <span className="font-medium">{formatCurrency(r.total)}</span> },

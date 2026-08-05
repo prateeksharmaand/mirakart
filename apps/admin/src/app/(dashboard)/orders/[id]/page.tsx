@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Calendar, Mail, Phone } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -70,7 +71,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
   const isTerminal = ["CANCELLED", "REFUNDED", "COMPLETED", "FAILED_DELIVERY", "COD_REFUSED"].includes(order.status);
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
+    <div className="flex flex-col gap-6 max-w-6xl">
       <PageHeader
         title={`Order #${order.orderNumber}`}
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Orders", href: "/orders" }, { label: `#${order.orderNumber}` }]}
@@ -85,124 +86,175 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         }
       />
 
-      <div className="rounded-xl border border-border bg-white p-6 grid grid-cols-2 gap-4">
-        <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={order.status} /></div>
-        <div><p className="text-xs text-muted-foreground">Total</p><p className="text-sm font-semibold">{formatCurrency(order.total)}</p></div>
-        {order.customer && (
-          <>
-            <div><p className="text-xs text-muted-foreground">Customer</p><p className="text-sm">{order.customer.firstName} {order.customer.lastName}</p></div>
-            <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm">{order.customer.email}</p></div>
-            <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm">{order.customer.phone}</p></div>
-          </>
-        )}
-        {order.payment && (
-          <>
-            <div><p className="text-xs text-muted-foreground">Payment Method</p><p className="text-sm">{order.payment.method}</p></div>
-            <div><p className="text-xs text-muted-foreground">Payment Status</p><StatusBadge status={order.payment.status} /></div>
-            {order.payment.amountReceived != null && (
-              <div><p className="text-xs text-muted-foreground">Amount Received</p><p className="text-sm">{formatCurrency(order.payment.amountReceived)}</p></div>
-            )}
-            {order.payment.paidAt && (
-              <div><p className="text-xs text-muted-foreground">Received Date</p><p className="text-sm">{new Date(order.payment.paidAt).toLocaleDateString()}</p></div>
-            )}
-          </>
-        )}
-        <div><p className="text-xs text-muted-foreground">Date</p><p className="text-sm">{new Date(order.createdAt).toLocaleString()}</p></div>
-        {order.rejectionReason && (
-          <div className="col-span-2"><p className="text-xs text-muted-foreground">Rejection Reason</p><p className="text-sm text-danger">{order.rejectionReason}</p></div>
-        )}
-        {order.cancelReason && (
-          <div className="col-span-2"><p className="text-xs text-muted-foreground">Cancel Reason</p><p className="text-sm text-danger">{order.cancelReason}</p></div>
-        )}
-        {order.payment?.collectionNote && (
-          <div className="col-span-2"><p className="text-xs text-muted-foreground">Collection Remarks</p><p className="text-sm">{order.payment.collectionNote}</p></div>
-        )}
-      </div>
-
-      {order.items && order.items.length > 0 && (
-        <div className="rounded-xl border border-border bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold">Items</h2>
-          <div className="flex flex-col gap-3">
-            {order.items.map((item) => {
-              const image = item.product?.images[0]?.media.url;
-              return (
-                <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-14 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
-                      {image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image} alt="" className="h-full w-full object-cover" />
-                      ) : null}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{item.productNameSnapshot}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[item.product?.productCode, item.merchant?.storeName].filter(Boolean).join(" · ")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
-                      <StatusBadge status={item.status} />
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {(order.shippingAddress || order.billingAddress) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {order.shippingAddress && (
-            <div className="rounded-xl border border-border bg-white p-6">
-              <h2 className="mb-3 text-sm font-semibold">Shipping Address</h2>
-              <p className="text-sm">{order.shippingAddress.fullName}</p>
-              <p className="text-sm text-muted-foreground">
-                {order.shippingAddress.line1}{order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
-              </p>
-              <p className="text-sm text-muted-foreground">{order.shippingAddress.country}</p>
-              <p className="text-sm text-muted-foreground">{order.shippingAddress.phone}</p>
-            </div>
+      {(order.rejectionReason || order.cancelReason) && (
+        <div className="rounded-xl border border-danger/30 bg-danger/5 p-4">
+          {order.rejectionReason && (
+            <p className="text-sm text-danger"><span className="font-medium">Rejection Reason:</span> {order.rejectionReason}</p>
           )}
-          {order.billingAddress && (
-            <div className="rounded-xl border border-border bg-white p-6">
-              <h2 className="mb-3 text-sm font-semibold">Billing Address</h2>
-              <p className="text-sm">{order.billingAddress.fullName}</p>
-              <p className="text-sm text-muted-foreground">
-                {order.billingAddress.line1}{order.billingAddress.line2 ? `, ${order.billingAddress.line2}` : ""}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.postalCode}
-              </p>
-              <p className="text-sm text-muted-foreground">{order.billingAddress.country}</p>
-              <p className="text-sm text-muted-foreground">{order.billingAddress.phone}</p>
-            </div>
+          {order.cancelReason && (
+            <p className="text-sm text-danger"><span className="font-medium">Cancel Reason:</span> {order.cancelReason}</p>
           )}
         </div>
       )}
 
-      {order.statusHistory && order.statusHistory.length > 0 && (
-        <div className="rounded-xl border border-border bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold">Order Timeline</h2>
-          <div className="flex flex-col gap-3">
-            {order.statusHistory.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={entry.status} />
-                  {entry.note && <span className="text-xs text-muted-foreground">{entry.note}</span>}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(entry.changedAt).toLocaleString()}
-                  {entry.changedByType ? ` · ${entry.changedByType}` : ""}
-                </span>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Main column */}
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {order.items && order.items.length > 0 && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-4 text-sm font-semibold">Items</h2>
+              <div className="flex flex-col gap-3">
+                {order.items.map((item) => {
+                  const image = item.product?.images[0]?.media.url;
+                  return (
+                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-14 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
+                          {image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={image} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{item.productNameSnapshot}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[item.product?.productCode, item.merchant?.storeName].filter(Boolean).join(" · ")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
+                          <StatusBadge status={item.status} />
+                        </div>
+                      </div>
+                      <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {(order.shippingAddress || order.billingAddress) && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {order.shippingAddress && (
+                <div className="rounded-xl border border-border bg-white p-6">
+                  <h2 className="mb-3 text-sm font-semibold">Shipping Address</h2>
+                  <p className="text-sm">{order.shippingAddress.fullName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {order.shippingAddress.line1}{order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{order.shippingAddress.country}</p>
+                  <p className="text-sm text-muted-foreground">{order.shippingAddress.phone}</p>
+                </div>
+              )}
+              {order.billingAddress && (
+                <div className="rounded-xl border border-border bg-white p-6">
+                  <h2 className="mb-3 text-sm font-semibold">Billing Address</h2>
+                  <p className="text-sm">{order.billingAddress.fullName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {order.billingAddress.line1}{order.billingAddress.line2 ? `, ${order.billingAddress.line2}` : ""}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.postalCode}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{order.billingAddress.country}</p>
+                  <p className="text-sm text-muted-foreground">{order.billingAddress.phone}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {order.statusHistory && order.statusHistory.length > 0 && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-4 text-sm font-semibold">Order Timeline</h2>
+              <div className="flex flex-col gap-3">
+                {order.statusHistory.map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={entry.status} />
+                      {entry.note && <span className="text-xs text-muted-foreground">{entry.note}</span>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(entry.changedAt).toLocaleString()}
+                      {entry.changedByType ? ` · ${entry.changedByType}` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Sidebar */}
+        <div className="flex flex-col gap-6 lg:col-span-1 lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-xl border border-border bg-white p-6">
+            <h2 className="mb-4 text-sm font-semibold">Order Overview</h2>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Status</span>
+                <StatusBadge status={order.status} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Total</span>
+                <span className="text-sm font-semibold">{formatCurrency(order.total)}</span>
+              </div>
+              <div className="flex items-center gap-2.5 border-t border-border pt-3">
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm">{new Date(order.createdAt).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {order.customer && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-4 text-sm font-semibold">Customer</h2>
+              <p className="text-sm font-medium">{order.customer.firstName} {order.customer.lastName}</p>
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2.5">
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <a href={`mailto:${order.customer.email}`} className="text-sm hover:text-primary hover:underline">{order.customer.email}</a>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <a href={`tel:${order.customer.phone}`} className="text-sm hover:text-primary hover:underline">{order.customer.phone}</a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {order.payment && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-4 text-sm font-semibold">Payment</h2>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Method</span>
+                  <span className="text-sm">{order.payment.method}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Status</span>
+                  <StatusBadge status={order.payment.status} />
+                </div>
+                {order.payment.amountReceived != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Amount Received</span>
+                    <span className="text-sm">{formatCurrency(order.payment.amountReceived)}</span>
+                  </div>
+                )}
+                {order.payment.paidAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Received Date</span>
+                    <span className="text-sm">{new Date(order.payment.paidAt).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {order.payment.collectionNote && (
+                  <p className="border-t border-border pt-3 text-sm text-muted-foreground">{order.payment.collectionNote}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <ConfirmDialog
         open={cancelOpen}
