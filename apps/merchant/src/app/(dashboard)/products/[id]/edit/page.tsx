@@ -9,7 +9,6 @@ import { z } from "zod";
 import { Button, FormField, Input, PRODUCT_STATUS_LABELS, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
-import { SectionNav } from "../../../../../components/section-nav";
 import { StickyActionBar } from "../../../../../components/sticky-action-bar";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags, listCategoryAttributes, type AttributeWithValues } from "../../../../../lib/api/profile";
@@ -42,6 +41,12 @@ const schema = z
   });
 type FormValues = z.infer<typeof schema>;
 
+interface StepDef {
+  key: string;
+  label: string;
+  fields: (keyof FormValues)[];
+}
+
 // datetime-local inputs use "YYYY-MM-DDTHH:mm" in the browser's local timezone
 function isoToDatetimeLocal(iso?: string | null): string {
   if (!iso) return "";
@@ -61,7 +66,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const { data: brands } = useQuery({ queryKey: ["merchant-brands"], queryFn: listBrands });
   const { data: tags } = useQuery({ queryKey: ["merchant-tags"], queryFn: listActiveTags });
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
+  const [step, setStep] = React.useState(0);
+
+  const { register, getValues, trigger, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { status: "DRAFT", tagIds: [] },
   });
@@ -102,20 +109,41 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["merchant-products"] });
+      qc.invalidateQueries({ queryKey: ["merchant-product", params.id] });
       toast({ title: "Product updated", variant: "success" });
-      router.push("/products");
     },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
   if (isLoading) return <Skeleton className="h-96 w-full" />;
 
-  const sections = [
-    { id: "section-images", label: "Images" },
-    { id: "section-details", label: "Details" },
-    ...(tags && tags.length > 0 ? [{ id: "section-tags", label: "Tags" }] : []),
-    { id: "section-variants", label: "Variants" },
+  const fieldSteps: StepDef[] = [
+    { key: "basic", label: "Basic Info", fields: ["name", "description", "categoryId", "brandId"] },
+    { key: "pricing", label: "Pricing", fields: ["price", "comparePrice", "dealEndsAt", "status"] },
+    ...(tags && tags.length > 0 ? [{ key: "tags", label: "Tags", fields: ["tagIds"] as (keyof FormValues)[] }] : []),
   ];
+  const steps: StepDef[] = [
+    ...fieldSteps,
+    { key: "variants", label: "Variants", fields: [] },
+    { key: "photos", label: "Photos", fields: [] },
+  ];
+  const isLastFieldStep = step === fieldSteps.length - 1;
+  const isPhotosStep = steps[step]!.key === "photos";
+
+  async function handleNext() {
+    if (isLastFieldStep) {
+      const valid = await trigger();
+      if (!valid) return;
+      mutation.mutate(getValues(), { onSuccess: () => setStep((s) => s + 1) });
+      return;
+    }
+    const valid = await trigger(steps[step]!.fields.length ? steps[step]!.fields : undefined);
+    if (valid) setStep((s) => s + 1);
+  }
+
+  function handleBack() {
+    setStep((s) => Math.max(s - 1, 0));
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
@@ -124,109 +152,117 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: product?.name ?? "" }]}
       />
 
-      <SectionNav sections={sections} />
-
-      <div id="section-images" className="scroll-mt-16">
-        <ProductImageManager productId={params.id} />
+      {/* Step progress */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-foreground">
+            Step {step + 1} of {steps.length}: {steps[step]!.label}
+          </span>
+          <span className="text-foreground-muted">{step + 1}/{steps.length}</span>
+        </div>
+        <div className="flex gap-1.5">
+          {steps.map((s, i) => (
+            <div
+              key={s.key}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? "bg-primary" : "bg-background-light"}`}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Main form — id lets the submit button live outside the form element */}
-      <form id="product-form" onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-6">
-        <div id="section-details" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4 scroll-mt-16">
-          <FormField label="Product Name" htmlFor="name" error={errors.name?.message} required>
-            <Input id="name" {...register("name")} />
-          </FormField>
-          <FormField label="Description" htmlFor="description">
-            <Textarea id="description" rows={4} {...register("description")} />
-          </FormField>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Category">
-              <Select
-                key={`cat-${watch("categoryId")}-${categories?.length ?? 0}`}
-                value={watch("categoryId") ?? ""}
-                onValueChange={(v) => setValue("categoryId", v)}
-              >
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  {categories?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.depth > 0 ? "↳ " : ""}
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <div className="flex flex-col gap-6">
+        {/* Basic Info */}
+        {steps[step]!.key === "basic" && (
+          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+            <FormField label="Product Name" htmlFor="name" error={errors.name?.message} required>
+              <Input id="name" {...register("name")} />
             </FormField>
-            <FormField label="Brand">
-              <Select
-                key={`brand-${watch("brandId")}-${brands?.length ?? 0}`}
-                value={watch("brandId") ?? ""}
-                onValueChange={(v) => setValue("brandId", v)}
-              >
-                <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
-                <SelectContent>
-                  {brands?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <FormField label="Description" htmlFor="description">
+              <Textarea id="description" rows={4} {...register("description")} />
             </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Price (₹)" error={errors.price?.message} required>
-              <Input type="number" step="0.01" {...register("price")} />
-            </FormField>
-            <FormField label="Compare Price (₹)" error={errors.comparePrice?.message}>
-              <Input type="number" step="0.01" {...register("comparePrice")} />
-            </FormField>
-          </div>
-          <FormField
-            label="Deal Ends At"
-            htmlFor="dealEndsAt"
-            hint="Set this to run a time-limited deal — the product shows a countdown on the storefront until this time. Leave blank for a normal listing."
-          >
-            <div className="flex items-center gap-2">
-              <Input id="dealEndsAt" type="datetime-local" {...register("dealEndsAt")} />
-              {watch("dealEndsAt") && (
-                <button
-                  type="button"
-                  onClick={() => setValue("dealEndsAt", "")}
-                  className="shrink-0 text-xs text-foreground-muted hover:text-danger"
-                >
-                  Clear
-                </button>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Category">
+                <Select value={watch("categoryId") ?? ""} onValueChange={(v) => setValue("categoryId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {categories?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.depth > 0 ? "↳ " : ""}
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Brand">
+                <Select value={watch("brandId") ?? ""} onValueChange={(v) => setValue("brandId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                  <SelectContent>
+                    {brands?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
             </div>
-          </FormField>
-          <FormField label="Product ID">
-            <p className="flex h-9 items-center font-mono text-sm text-foreground-muted">{product?.productCode}</p>
-          </FormField>
-          <FormField label="Status">
-            {isAdminControlled ? (
-              <div className="flex items-center gap-2 h-9">
-                <StatusBadge status={product!.status} labelOverrides={PRODUCT_STATUS_LABELS} />
-                <span className="text-xs text-foreground-muted">
-                  {product?.status === "SUSPENDED" ? "(suspended by admin — contact support)" : "(set by admin)"}
-                </span>
+          </div>
+        )}
+
+        {/* Pricing */}
+        {steps[step]!.key === "pricing" && (
+          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Price (₹)" error={errors.price?.message} required>
+                <Input type="number" step="0.01" {...register("price")} />
+              </FormField>
+              <FormField label="Compare Price (₹)" error={errors.comparePrice?.message}>
+                <Input type="number" step="0.01" {...register("comparePrice")} />
+              </FormField>
+            </div>
+            <FormField
+              label="Deal Ends At"
+              htmlFor="dealEndsAt"
+              hint="Set this to run a time-limited deal — the product shows a countdown on the storefront until this time. Leave blank for a normal listing."
+            >
+              <div className="flex items-center gap-2">
+                <Input id="dealEndsAt" type="datetime-local" {...register("dealEndsAt")} />
+                {watch("dealEndsAt") && (
+                  <button
+                    type="button"
+                    onClick={() => setValue("dealEndsAt", "")}
+                    className="shrink-0 text-xs text-foreground-muted hover:text-danger"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-            ) : (
-              <Select
-                key={`status-${watch("status")}`}
-                value={watch("status") ?? "DRAFT"}
-                onValueChange={(v) => setValue("status", v as MerchantStatus)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {MERCHANT_EDITABLE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </FormField>
-        </div>
+            </FormField>
+            <FormField label="Product ID">
+              <p className="flex h-9 items-center font-mono text-sm text-foreground-muted">{product?.productCode}</p>
+            </FormField>
+            <FormField label="Status">
+              {isAdminControlled ? (
+                <div className="flex items-center gap-2 h-9">
+                  <StatusBadge status={product!.status} labelOverrides={PRODUCT_STATUS_LABELS} />
+                  <span className="text-xs text-foreground-muted">
+                    {product?.status === "SUSPENDED" ? "(suspended by admin — contact support)" : "(set by admin)"}
+                  </span>
+                </div>
+              ) : (
+                <Select value={watch("status") ?? "DRAFT"} onValueChange={(v) => setValue("status", v as MerchantStatus)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MERCHANT_EDITABLE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+          </div>
+        )}
 
         {/* Tags */}
-        {tags && tags.length > 0 && (
-          <div id="section-tags" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3 scroll-mt-16">
+        {steps[step]!.key === "tags" && tags && tags.length > 0 && (
+          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3">
             <h2 className="text-sm font-semibold">Tags</h2>
             <p className="text-xs text-foreground-muted">Select tags that describe this product.</p>
             <div className="flex flex-wrap gap-2">
@@ -255,18 +291,30 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
           </div>
         )}
-      </form>
 
-      {/* Variants / Inventory — between Tags and action buttons */}
-      <div id="section-variants" className="scroll-mt-16">
-        <VariantsManager productId={params.id} categoryId={watch("categoryId") ?? product?.category?.id} />
+        {/* Variants */}
+        {steps[step]!.key === "variants" && (
+          <VariantsManager productId={params.id} categoryId={watch("categoryId") ?? product?.category?.id} />
+        )}
+
+        {/* Photos */}
+        {isPhotosStep && <ProductImageManager productId={params.id} />}
+
+        <StickyActionBar>
+          {step > 0 && <Button type="button" variant="outline" onClick={handleBack}>Back</Button>}
+          {step === 0 && <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>}
+          {!isPhotosStep && (
+            <Button type="button" onClick={handleNext} isLoading={mutation.isPending}>
+              {isLastFieldStep ? "Save Changes" : "Next"}
+            </Button>
+          )}
+          {isPhotosStep && (
+            <Button type="button" onClick={() => router.push("/products")}>
+              <Check className="mr-2 h-4 w-4" /> Done
+            </Button>
+          )}
+        </StickyActionBar>
       </div>
-
-      {/* Action buttons — linked to the form via form="product-form" */}
-      <StickyActionBar>
-        <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-        <Button type="submit" form="product-form" isLoading={mutation.isPending}>Save Changes</Button>
-      </StickyActionBar>
     </div>
   );
 }
