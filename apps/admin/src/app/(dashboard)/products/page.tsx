@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { Badge, Input, Pagination, PRODUCT_STATUS_LABELS, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
@@ -52,14 +53,18 @@ export default function ProductsPage() {
     {
       key: "productCode",
       header: "Product ID",
-      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
+      cell: (r) => (
+        <Link href={`/products/${r.id}`} className="font-mono text-xs hover:text-primary hover:underline">
+          {r.productCode}
+        </Link>
+      ),
     },
     {
       key: "name",
       header: "Product",
       sortable: true,
       cell: (r) => (
-        <div className="flex items-center gap-3">
+        <Link href={`/products/${r.id}`} className="flex items-center gap-3 hover:text-primary">
           {r.images?.[0] && (
             <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 rounded object-cover" />
           )}
@@ -67,7 +72,7 @@ export default function ProductsPage() {
             <p className="font-medium">{r.name}</p>
             {r.merchant && <p className="text-xs text-muted-foreground">{r.merchant.storeName}</p>}
           </div>
-        </div>
+        </Link>
       ),
     },
     { key: "category", header: "Category", cell: (r) => r.category?.name ?? "—" },
