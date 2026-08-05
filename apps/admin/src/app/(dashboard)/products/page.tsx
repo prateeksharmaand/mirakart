@@ -73,11 +73,11 @@ export default function ProductsPage() {
       cell: (r) => (
         <Link href={`/products/${r.id}`} className="flex items-center gap-3 hover:text-primary">
           {r.images?.[0] && (
-            <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 rounded object-cover" />
+            <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 shrink-0 rounded object-cover" />
           )}
-          <div>
-            <p className="font-medium">{r.name}</p>
-            {r.merchant && <p className="text-xs text-muted-foreground">{r.merchant.storeName}</p>}
+          <div className="min-w-0">
+            <p className="line-clamp-1 max-w-xs font-medium" title={r.name}>{r.name}</p>
+            {r.merchant && <p className="line-clamp-1 text-xs text-muted-foreground">{r.merchant.storeName}</p>}
           </div>
         </Link>
       ),
