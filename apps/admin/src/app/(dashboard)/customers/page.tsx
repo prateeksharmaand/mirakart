@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
 import { Badge, Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
@@ -89,13 +88,7 @@ export default function CustomersPage() {
             <SelectItem value="BLOCKED">Suspended</SelectItem>
           </SelectContent>
         </Select>
-        <Button
-          variant="outline"
-          onClick={handleResetFilters}
-          disabled={!hasActiveFilters}
-          className="border-danger/30 text-danger hover:bg-danger/5 hover:text-danger"
-        >
-          <X className="mr-1.5 h-3.5 w-3.5" />
+        <Button onClick={handleResetFilters} disabled={!hasActiveFilters}>
           Clear Filters
         </Button>
       </div>
