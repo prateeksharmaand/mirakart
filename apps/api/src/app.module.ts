@@ -20,6 +20,7 @@ import { BrandsModule } from "./brands/brands.module";
 import { AttributesModule } from "./attributes/attributes.module";
 import { ProductsModule } from "./products/products.module";
 import { CartModule } from "./cart/cart.module";
+import { CouponsModule } from "./coupons/coupons.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { ReturnsModule } from "./returns/returns.module";
@@ -53,6 +54,7 @@ import { CustomerQueriesModule } from "./customer-queries/customer-queries.modul
     AttributesModule,
     ProductsModule,
     CartModule,
+    CouponsModule,
     OrdersModule,
     PaymentsModule,
     ReturnsModule,

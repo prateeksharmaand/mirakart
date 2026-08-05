@@ -25,3 +25,13 @@ export async function removeCartItem(itemId: string): Promise<Cart> {
 export async function clearCart(): Promise<void> {
   await apiClient.delete("/cart");
 }
+
+export async function applyCartCoupon(code: string): Promise<Cart> {
+  const res = await apiClient.post<ApiSuccessResponse<Cart>>("/cart/coupon", { code });
+  return res.data.data;
+}
+
+export async function removeCartCoupon(): Promise<Cart> {
+  const res = await apiClient.delete<ApiSuccessResponse<Cart>>("/cart/coupon");
+  return res.data.data;
+}

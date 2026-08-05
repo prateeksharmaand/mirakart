@@ -1,10 +1,12 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
+import type { CouponsService } from "../coupons/coupons.service";
 import { CartRepository } from "./cart.repository";
 import { CartService } from "./cart.service";
 
 describe("CartService", () => {
   let service: CartService;
   let repo: jest.Mocked<CartRepository>;
+  let coupons: jest.Mocked<CouponsService>;
 
   beforeEach(() => {
     repo = {
@@ -17,8 +19,12 @@ describe("CartService", () => {
       updateItemQuantity: jest.fn(),
       deleteItem: jest.fn(),
       clearItems: jest.fn(),
+      setAppliedCoupon: jest.fn(),
     } as unknown as jest.Mocked<CartRepository>;
-    service = new CartService(repo);
+    coupons = {
+      priceCartForCoupon: jest.fn(),
+    } as unknown as jest.Mocked<CouponsService>;
+    service = new CartService(repo, coupons);
 
     repo.findOrCreateCart.mockResolvedValue({ id: "cart1", customerId: "c1" } as never);
     repo.findCartWithItems.mockResolvedValue({ id: "cart1", items: [] } as never);

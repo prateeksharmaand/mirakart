@@ -52,6 +52,7 @@ export interface Order {
   shippingFee: string;
   tax: string;
   discount: string;
+  couponCode: string | null;
   total: string;
   currency: string;
   placedAt: string;

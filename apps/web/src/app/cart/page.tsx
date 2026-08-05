@@ -6,7 +6,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { Badge, Button, EmptyState, Skeleton, toast } from "@mirakart/ui";
 import { CheckoutSteps } from "../../components/checkout-steps";
-import { useCart, useRemoveCartItem, useUpdateCartItem } from "../../hooks/use-cart";
+import { useApplyCoupon, useCart, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "../../hooks/use-cart";
 import { useAuthStore } from "../../stores/auth-store";
 import { formatPrice } from "../../lib/format";
 
@@ -17,7 +17,17 @@ export default function CartPage() {
   const { data: cart, isLoading, refetch, isRefetching } = useCart();
   const updateItem = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
+  const applyCoupon = useApplyCoupon();
+  const removeCoupon = useRemoveCoupon();
   const [couponCode, setCouponCode] = React.useState("");
+
+  const removedReason = cart?.couponRemovedReason;
+  React.useEffect(() => {
+    if (removedReason) {
+      toast({ title: "Your coupon was removed", description: removedReason, variant: "default" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [removedReason]);
 
   if (!isAuthenticated) {
     return (
@@ -65,7 +75,7 @@ export default function CartPage() {
 
   function handleApplyCoupon() {
     if (!couponCode.trim()) return;
-    toast({ title: "Coupon codes aren't available yet", description: "Check back soon!" });
+    applyCoupon.mutate(couponCode.trim(), { onSuccess: () => setCouponCode("") });
   }
 
   return (
@@ -197,22 +207,41 @@ export default function CartPage() {
 
           {/* Coupon + update cart */}
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
-            <div className="flex w-full max-w-sm gap-2">
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Coupon code"
-                className="h-10 flex-1 rounded-sm border border-border-form bg-background px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleApplyCoupon}
-                className="h-10 shrink-0 rounded-sm bg-background-light px-4 text-sm font-medium text-foreground transition-colors hover:bg-border"
-              >
-                Apply coupon
-              </button>
-            </div>
+            {cart.appliedCoupon ? (
+              <div className="flex w-full max-w-sm items-center justify-between gap-2 rounded-sm border border-primary/40 bg-primary/5 px-3 py-2">
+                <span className="text-sm text-foreground">
+                  Coupon <span className="font-mono font-medium">{cart.appliedCoupon.code}</span> applied — you saved{" "}
+                  <span className="font-medium text-primary">{formatPrice(cart.appliedCoupon.discountAmount)}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeCoupon.mutate()}
+                  disabled={removeCoupon.isPending}
+                  className="shrink-0 text-xs font-medium text-foreground-muted hover:text-danger disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex w-full max-w-sm gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Coupon code"
+                  disabled={applyCoupon.isPending}
+                  className="h-10 flex-1 rounded-sm border border-border-form bg-background px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={applyCoupon.isPending || !couponCode.trim()}
+                  className="h-10 shrink-0 rounded-sm bg-background-light px-4 text-sm font-medium text-foreground transition-colors hover:bg-border disabled:opacity-50"
+                >
+                  {applyCoupon.isPending ? "Applying…" : "Apply coupon"}
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => refetch()}
@@ -232,6 +261,12 @@ export default function CartPage() {
               <span className="text-foreground-muted">Subtotal</span>
               <span className="text-foreground">{formatPrice(cart.subtotal)}</span>
             </div>
+            {cart.discount > 0 && cart.appliedCoupon ? (
+              <div className="flex items-center justify-between py-3 text-sm">
+                <span className="text-foreground-muted">Coupon ({cart.appliedCoupon.code})</span>
+                <span className="text-primary">-{formatPrice(cart.discount)}</span>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between py-3 text-sm">
               <span className="text-foreground-muted">Shipping</span>
               <span className="text-foreground">
@@ -240,7 +275,7 @@ export default function CartPage() {
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-sm font-medium text-foreground">Total</span>
-              <span className="text-lg font-semibold text-foreground">{formatPrice(cart.subtotal)}</span>
+              <span className="text-lg font-semibold text-foreground">{formatPrice(cart.total)}</span>
             </div>
           </div>
           {unavailableCount > 0 ? (

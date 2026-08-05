@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@mirakart/ui";
-import { addCartItem, clearCart, fetchCart, removeCartItem, updateCartItem } from "../lib/api/cart";
+import { addCartItem, applyCartCoupon, clearCart, fetchCart, removeCartCoupon, removeCartItem, updateCartItem } from "../lib/api/cart";
 import { useAuthStore } from "../stores/auth-store";
 
 const CART_KEY = ["cart"];
@@ -53,5 +53,26 @@ export function useClearCart() {
   return useMutation({
     mutationFn: clearCart,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CART_KEY }),
+  });
+}
+
+export function useApplyCoupon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => applyCartCoupon(code),
+    onSuccess: (cart) => {
+      queryClient.setQueryData(CART_KEY, cart);
+      toast({ title: `Coupon applied — you saved ₹${cart.discount.toFixed(2)}`, variant: "success" });
+    },
+    onError: (error: Error) => toast({ title: "Couldn't apply coupon", description: error.message, variant: "danger" }),
+  });
+}
+
+export function useRemoveCoupon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: removeCartCoupon,
+    onSuccess: (cart) => queryClient.setQueryData(CART_KEY, cart),
+    onError: (error: Error) => toast({ title: "Couldn't remove coupon", description: error.message, variant: "danger" }),
   });
 }

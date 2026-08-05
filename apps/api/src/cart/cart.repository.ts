@@ -13,6 +13,7 @@ const cartItemsInclude = {
               slug: true,
               status: true,
               deletedAt: true,
+              merchantId: true,
               images: { where: { isPrimary: true }, take: 1, include: { media: true } },
             },
           },
@@ -22,6 +23,7 @@ const cartItemsInclude = {
       },
     },
   },
+  appliedCoupon: { select: { id: true, code: true } },
 };
 
 @Injectable()
@@ -67,5 +69,9 @@ export class CartRepository {
 
   clearItems(cartId: string) {
     return this.prisma.cartItem.deleteMany({ where: { cartId } });
+  }
+
+  setAppliedCoupon(cartId: string, couponId: string | null) {
+    return this.prisma.cart.update({ where: { id: cartId }, data: { appliedCouponId: couponId } });
   }
 }

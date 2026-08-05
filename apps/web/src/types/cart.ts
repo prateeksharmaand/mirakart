@@ -14,8 +14,18 @@ export interface CartItem {
   };
 }
 
+export interface AppliedCoupon {
+  code: string;
+  discountAmount: number;
+  merchantId: string;
+}
+
 export interface Cart {
   id: string;
   items: CartItem[];
   subtotal: number;
+  discount: number;
+  total: number;
+  appliedCoupon: AppliedCoupon | null;
+  couponRemovedReason: string | null;
 }

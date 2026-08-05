@@ -1,9 +1,15 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type ActorType, type OrderItemStatus, type OrderStatus } from "@prisma/client";
 import { CartRepository } from "../cart/cart.repository";
+import { CouponsService } from "../coupons/coupons.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PaymentsService } from "../payments/payments.service";
-import { InsufficientStockError, OrdersRepository, type CartLineForCheckout } from "./orders.repository";
+import {
+  InsufficientStockError,
+  OrdersRepository,
+  type CartLineForCheckout,
+  type CouponPricingForCheckout,
+} from "./orders.repository";
 import type { AdminOrderQueryDto } from "./dto/admin-order-query.dto";
 import type { CheckoutDto } from "./dto/checkout.dto";
 import type { FulfillmentStatus } from "./dto/update-fulfillment-status.dto";
@@ -30,6 +36,7 @@ export class OrdersService {
   constructor(
     private readonly repo: OrdersRepository,
     private readonly cartRepo: CartRepository,
+    private readonly coupons: CouponsService,
     private readonly notifications: NotificationsService,
     private readonly payments: PaymentsService,
   ) {}
@@ -73,8 +80,30 @@ export class OrdersService {
       });
     }
 
-    const { order, lowStockAlerts } = await this.createOrderWithRetry(customerId, dto, lines);
+    // Re-validate the applied coupon fresh against the final checkout lines
+    // — never trust what the cart had stored. If it no longer qualifies
+    // (expired, limit hit, items changed since it was applied), silently
+    // check out at full price rather than blocking the purchase over a
+    // stale promo code.
+    let couponPricing: CouponPricingForCheckout | undefined;
+    if (cart.appliedCoupon) {
+      try {
+        const priced = await this.coupons.priceCartForCoupon(lines, cart.appliedCoupon.code, customerId);
+        couponPricing = {
+          couponId: priced.coupon.id,
+          couponCode: priced.coupon.code,
+          discountAmount: priced.discountAmount,
+          qualifyingMerchantId: priced.qualifyingMerchantId,
+          usageLimit: priced.coupon.usageLimit,
+        };
+      } catch {
+        // Not eligible anymore — proceed without a discount.
+      }
+    }
+
+    const { order, lowStockAlerts } = await this.createOrderWithRetry(customerId, dto, lines, couponPricing);
     await this.cartRepo.clearItems(cart.id);
+    if (cart.appliedCoupon) await this.cartRepo.setAppliedCoupon(cart.id, null);
 
     for (const alert of lowStockAlerts) {
       const outOfStock = alert.quantity === 0;
@@ -117,7 +146,12 @@ export class OrdersService {
     return order;
   }
 
-  private async createOrderWithRetry(customerId: string, dto: CheckoutDto, lines: CartLineForCheckout[]) {
+  private async createOrderWithRetry(
+    customerId: string,
+    dto: CheckoutDto,
+    lines: CartLineForCheckout[],
+    couponPricing?: CouponPricingForCheckout,
+  ) {
     for (let attempt = 1; attempt <= ORDER_NUMBER_RETRY_ATTEMPTS; attempt++) {
       try {
         return await this.repo.createOrder({
@@ -127,6 +161,7 @@ export class OrdersService {
           billingAddressId: dto.billingAddressId,
           paymentMethod: dto.paymentMethod,
           lines,
+          couponPricing,
         });
       } catch (error) {
         if (error instanceof InsufficientStockError) {

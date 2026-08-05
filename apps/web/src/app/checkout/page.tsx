@@ -231,9 +231,15 @@ export default function CheckoutPage() {
               <span className="text-foreground-muted">Subtotal</span>
               <span className="text-foreground">{formatPrice(subtotal)}</span>
             </div>
+            {cart && cart.discount > 0 && cart.appliedCoupon ? (
+              <div className="flex items-center justify-between py-3 text-sm">
+                <span className="text-foreground-muted">Coupon ({cart.appliedCoupon.code})</span>
+                <span className="text-primary">-{formatPrice(cart.discount)}</span>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between py-3">
               <span className="text-sm font-medium text-foreground">Total</span>
-              <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
+              <span className="text-lg font-semibold text-foreground">{formatPrice(cart?.total ?? subtotal)}</span>
             </div>
           </div>
 

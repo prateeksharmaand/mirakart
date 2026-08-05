@@ -128,6 +128,12 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
           <span className="text-foreground-muted">Subtotal</span>
           <span>{formatPrice(order.subtotal)}</span>
         </div>
+        {Number(order.discount) > 0 ? (
+          <div className="flex justify-between">
+            <span className="text-foreground-muted">Coupon{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+            <span className="text-primary">-{formatPrice(order.discount)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between">
           <span className="text-foreground-muted">Shipping</span>
           <span>{formatPrice(order.shippingFee)}</span>

@@ -41,10 +41,12 @@ describe("OrdersService", () => {
     cartRepo = {
       findCartWithItems: jest.fn(),
       clearItems: jest.fn(),
+      setAppliedCoupon: jest.fn(),
     } as unknown as jest.Mocked<CartRepository>;
+    const coupons = { priceCartForCoupon: jest.fn() } as never;
     const notifications = { create: jest.fn().mockResolvedValue(undefined) } as never;
     const payments = { markCodReceived: jest.fn() } as never;
-    service = new OrdersService(repo, cartRepo, notifications, payments);
+    service = new OrdersService(repo, cartRepo, coupons, notifications, payments);
   });
 
   describe("checkout", () => {

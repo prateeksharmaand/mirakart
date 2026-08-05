@@ -30,6 +30,42 @@ export interface LowStockAlert {
   quantity: number;
 }
 
+export interface CouponPricingForCheckout {
+  couponId: string;
+  couponCode: string;
+  discountAmount: number;
+  qualifyingMerchantId: string;
+  usageLimit: number | null;
+}
+
+/** Splits a coupon's total discount across the qualifying merchant's lines,
+ *  proportional to each line's share of that merchant's subtotal — the last
+ *  qualifying line absorbs the rounding remainder so the shares always sum
+ *  to exactly `totalDiscount`. Lines from every other merchant get nothing. */
+function allocateDiscountByVariant(
+  lines: CartLineForCheckout[],
+  qualifyingMerchantId: string,
+  totalDiscount: number,
+): Map<string, number> {
+  const shares = new Map<string, number>();
+  if (totalDiscount <= 0) return shares;
+
+  const qualifying = lines.filter((line) => line.merchantId === qualifyingMerchantId);
+  const qualifyingSubtotal = qualifying.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+  if (qualifyingSubtotal <= 0) return shares;
+
+  let allocated = 0;
+  qualifying.forEach((line, index) => {
+    const isLast = index === qualifying.length - 1;
+    const share = isLast
+      ? Math.round((totalDiscount - allocated) * 100) / 100
+      : Math.round(((line.unitPrice * line.quantity) / qualifyingSubtotal) * totalDiscount * 100) / 100;
+    shares.set(line.variantId, share);
+    allocated += share;
+  });
+  return shares;
+}
+
 // Historical order items intentionally freeze name/price/attributes into
 // productNameSnapshot/variantSnapshot at checkout time — but image, brand,
 // merchant name, and Product ID are stable reference data (a product's
@@ -91,9 +127,14 @@ export class OrdersRepository {
     billingAddressId: string;
     paymentMethod: PaymentMethod;
     lines: CartLineForCheckout[];
+    /** Already-validated by CouponsService.priceCartForCoupon at the top of
+     *  checkout — re-guarded here against the usage limit one more time
+     *  (atomically, inside this transaction) since time has passed since
+     *  that check ran. */
+    couponPricing?: CouponPricingForCheckout;
   }) {
     const subtotal = data.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-    const total = subtotal; // shippingFee/tax/discount default to 0 — no shipping/tax engine in scope yet
+    // shippingFee/tax default to 0 — no shipping/tax engine in scope yet
 
     // COD orders are confirmed immediately — no admin gate — with an unpaid
     // balance collected on delivery; every other payment method keeps the
@@ -105,13 +146,41 @@ export class OrdersRepository {
     const initialPaymentStatus: PaymentStatus = isCod ? "UNPAID" : "PENDING";
 
     return this.prisma.$transaction(async (tx) => {
+      // Re-guard the usage limit atomically at the moment of purchase — if
+      // it was hit by another checkout in the meantime, drop the discount
+      // silently rather than failing this order over a stale promo code.
+      let discount = 0;
+      let couponId: string | null = null;
+      let couponCode: string | null = null;
+      if (data.couponPricing) {
+        const guard = await tx.coupon.updateMany({
+          where: {
+            id: data.couponPricing.couponId,
+            ...(data.couponPricing.usageLimit !== null ? { usedCount: { lt: data.couponPricing.usageLimit } } : {}),
+          },
+          data: { usedCount: { increment: 1 } },
+        });
+        if (guard.count > 0) {
+          discount = data.couponPricing.discountAmount;
+          couponId = data.couponPricing.couponId;
+          couponCode = data.couponPricing.couponCode;
+        }
+      }
+      const discountByVariant = data.couponPricing
+        ? allocateDiscountByVariant(data.lines, data.couponPricing.qualifyingMerchantId, discount)
+        : new Map<string, number>();
+      const total = subtotal - discount;
+
       const order = await tx.order.create({
         data: {
           orderNumber: data.orderNumber,
           customerId: data.customerId,
           status: initialOrderStatus,
           subtotal,
+          discount,
           total,
+          couponId,
+          couponCode,
           shippingAddressId: data.shippingAddressId,
           billingAddressId: data.billingAddressId,
           items: {
@@ -124,6 +193,7 @@ export class OrdersRepository {
               quantity: line.quantity,
               unitPrice: line.unitPrice,
               totalPrice: line.unitPrice * line.quantity,
+              discountAmount: discountByVariant.get(line.variantId) ?? 0,
               status: initialItemStatus,
             })),
           },
@@ -134,6 +204,12 @@ export class OrdersRepository {
         },
         include: orderDetailInclude,
       });
+
+      if (couponId && discount > 0) {
+        await tx.couponRedemption.create({
+          data: { couponId, customerId: data.customerId, orderId: order.id, discountAmount: discount },
+        });
+      }
 
       // Conditional decrement: only succeeds if enough stock is still there at
       // commit time. A blind `decrement` would let two concurrent checkouts
