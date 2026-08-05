@@ -5,6 +5,7 @@ import { ReturnsRepository } from "./returns.repository";
 import type { AdminReturnQueryDto } from "./dto/admin-return-query.dto";
 import type { AdminUpdateReturnStatusDto } from "./dto/admin-update-return-status.dto";
 import type { CreateReturnDto } from "./dto/create-return.dto";
+import type { MerchantReturnQueryDto } from "./dto/merchant-return-query.dto";
 import type { MerchantUpdateReturnStatusDto } from "./dto/merchant-update-return-status.dto";
 import { generateReturnNumber } from "./utils/return-number.util";
 
@@ -83,9 +84,16 @@ export class ReturnsService {
     return this.repo.updateStatus(id, "CANCELLED", "CUSTOMER", customerId);
   }
 
-  async listForMerchant(merchantId: string, page: number, limit: number) {
-    const { items, totalItems } = await this.repo.findMerchantReturns(merchantId, page, limit);
-    return { data: items, meta: paginate(page, limit, totalItems) };
+  async listForMerchant(merchantId: string, query: MerchantReturnQueryDto) {
+    const { items, totalItems } = await this.repo.findMerchantReturns({
+      merchantId,
+      status: query.status,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+    return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
   async findForMerchant(id: string, merchantId: string) {

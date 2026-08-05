@@ -8,6 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
+import { SectionNav } from "../../../../components/section-nav";
+import { StickyActionBar } from "../../../../components/sticky-action-bar";
 import { createProduct, addVariant, updateVariantInventory } from "../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags, listCategoryAttributes } from "../../../../lib/api/profile";
 import { Plus, Trash2 } from "lucide-react";
@@ -61,6 +63,13 @@ export default function NewProductPage() {
     staleTime: 60_000,
   });
 
+  const sections = [
+    { id: "section-basic", label: "Basic Information" },
+    ...(tags && tags.length > 0 ? [{ id: "section-tags", label: "Tags" }] : []),
+    { id: "section-pricing", label: "Pricing" },
+    { id: "section-variants", label: "Variants" },
+  ];
+
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const product = await createProduct({
@@ -102,10 +111,11 @@ export default function NewProductPage() {
         title="Add New Product"
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: "New" }]}
       />
+      <SectionNav sections={sections} />
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-6">
 
         {/* Basic Info */}
-        <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+        <div id="section-basic" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4 scroll-mt-16">
           <h2 className="text-sm font-semibold">Basic Information</h2>
           <FormField label="Product Name" htmlFor="name" error={errors.name?.message} required>
             <Input id="name" {...register("name")} />
@@ -145,7 +155,7 @@ export default function NewProductPage() {
 
         {/* Tags */}
         {tags && tags.length > 0 && (
-          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3">
+          <div id="section-tags" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3 scroll-mt-16">
             <h2 className="text-sm font-semibold">Tags</h2>
             <p className="text-xs text-foreground-muted">Select tags that describe this product.</p>
             <div className="flex flex-wrap gap-2">
@@ -176,7 +186,7 @@ export default function NewProductPage() {
         )}
 
         {/* Pricing */}
-        <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+        <div id="section-pricing" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4 scroll-mt-16">
           <h2 className="text-sm font-semibold">Pricing</h2>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Base Price (₹)" htmlFor="basePrice" error={errors.basePrice?.message} required>
@@ -203,7 +213,7 @@ export default function NewProductPage() {
         </div>
 
         {/* Variants */}
-        <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+        <div id="section-variants" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4 scroll-mt-16">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold">Variants / Inventory</h2>
@@ -251,10 +261,10 @@ export default function NewProductPage() {
           ))}
         </div>
 
-        <div className="flex gap-3">
+        <StickyActionBar>
           <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
           <Button type="submit" isLoading={mutation.isPending}>Create Product</Button>
-        </div>
+        </StickyActionBar>
       </form>
     </div>
   );

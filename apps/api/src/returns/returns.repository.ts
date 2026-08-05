@@ -79,15 +79,25 @@ export class ReturnsRepository {
     return { items, totalItems };
   }
 
-  async findMerchantReturns(merchantId: string, page: number, limit: number) {
-    const where: Prisma.ReturnWhereInput = { merchantId };
+  async findMerchantReturns(filter: {
+    merchantId: string;
+    status?: ReturnStatus;
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) {
+    const where: Prisma.ReturnWhereInput = {
+      merchantId: filter.merchantId,
+      ...(filter.status ? { status: filter.status } : {}),
+    };
     const [items, totalItems] = await Promise.all([
       this.prisma.return.findMany({
         where,
         include: { reason: true, images: true },
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: "desc" },
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, RETURN_SORT_FIELDS, "createdAt"),
       }),
       this.prisma.return.count({ where }),
     ]);

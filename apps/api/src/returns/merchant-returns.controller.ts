@@ -3,7 +3,7 @@ import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { MerchantAuth } from "../auth/decorators/auth.decorators";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AuthenticatedPrincipal } from "../auth/types/jwt-payload.interface";
-import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
+import { MerchantReturnQueryDto } from "./dto/merchant-return-query.dto";
 import { MerchantUpdateReturnStatusDto } from "./dto/merchant-update-return-status.dto";
 import { RejectReturnDto } from "./dto/reject-return.dto";
 import { ReturnsService } from "./returns.service";
@@ -16,8 +16,8 @@ export class MerchantReturnsController {
 
   @Get()
   @ApiOkResponse()
-  list(@Query() query: PaginationQueryDto, @CurrentUser() user: AuthenticatedPrincipal) {
-    return this.service.listForMerchant(user.id, query.page, query.limit);
+  list(@Query() query: MerchantReturnQueryDto, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.listForMerchant(user.id, query);
   }
 
   @Get(":id")

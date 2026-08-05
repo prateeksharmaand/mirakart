@@ -11,7 +11,9 @@ export interface MerchantReturn {
   images?: Array<{ id: string; media: { url: string } }>;
 }
 
-export async function listMerchantReturns(params: { page?: number; limit?: number; status?: string } = {}) {
+export async function listMerchantReturns(
+  params: { page?: number; limit?: number; status?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+) {
   const res = await apiClient.get("/merchants/me/returns", { params });
   return res.data as { data: MerchantReturn[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
 }

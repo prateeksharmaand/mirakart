@@ -9,6 +9,8 @@ import { z } from "zod";
 import { Button, FormField, Input, PRODUCT_STATUS_LABELS, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../../components/page-header";
 import { ProductImageManager } from "../../../../../components/product-image-manager";
+import { SectionNav } from "../../../../../components/section-nav";
+import { StickyActionBar } from "../../../../../components/sticky-action-bar";
 import { getMerchantProduct, updateProduct, addVariant, deleteVariant, updateVariantInventory, type ProductVariant } from "../../../../../lib/api/products";
 import { listCategories, listBrands, listActiveTags, listCategoryAttributes, type AttributeWithValues } from "../../../../../lib/api/profile";
 import { Plus, Trash2, Check, X } from "lucide-react";
@@ -103,6 +105,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   if (isLoading) return <Skeleton className="h-96 w-full" />;
 
+  const sections = [
+    { id: "section-images", label: "Images" },
+    { id: "section-details", label: "Details" },
+    ...(tags && tags.length > 0 ? [{ id: "section-tags", label: "Tags" }] : []),
+    { id: "section-variants", label: "Variants" },
+  ];
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <PageHeader
@@ -110,11 +119,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: product?.name ?? "" }]}
       />
 
-      <ProductImageManager productId={params.id} />
+      <SectionNav sections={sections} />
+
+      <div id="section-images" className="scroll-mt-16">
+        <ProductImageManager productId={params.id} />
+      </div>
 
       {/* Main form — id lets the submit button live outside the form element */}
       <form id="product-form" onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-6">
-        <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4">
+        <div id="section-details" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-4 scroll-mt-16">
           <FormField label="Product Name" htmlFor="name" error={errors.name?.message} required>
             <Input id="name" {...register("name")} />
           </FormField>
@@ -208,7 +221,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
         {/* Tags */}
         {tags && tags.length > 0 && (
-          <div className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3">
+          <div id="section-tags" className="rounded-xl border border-border bg-white p-6 flex flex-col gap-3 scroll-mt-16">
             <h2 className="text-sm font-semibold">Tags</h2>
             <p className="text-xs text-foreground-muted">Select tags that describe this product.</p>
             <div className="flex flex-wrap gap-2">
@@ -240,13 +253,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       </form>
 
       {/* Variants / Inventory — between Tags and action buttons */}
-      <VariantsManager productId={params.id} categoryId={watch("categoryId") ?? product?.category?.id} />
+      <div id="section-variants" className="scroll-mt-16">
+        <VariantsManager productId={params.id} categoryId={watch("categoryId") ?? product?.category?.id} />
+      </div>
 
       {/* Action buttons — linked to the form via form="product-form" */}
-      <div className="flex gap-3">
+      <StickyActionBar>
         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
         <Button type="submit" form="product-form" isLoading={mutation.isPending}>Save Changes</Button>
-      </div>
+      </StickyActionBar>
     </div>
   );
 }

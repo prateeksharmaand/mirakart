@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingBag } from "lucide-react";
-import { Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
+import { Button, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { listMerchantOrders, type MerchantOrder } from "../../../lib/api/orders";
@@ -48,7 +48,19 @@ export default function MerchantOrdersPage() {
     setPage(1);
   }
 
+  const hasActiveFilters = status !== "all";
+  function handleResetFilters() {
+    setStatus("all");
+    setPage(1);
+  }
+
   const columns: Column<MerchantOrder>[] = [
+    {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
     {
       key: "orderNumber",
       header: "Order ID",
@@ -107,6 +119,9 @@ export default function MerchantOrdersPage() {
             ))}
           </SelectContent>
         </Select>
+        <Button onClick={handleResetFilters} disabled={!hasActiveFilters}>
+          Clear Filters
+        </Button>
       </div>
       <DataTable
         columns={columns}
