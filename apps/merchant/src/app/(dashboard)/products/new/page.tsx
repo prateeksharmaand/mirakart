@@ -22,18 +22,23 @@ const variantSchema = z.object({
   attrs: z.record(z.string(), z.string()).default({}),
 });
 
-const schema = z.object({
-  name: z.string().min(3, "At least 3 characters"),
-  description: z.string().min(10, "At least 10 characters").optional().or(z.literal("")),
-  categoryId: z.string().min(1, "Category is required"),
-  brandId: z.string().optional(),
-  basePrice: z.coerce.number().positive("Must be positive"),
-  compareAtPrice: z.coerce.number().optional(),
-  sku: z.string().optional(),
-  status: z.enum(["DRAFT", "APPROVED"]).default("APPROVED"),
-  tagIds: z.array(z.string()).default([]),
-  variants: z.array(variantSchema).min(1, "Add at least one variant"),
-});
+const schema = z
+  .object({
+    name: z.string().min(3, "At least 3 characters"),
+    description: z.string().min(10, "At least 10 characters").optional().or(z.literal("")),
+    categoryId: z.string().min(1, "Category is required"),
+    brandId: z.string().optional(),
+    basePrice: z.coerce.number().positive("Must be positive"),
+    compareAtPrice: z.coerce.number().optional(),
+    sku: z.string().optional(),
+    status: z.enum(["DRAFT", "APPROVED"]).default("APPROVED"),
+    tagIds: z.array(z.string()).default([]),
+    variants: z.array(variantSchema).min(1, "Add at least one variant"),
+  })
+  .refine((data) => data.compareAtPrice === undefined || data.compareAtPrice > data.basePrice, {
+    message: "compareAtPrice must be greater than basePrice",
+    path: ["compareAtPrice"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 

@@ -24,17 +24,22 @@ const STATUS_LABELS = { DRAFT: "Draft", APPROVED: "Publish (live)", ARCHIVED: "A
 const MERCHANT_EDITABLE_STATUSES = ["DRAFT", "APPROVED", "ARCHIVED"] as const;
 type MerchantStatus = typeof MERCHANT_EDITABLE_STATUSES[number];
 
-const schema = z.object({
-  name: z.string().min(1, "Required"),
-  description: z.string().optional(),
-  categoryId: z.string().optional(),
-  brandId: z.string().optional(),
-  price: z.coerce.number().positive(),
-  comparePrice: z.coerce.number().optional(),
-  status: z.enum(["DRAFT", "APPROVED", "ARCHIVED"]).optional(),
-  tagIds: z.array(z.string()).default([]),
-  dealEndsAt: z.string().optional(),
-});
+const schema = z
+  .object({
+    name: z.string().min(1, "Required"),
+    description: z.string().optional(),
+    categoryId: z.string().optional(),
+    brandId: z.string().optional(),
+    price: z.coerce.number().positive(),
+    comparePrice: z.coerce.number().optional(),
+    status: z.enum(["DRAFT", "APPROVED", "ARCHIVED"]).optional(),
+    tagIds: z.array(z.string()).default([]),
+    dealEndsAt: z.string().optional(),
+  })
+  .refine((data) => data.comparePrice === undefined || data.comparePrice > data.price, {
+    message: "compareAtPrice must be greater than basePrice",
+    path: ["comparePrice"],
+  });
 type FormValues = z.infer<typeof schema>;
 
 // datetime-local inputs use "YYYY-MM-DDTHH:mm" in the browser's local timezone
@@ -169,7 +174,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             <FormField label="Price (₹)" error={errors.price?.message} required>
               <Input type="number" step="0.01" {...register("price")} />
             </FormField>
-            <FormField label="Compare Price (₹)">
+            <FormField label="Compare Price (₹)" error={errors.comparePrice?.message}>
               <Input type="number" step="0.01" {...register("comparePrice")} />
             </FormField>
           </div>
