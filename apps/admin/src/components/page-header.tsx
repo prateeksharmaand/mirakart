@@ -16,7 +16,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, crumbs, action }: PageHeaderProps) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <div>
+      <div className="min-w-0">
         {crumbs && crumbs.length > 0 && (
           <nav className="mb-1 flex items-center gap-1 text-sm text-muted-foreground">
             {crumbs.map((crumb, i) => (
@@ -27,13 +27,13 @@ export function PageHeader({ title, crumbs, action }: PageHeaderProps) {
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span>{crumb.label}</span>
+                  <span className="line-clamp-1">{crumb.label}</span>
                 )}
               </React.Fragment>
             ))}
           </nav>
         )}
-        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <h1 className="line-clamp-2 text-2xl font-semibold text-foreground" title={title}>{title}</h1>
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
