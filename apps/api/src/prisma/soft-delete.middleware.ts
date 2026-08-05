@@ -27,9 +27,20 @@ export const softDeleteMiddleware: Prisma.Middleware = async (params, next) => {
   }
 
   // Only apply to read operations: findUnique, findFirst, findMany, count
-  if (["findUnique", "findFirst", "findMany", "count"].includes(params.action)) {
+  if (["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "count"].includes(params.action)) {
     // Check if this model supports soft deletes
     if (SOFT_DELETE_TABLES.has(params.model)) {
+      // findUnique's `where` type only accepts unique fields (id/slug/etc.) —
+      // it rejects the `AND` wrapper we merge deletedAt into below with a
+      // PrismaClientValidationError. findFirst accepts arbitrary filters
+      // (including AND) and still narrows to at most one row when queried
+      // by a unique field, so swap to it before merging.
+      if (params.action === "findUnique") {
+        params.action = "findFirst";
+      } else if (params.action === "findUniqueOrThrow") {
+        params.action = "findFirstOrThrow";
+      }
+
       // Merge deletedAt: null into the where clause
       if (params.args.where === undefined) {
         params.args.where = {};
