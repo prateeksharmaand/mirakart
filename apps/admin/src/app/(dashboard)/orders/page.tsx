@@ -146,12 +146,15 @@ export default function OrdersPage() {
             <SelectItem value="FAILED">Failed</SelectItem>
           </SelectContent>
         </Select>
-        {hasActiveFilters && (
-          <Button variant="outline" onClick={handleResetFilters}>
-            <X className="mr-1.5 h-3.5 w-3.5" />
-            Clear Filters
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          onClick={handleResetFilters}
+          disabled={!hasActiveFilters}
+          className="border-danger/30 text-danger hover:bg-danger/5 hover:text-danger"
+        >
+          <X className="mr-1.5 h-3.5 w-3.5" />
+          Clear Filters
+        </Button>
       </div>
       <DataTable
         columns={columns}
