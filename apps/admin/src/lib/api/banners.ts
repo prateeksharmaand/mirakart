@@ -1,9 +1,11 @@
 import { apiClient } from "../api-client";
 
+// CATEGORY_TOP intentionally excluded — the storefront category page renders
+// its own per-category bannerMedia field instead and never queries banners
+// by position, so a banner placed here would silently never show anywhere.
 export const BANNER_POSITIONS = [
   { value: "HOME_HERO", label: "Home Hero" },
   { value: "HOME_SECONDARY", label: "Home Secondary" },
-  { value: "CATEGORY_TOP", label: "Category Top" },
   { value: "STOREFRONT_TOP", label: "Storefront Top" },
 ] as const;
 
