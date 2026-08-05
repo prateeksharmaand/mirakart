@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@mirakart/ui";
+import { X } from "lucide-react";
+import { Badge, Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { TableActions } from "../../../components/table-actions";
@@ -30,6 +31,13 @@ export default function CustomersPage() {
       setSortBy(key);
       setSortOrder("asc");
     }
+    setPage(1);
+  }
+
+  const hasActiveFilters = search !== "" || status !== "all";
+  function handleResetFilters() {
+    setSearch("");
+    setStatus("all");
     setPage(1);
   }
 
@@ -81,6 +89,12 @@ export default function CustomersPage() {
             <SelectItem value="BLOCKED">Suspended</SelectItem>
           </SelectContent>
         </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" onClick={handleResetFilters}>
+            <X className="mr-1.5 h-3.5 w-3.5" />
+            Clear Filters
+          </Button>
+        )}
       </div>
       <DataTable
         columns={columns}

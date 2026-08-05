@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Badge, Input, Pagination, PRODUCT_STATUS_LABELS, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
+import { X } from "lucide-react";
+import { Badge, Button, Input, Pagination, PRODUCT_STATUS_LABELS, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { TableActions } from "../../../components/table-actions";
@@ -40,6 +41,13 @@ export default function ProductsPage() {
       setSortBy(key);
       setSortOrder("asc");
     }
+    setPage(1);
+  }
+
+  const hasActiveFilters = search !== "" || status !== "all";
+  function handleResetFilters() {
+    setSearch("");
+    setStatus("all");
     setPage(1);
   }
 
@@ -123,6 +131,12 @@ export default function ProductsPage() {
             <SelectItem value="ARCHIVED">Archived</SelectItem>
           </SelectContent>
         </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" onClick={handleResetFilters}>
+            <X className="mr-1.5 h-3.5 w-3.5" />
+            Clear Filters
+          </Button>
+        )}
       </div>
       <DataTable
         columns={columns}
