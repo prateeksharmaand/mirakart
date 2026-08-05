@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildOrderBy } from "../common/utils/sort.util";
+
+const CATEGORY_SORT_FIELDS = ["name", "createdAt", "sortOrder"] as const;
 
 const categoryMediaInclude = { iconMedia: true, bannerMedia: true };
 
@@ -15,12 +18,30 @@ export class CategoriesRepository {
     });
   }
 
-  findAllForAdmin() {
-    return this.prisma.category.findMany({
-      where: { deletedAt: null },
-      include: { ...categoryMediaInclude, parent: { select: { id: true, name: true } } },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    });
+  async findAdminList(filter: {
+    search?: string;
+    isActive?: boolean;
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) {
+    const where = {
+      deletedAt: null,
+      ...(filter.isActive !== undefined ? { isActive: filter.isActive } : {}),
+      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" as const } } : {}),
+    };
+    const [items, totalItems] = await Promise.all([
+      this.prisma.category.findMany({
+        where,
+        include: { ...categoryMediaInclude, parent: { select: { id: true, name: true } } },
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, CATEGORY_SORT_FIELDS, "name"),
+      }),
+      this.prisma.category.count({ where }),
+    ]);
+    return { items, totalItems };
   }
 
   findBySlug(slug: string) {

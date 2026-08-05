@@ -9,7 +9,7 @@ describe("BrandsService", () => {
   beforeEach(() => {
     repo = {
       findAllActive: jest.fn(),
-      findAllForAdmin: jest.fn(),
+      findAdminList: jest.fn(),
       findBySlug: jest.fn(),
       findById: jest.fn(),
       findByCode: jest.fn().mockResolvedValue(null),

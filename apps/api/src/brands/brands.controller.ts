@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { BrandsService } from "./brands.service";
+import { BrandQueryDto } from "./dto/brand-query.dto";
 import { CreateBrandDto } from "./dto/create-brand.dto";
 import { UpdateBrandDto } from "./dto/update-brand.dto";
 
@@ -18,9 +19,9 @@ export class BrandsController {
 
   @Get("admin/all")
   @AdminAuth("brand.view")
-  @ApiOkResponse({ description: "Flat list including inactive brands" })
-  listForAdmin() {
-    return this.service.listForAdmin();
+  @ApiOkResponse({ description: "Paginated list including inactive brands" })
+  listForAdmin(@Query() query: BrandQueryDto) {
+    return this.service.listAdmin(query);
   }
 
   @Get(":slug")

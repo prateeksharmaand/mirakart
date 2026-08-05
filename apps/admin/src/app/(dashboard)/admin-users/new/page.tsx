@@ -33,7 +33,8 @@ type FormValues = z.infer<typeof schema>;
 export default function NewAdminUserPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+  const { data: rolesResult } = useQuery({ queryKey: ["roles"], queryFn: () => listRoles({ limit: 200 }) });
+  const roles = rolesResult?.data;
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),

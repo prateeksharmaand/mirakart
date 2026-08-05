@@ -15,9 +15,18 @@ export interface Role {
   permissions?: Permission[];
 }
 
-export async function listRoles(): Promise<Role[]> {
-  const res = await apiClient.get("/roles");
-  return res.data.data as Role[];
+export interface ListMeta {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export async function listRoles(
+  params: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+): Promise<{ data: Role[]; meta: ListMeta }> {
+  const res = await apiClient.get("/roles", { params });
+  return res.data as { data: Role[]; meta: ListMeta };
 }
 
 export async function getRole(id: string): Promise<Role> {

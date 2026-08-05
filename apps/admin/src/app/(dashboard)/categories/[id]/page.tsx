@@ -37,10 +37,11 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
   });
 
   // All categories for the parent selector (admin endpoint returns inactive ones too)
-  const { data: allCategories = [] } = useQuery({
+  const { data: allCategoriesResult } = useQuery({
     queryKey: ["categories-admin-all"],
-    queryFn: listCategoriesForAdmin,
+    queryFn: () => listCategoriesForAdmin({ limit: 500 }),
   });
+  const allCategories = allCategoriesResult?.data ?? [];
 
   const {
     register, handleSubmit, setValue, watch, reset,

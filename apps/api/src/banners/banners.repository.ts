@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import type { BannerPosition, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildOrderBy } from "../common/utils/sort.util";
+
+const BANNER_SORT_FIELDS = ["sortOrder", "createdAt", "title", "position"] as const;
 
 @Injectable()
 export class BannersRepository {
@@ -19,11 +22,31 @@ export class BannersRepository {
     return this.prisma.banner.findMany({ where, include: { media: true }, orderBy: { sortOrder: "asc" } });
   }
 
-  findAllForAdmin() {
-    return this.prisma.banner.findMany({
-      include: { media: true },
-      orderBy: [{ position: "asc" }, { sortOrder: "asc" }],
-    });
+  async findAdminList(filter: {
+    search?: string;
+    position?: BannerPosition;
+    isActive?: boolean;
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) {
+    const where: Prisma.BannerWhereInput = {
+      ...(filter.position ? { position: filter.position } : {}),
+      ...(filter.isActive !== undefined ? { isActive: filter.isActive } : {}),
+      ...(filter.search ? { title: { contains: filter.search, mode: "insensitive" as const } } : {}),
+    };
+    const [items, totalItems] = await Promise.all([
+      this.prisma.banner.findMany({
+        where,
+        include: { media: true },
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, BANNER_SORT_FIELDS, "sortOrder"),
+      }),
+      this.prisma.banner.count({ where }),
+    ]);
+    return { items, totalItems };
   }
 
   findById(id: string) {

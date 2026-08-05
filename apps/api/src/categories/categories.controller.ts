@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { CategoriesService } from "./categories.service";
+import { CategoryQueryDto } from "./dto/category-query.dto";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { ListCategoriesDto } from "./dto/list-categories.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
@@ -35,9 +36,9 @@ export class CategoriesController {
 
   @Get("admin/all")
   @AdminAuth("category.view")
-  @ApiOkResponse({ description: "Flat list including inactive categories" })
-  listForAdmin() {
-    return this.service.listForAdmin();
+  @ApiOkResponse({ description: "Paginated list including inactive categories" })
+  listForAdmin(@Query() query: CategoryQueryDto) {
+    return this.service.listAdmin(query);
   }
 
   @Get("admin/:id")

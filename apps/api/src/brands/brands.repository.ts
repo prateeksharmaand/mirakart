@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildOrderBy } from "../common/utils/sort.util";
+
+const BRAND_SORT_FIELDS = ["name", "createdAt", "code"] as const;
 
 const brandMediaInclude = { logoMedia: true };
 
@@ -15,12 +18,30 @@ export class BrandsRepository {
     });
   }
 
-  findAllForAdmin() {
-    return this.prisma.brand.findMany({
-      where: { deletedAt: null },
-      include: brandMediaInclude,
-      orderBy: { name: "asc" },
-    });
+  async findAdminList(filter: {
+    search?: string;
+    isActive?: boolean;
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) {
+    const where = {
+      deletedAt: null,
+      ...(filter.isActive !== undefined ? { isActive: filter.isActive } : {}),
+      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" as const } } : {}),
+    };
+    const [items, totalItems] = await Promise.all([
+      this.prisma.brand.findMany({
+        where,
+        include: brandMediaInclude,
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, BRAND_SORT_FIELDS, "name"),
+      }),
+      this.prisma.brand.count({ where }),
+    ]);
+    return { items, totalItems };
   }
 
   findBySlug(slug: string) {

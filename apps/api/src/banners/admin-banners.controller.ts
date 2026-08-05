@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { BannersService } from "./banners.service";
+import { BannerQueryDto } from "./dto/banner-query.dto";
 import { CreateBannerDto } from "./dto/create-banner.dto";
 import { UpdateBannerDto } from "./dto/update-banner.dto";
 
@@ -13,8 +14,8 @@ export class AdminBannersController {
   @Get()
   @AdminAuth("banner.view")
   @ApiOkResponse()
-  list() {
-    return this.service.listForAdmin();
+  list(@Query() query: BannerQueryDto) {
+    return this.service.listForAdmin(query);
   }
 
   @Get(":id")

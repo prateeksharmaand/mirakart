@@ -1,8 +1,13 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { slugify } from "../common/utils/slugify.util";
 import { AttributesRepository } from "./attributes.repository";
+import type { AttributeQueryDto } from "./dto/attribute-query.dto";
 import type { CreateAttributeDto, CreateAttributeValueDto } from "./dto/create-attribute.dto";
 import type { UpdateAttributeDto } from "./dto/update-attribute.dto";
+
+function paginate(page: number, limit: number, totalItems: number) {
+  return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
+}
 
 @Injectable()
 export class AttributesService {
@@ -10,6 +15,17 @@ export class AttributesService {
 
   list() {
     return this.repo.findAll();
+  }
+
+  async listAdmin(query: AttributeQueryDto) {
+    const { items, totalItems } = await this.repo.findAdminList({
+      search: query.search,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+    return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
   async findById(id: string) {

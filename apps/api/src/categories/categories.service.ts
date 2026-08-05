@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from "@nestjs/common
 import type { Prisma } from "@prisma/client";
 import { slugify } from "../common/utils/slugify.util";
 import { CategoriesRepository } from "./categories.repository";
+import type { CategoryQueryDto } from "./dto/category-query.dto";
 import type { CreateCategoryDto } from "./dto/create-category.dto";
 import type { UpdateCategoryDto } from "./dto/update-category.dto";
 
@@ -9,6 +10,10 @@ type CategoryWithMedia = Prisma.CategoryGetPayload<{ include: { iconMedia: true;
 
 export interface CategoryNode extends CategoryWithMedia {
   children: CategoryNode[];
+}
+
+function paginate(page: number, limit: number, totalItems: number) {
+  return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
 }
 
 @Injectable()
@@ -20,8 +25,16 @@ export class CategoriesService {
     return flat ? categories : this.buildTree(categories);
   }
 
-  listForAdmin() {
-    return this.repo.findAllForAdmin();
+  async listAdmin(query: CategoryQueryDto) {
+    const { items, totalItems } = await this.repo.findAdminList({
+      search: query.search,
+      isActive: query.isActive,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+    return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
   async findBySlug(slug: string): Promise<CategoryWithMedia> {

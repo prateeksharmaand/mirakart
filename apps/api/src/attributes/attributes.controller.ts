@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { AttributesService } from "./attributes.service";
+import { AttributeQueryDto } from "./dto/attribute-query.dto";
 import { CreateAttributeDto, CreateAttributeValueDto } from "./dto/create-attribute.dto";
 import { UpdateAttributeDto } from "./dto/update-attribute.dto";
 
@@ -14,6 +15,13 @@ export class AttributesController {
   @ApiOkResponse()
   list() {
     return this.service.list();
+  }
+
+  @Get("admin/all")
+  @AdminAuth("attribute.view")
+  @ApiOkResponse({ description: "Paginated list (admin)" })
+  listAdmin(@Query() query: AttributeQueryDto) {
+    return this.service.listAdmin(query);
   }
 
   @Get(":id")

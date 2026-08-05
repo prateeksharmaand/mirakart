@@ -20,7 +20,8 @@ type FormValues = z.infer<typeof schema>;
 
 export default function NewCategoryPage() {
   const router = useRouter();
-  const { data: all } = useQuery({ queryKey: ["categories-all"], queryFn: listCategoriesForAdmin });
+  const { data: allResult } = useQuery({ queryKey: ["categories-all"], queryFn: () => listCategoriesForAdmin({ limit: 500 }) });
+  const all = allResult?.data;
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),

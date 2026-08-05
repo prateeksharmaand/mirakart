@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Lock } from "lucide-react";
-import { Button, Badge, toast } from "@mirakart/ui";
+import { Button, Badge, Pagination, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
@@ -12,28 +12,22 @@ import { TableActions } from "../../../components/table-actions";
 import { listRoles, deleteRole, type Role } from "../../../lib/api/roles";
 
 export default function RolesPage() {
+  const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<Role | null>(null);
   const [sortBy, setSortBy] = React.useState("name");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("asc");
   const qc = useQueryClient();
 
-  const { data: roles, isLoading } = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+  const { data, isLoading } = useQuery({
+    queryKey: ["roles", page, sortBy, sortOrder],
+    queryFn: () => listRoles({ page, limit: 20, sortBy, sortOrder }),
+  });
 
   function handleSortChange(key: string) {
     if (sortBy === key) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     else { setSortBy(key); setSortOrder("asc"); }
+    setPage(1);
   }
-
-  const sortedRoles = React.useMemo(() => {
-    const rows = [...(roles ?? [])];
-    rows.sort((a, b) => {
-      const av = sortBy === "perms" ? (a.permissions?.length ?? 0) : a.name;
-      const bv = sortBy === "perms" ? (b.permissions?.length ?? 0) : b.name;
-      const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
-      return sortOrder === "asc" ? cmp : -cmp;
-    });
-    return rows;
-  }, [roles, sortBy, sortOrder]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteRole(id),
@@ -42,10 +36,15 @@ export default function RolesPage() {
   });
 
   const columns: Column<Role>[] = [
-    { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
+    {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
     { key: "name", header: "Name", sortable: true, cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: "system", header: "Type", cell: (r) => r.isSystem ? <Badge variant="primary">System</Badge> : <Badge variant="default">Custom</Badge> },
-    { key: "perms", header: "Permissions", sortable: true, cell: (r) => r.permissions?.length ?? "—" },
+    { key: "perms", header: "Permissions", cell: (r) => r.permissions?.length ?? "—" },
     {
       key: "actions", header: "Action", className: "w-16",
       cell: (r) => r.isSystem
@@ -65,7 +64,7 @@ export default function RolesPage() {
       />
       <DataTable
         columns={columns}
-        data={sortedRoles}
+        data={data?.data ?? []}
         keyField="id"
         isLoading={isLoading}
         emptyMessage="No roles found"
@@ -73,6 +72,9 @@ export default function RolesPage() {
         sortOrder={sortOrder}
         onSortChange={handleSortChange}
       />
+      {data?.meta && data.meta.totalPages > 1 && (
+        <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
+      )}
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete role"

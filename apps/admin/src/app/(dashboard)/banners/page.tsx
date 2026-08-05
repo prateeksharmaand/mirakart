@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { Badge, Button, toast } from "@mirakart/ui";
+import { Badge, Button, Pagination, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
@@ -12,30 +12,22 @@ import { TableActions } from "../../../components/table-actions";
 import { listBanners, deleteBanner, updateBanner, type Banner } from "../../../lib/api/banners";
 
 export default function BannersPage() {
+  const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<Banner | null>(null);
   const [sortBy, setSortBy] = React.useState("sort");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("asc");
   const qc = useQueryClient();
 
-  const { data: banners, isLoading } = useQuery({ queryKey: ["banners"], queryFn: () => listBanners() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["banners", page, sortBy, sortOrder],
+    queryFn: () => listBanners({ page, limit: 20, sortBy, sortOrder }),
+  });
 
   function handleSortChange(key: string) {
     if (sortBy === key) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     else { setSortBy(key); setSortOrder("asc"); }
+    setPage(1);
   }
-
-  const sortedBanners = React.useMemo(() => {
-    const rows = [...(banners ?? [])];
-    rows.sort((a, b) => {
-      const av = sortBy === "status" ? Number(a.isActive) : sortBy === "sort" ? a.sortOrder
-        : sortBy === "position" ? a.position : (a.title ?? "");
-      const bv = sortBy === "status" ? Number(b.isActive) : sortBy === "sort" ? b.sortOrder
-        : sortBy === "position" ? b.position : (b.title ?? "");
-      const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
-      return sortOrder === "asc" ? cmp : -cmp;
-    });
-    return rows;
-  }, [banners, sortBy, sortOrder]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteBanner(id),
@@ -53,7 +45,12 @@ export default function BannersPage() {
   });
 
   const columns: Column<Banner>[] = [
-    { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
+    {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
     {
       key: "image",
       header: "Image",
@@ -68,7 +65,6 @@ export default function BannersPage() {
     {
       key: "status",
       header: "Status",
-      sortable: true,
       cell: (r) => {
         const isPending = toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === r.id;
         return (
@@ -101,13 +97,16 @@ export default function BannersPage() {
       />
       <DataTable
         columns={columns}
-        data={sortedBanners}
+        data={data?.data ?? []}
         keyField="id"
         isLoading={isLoading}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSortChange={handleSortChange}
       />
+      {data?.meta && data.meta.totalPages > 1 && (
+        <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
+      )}
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete banner"

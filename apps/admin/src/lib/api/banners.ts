@@ -20,9 +20,26 @@ export interface Banner {
   media?: { id: string; url: string } | null;
 }
 
-export async function listBanners(): Promise<Banner[]> {
-  const res = await apiClient.get("/admin/banners");
-  return res.data.data as Banner[];
+export interface ListMeta {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export async function listBanners(
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    position?: string;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  } = {},
+): Promise<{ data: Banner[]; meta: ListMeta }> {
+  const res = await apiClient.get("/admin/banners", { params });
+  return res.data as { data: Banner[]; meta: ListMeta };
 }
 
 export async function getBanner(id: string): Promise<Banner> {

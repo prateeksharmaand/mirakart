@@ -3,6 +3,11 @@ import { slugify } from "../common/utils/slugify.util";
 import { BrandsRepository } from "./brands.repository";
 import type { CreateBrandDto } from "./dto/create-brand.dto";
 import type { UpdateBrandDto } from "./dto/update-brand.dto";
+import type { BrandQueryDto } from "./dto/brand-query.dto";
+
+function paginate(page: number, limit: number, totalItems: number) {
+  return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
+}
 
 @Injectable()
 export class BrandsService {
@@ -12,8 +17,16 @@ export class BrandsService {
     return this.repo.findAllActive();
   }
 
-  listForAdmin() {
-    return this.repo.findAllForAdmin();
+  async listAdmin(query: BrandQueryDto) {
+    const { items, totalItems } = await this.repo.findAdminList({
+      search: query.search,
+      isActive: query.isActive,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+    return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
   async findBySlug(slug: string) {

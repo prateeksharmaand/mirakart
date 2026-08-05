@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import type { AttributeType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildOrderBy } from "../common/utils/sort.util";
+
+const ATTRIBUTE_SORT_FIELDS = ["name", "createdAt", "type"] as const;
 
 const attributeWithValuesInclude = {
   values: { orderBy: { sortOrder: "asc" as const } },
@@ -12,6 +15,29 @@ export class AttributesRepository {
 
   findAll() {
     return this.prisma.attribute.findMany({ include: attributeWithValuesInclude, orderBy: { name: "asc" } });
+  }
+
+  async findAdminList(filter: {
+    search?: string;
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) {
+    const where = {
+      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" as const } } : {}),
+    };
+    const [items, totalItems] = await Promise.all([
+      this.prisma.attribute.findMany({
+        where,
+        include: attributeWithValuesInclude,
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, ATTRIBUTE_SORT_FIELDS, "name"),
+      }),
+      this.prisma.attribute.count({ where }),
+    ]);
+    return { items, totalItems };
   }
 
   findById(id: string) {

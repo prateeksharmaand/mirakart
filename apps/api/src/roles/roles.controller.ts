@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { CreateRoleDto } from "./dto/create-role.dto";
+import { RoleQueryDto } from "./dto/role-query.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
 import { RolesService } from "./roles.service";
 
@@ -13,8 +14,8 @@ export class RolesController {
   @Get()
   @AdminAuth("role.view")
   @ApiOkResponse()
-  list() {
-    return this.service.list();
+  list(@Query() query: RoleQueryDto) {
+    return this.service.listAdmin(query);
   }
 
   @Get(":id")

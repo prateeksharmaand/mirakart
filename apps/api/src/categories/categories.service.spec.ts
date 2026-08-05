@@ -9,7 +9,7 @@ describe("CategoriesService", () => {
   beforeEach(() => {
     repo = {
       findAllActive: jest.fn(),
-      findAllForAdmin: jest.fn(),
+      findAdminList: jest.fn(),
       findBySlug: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),

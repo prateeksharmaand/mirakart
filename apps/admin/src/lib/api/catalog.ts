@@ -20,9 +20,25 @@ export async function getCategory(id: string): Promise<Category> {
   return res.data.data as Category;
 }
 
-export async function listCategoriesForAdmin(): Promise<Category[]> {
-  const res = await apiClient.get("/categories/admin/all");
-  return res.data.data as Category[];
+export interface ListMeta {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export async function listCategoriesForAdmin(
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  } = {},
+): Promise<{ data: Category[]; meta: ListMeta }> {
+  const res = await apiClient.get("/categories/admin/all", { params });
+  return res.data as { data: Category[]; meta: ListMeta };
 }
 
 export async function uploadCategoryImage(file: Blob): Promise<{ id: string; url: string }> {
@@ -76,9 +92,18 @@ export interface Brand {
   createdAt: string;
 }
 
-export async function listBrands(params: { page?: number; limit?: number; search?: string } = {}) {
-  const res = await apiClient.get("/brands", { params });
-  return res.data as { data: Brand[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
+export async function listBrands(
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  } = {},
+): Promise<{ data: Brand[]; meta: ListMeta }> {
+  const res = await apiClient.get("/brands/admin/all", { params });
+  return res.data as { data: Brand[]; meta: ListMeta };
 }
 
 export async function getBrand(id: string): Promise<Brand> {
@@ -118,9 +143,18 @@ export interface Attribute {
   createdAt: string;
 }
 
-export async function listAttributes(params: { page?: number; limit?: number; search?: string } = {}) {
+export async function listAttributes(
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<{ data: Attribute[]; meta: ListMeta }> {
   const res = await apiClient.get("/attributes", { params });
-  return res.data as { data: Attribute[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
+  return res.data as { data: Attribute[]; meta: ListMeta };
+}
+
+export async function listAttributesForAdmin(
+  params: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+): Promise<{ data: Attribute[]; meta: ListMeta }> {
+  const res = await apiClient.get("/attributes/admin/all", { params });
+  return res.data as { data: Attribute[]; meta: ListMeta };
 }
 
 export async function getAttribute(id: string): Promise<Attribute> {

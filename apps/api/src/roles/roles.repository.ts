@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildOrderBy } from "../common/utils/sort.util";
+
+const ROLE_SORT_FIELDS = ["name", "createdAt"] as const;
 
 const roleWithPermissionsSelect = {
   id: true,
@@ -26,6 +29,29 @@ export class RolesRepository {
   async findMany() {
     const roles = await this.prisma.role.findMany({ select: roleWithPermissionsSelect, orderBy: { name: "asc" } });
     return roles.map(flattenPermissions);
+  }
+
+  async findAdminList(filter: {
+    search?: string;
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) {
+    const where = {
+      ...(filter.search ? { name: { contains: filter.search, mode: "insensitive" as const } } : {}),
+    };
+    const [roles, totalItems] = await Promise.all([
+      this.prisma.role.findMany({
+        where,
+        select: roleWithPermissionsSelect,
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, ROLE_SORT_FIELDS, "name"),
+      }),
+      this.prisma.role.count({ where }),
+    ]);
+    return { items: roles.map(flattenPermissions), totalItems };
   }
 
   async findById(id: string) {

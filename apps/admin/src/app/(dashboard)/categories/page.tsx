@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { Badge, Button, toast } from "@mirakart/ui";
+import { Badge, Button, Pagination, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
@@ -12,28 +12,22 @@ import { TableActions } from "../../../components/table-actions";
 import { deleteCategory, listCategoriesForAdmin, type Category } from "../../../lib/api/catalog";
 
 export default function CategoriesPage() {
+  const [page, setPage] = React.useState(1);
   const [deleteTarget, setDeleteTarget] = React.useState<Category | null>(null);
   const [sortBy, setSortBy] = React.useState("name");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("asc");
   const qc = useQueryClient();
 
-  const { data: categories, isLoading } = useQuery({ queryKey: ["categories"], queryFn: listCategoriesForAdmin });
+  const { data, isLoading } = useQuery({
+    queryKey: ["categories", page, sortBy, sortOrder],
+    queryFn: () => listCategoriesForAdmin({ page, limit: 20, sortBy, sortOrder }),
+  });
 
   function handleSortChange(key: string) {
     if (sortBy === key) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     else { setSortBy(key); setSortOrder("asc"); }
+    setPage(1);
   }
-
-  const sortedCategories = React.useMemo(() => {
-    const rows = [...(categories ?? [])];
-    rows.sort((a, b) => {
-      const av = sortBy === "status" ? Number(a.isActive) : sortBy === "slug" ? a.slug : a.name;
-      const bv = sortBy === "status" ? Number(b.isActive) : sortBy === "slug" ? b.slug : b.name;
-      const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
-      return sortOrder === "asc" ? cmp : -cmp;
-    });
-    return rows;
-  }, [categories, sortBy, sortOrder]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCategory(id),
@@ -42,7 +36,12 @@ export default function CategoriesPage() {
   });
 
   const columns: Column<Category>[] = [
-    { key: "sno", header: "S No", className: "w-12", cell: (_r, index) => index + 1 },
+    {
+      key: "sno",
+      header: "S No",
+      className: "w-12",
+      cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
+    },
     {
       key: "name",
       header: "Name",
@@ -54,8 +53,8 @@ export default function CategoriesPage() {
         </div>
       ),
     },
-    { key: "slug", header: "Slug", sortable: true, cell: (r) => <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{r.slug}</code> },
-    { key: "status", header: "Status", sortable: true, cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Active" : "Inactive"}</Badge> },
+    { key: "slug", header: "Slug", cell: (r) => <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{r.slug}</code> },
+    { key: "status", header: "Status", cell: (r) => <Badge variant={r.isActive ? "success" : "default"}>{r.isActive ? "Active" : "Inactive"}</Badge> },
     {
       key: "actions", header: "Action", className: "w-16",
       cell: (r) => <TableActions editHref={`/categories/${r.id}`} onDelete={() => setDeleteTarget(r)} />,
@@ -71,13 +70,16 @@ export default function CategoriesPage() {
       />
       <DataTable
         columns={columns}
-        data={sortedCategories}
+        data={data?.data ?? []}
         keyField="id"
         isLoading={isLoading}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSortChange={handleSortChange}
       />
+      {data?.meta && data.meta.totalPages > 1 && (
+        <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
+      )}
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete category"

@@ -3,6 +3,11 @@ import { Prisma } from "@prisma/client";
 import { RolesRepository } from "./roles.repository";
 import type { CreateRoleDto } from "./dto/create-role.dto";
 import type { UpdateRoleDto } from "./dto/update-role.dto";
+import type { RoleQueryDto } from "./dto/role-query.dto";
+
+function paginate(page: number, limit: number, totalItems: number) {
+  return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
+}
 
 @Injectable()
 export class RolesService {
@@ -10,6 +15,17 @@ export class RolesService {
 
   list() {
     return this.repo.findMany();
+  }
+
+  async listAdmin(query: RoleQueryDto) {
+    const { items, totalItems } = await this.repo.findAdminList({
+      search: query.search,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+    return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
   async findOne(id: string) {

@@ -9,7 +9,7 @@ describe("BannersService", () => {
   beforeEach(() => {
     repo = {
       findActiveForPosition: jest.fn(),
-      findAllForAdmin: jest.fn(),
+      findAdminList: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

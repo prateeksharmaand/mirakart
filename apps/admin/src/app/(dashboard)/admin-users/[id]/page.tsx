@@ -27,7 +27,8 @@ export default function EditAdminUserPage({ params }: { params: { id: string } }
   const router = useRouter();
   const qc = useQueryClient();
   const { data: user, isLoading } = useQuery({ queryKey: ["admin-user", params.id], queryFn: () => getAdminUser(params.id) });
-  const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+  const { data: rolesResult } = useQuery({ queryKey: ["roles"], queryFn: () => listRoles({ limit: 200 }) });
+  const roles = rolesResult?.data;
 
   // Role is required for everyone except super admins, who don't have a role field at all.
   const schema = React.useMemo(

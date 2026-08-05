@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { BannerPosition } from "@prisma/client";
 import { BannersRepository } from "./banners.repository";
+import type { BannerQueryDto } from "./dto/banner-query.dto";
 import type { CreateBannerDto } from "./dto/create-banner.dto";
 import type { UpdateBannerDto } from "./dto/update-banner.dto";
+
+function paginate(page: number, limit: number, totalItems: number) {
+  return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
+}
 
 @Injectable()
 export class BannersService {
@@ -12,8 +17,17 @@ export class BannersService {
     return this.repo.findActiveForPosition(position);
   }
 
-  listForAdmin() {
-    return this.repo.findAllForAdmin();
+  async listForAdmin(query: BannerQueryDto) {
+    const { items, totalItems } = await this.repo.findAdminList({
+      search: query.search,
+      position: query.position,
+      isActive: query.isActive,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+    return { data: items, meta: paginate(query.page, query.limit, totalItems) };
   }
 
   async findById(id: string) {
