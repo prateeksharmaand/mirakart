@@ -16,7 +16,7 @@ function paginate(page: number, limit: number, totalItems: number) {
   return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
 }
 
-const PRODUCT_CODE_RETRY_ATTEMPTS = 3;
+const PRODUCT_CODE_RETRY_ATTEMPTS = 15;
 
 @Injectable()
 export class ProductsService {
@@ -101,19 +101,22 @@ export class ProductsService {
     return product;
   }
 
-  /** Product IDs are generated from a per-brand sequential count, so a
-   *  concurrent create can race for the same code — retry with a freshly
-   *  counted sequence on a unique-constraint collision, mirroring
-   *  OrdersService's createOrderWithRetry for orderNumber. */
+  /** Product IDs are generated from a per-brand sequential count. Soft-deleted
+   *  products are excluded from that count but their productCode is still
+   *  occupied in the DB, so the "next" count-based sequence can collide with
+   *  an existing active product once anything for that brand has been
+   *  deleted — recomputing the same count on retry would hit the identical
+   *  collision every time, so instead walk forward from the starting
+   *  sequence on each attempt until a free slot is found. */
   private async createWithRetry(
     merchantId: string,
     productData: Omit<CreateProductDto, "tagIds">,
     slug: string,
     brandCode: string | null,
   ) {
+    const startingSequence = (await this.repo.countByBrand(productData.brandId ?? null)) + 1;
     for (let attempt = 1; attempt <= PRODUCT_CODE_RETRY_ATTEMPTS; attempt++) {
-      const sequence = (await this.repo.countByBrand(productData.brandId ?? null)) + 1;
-      const productCode = generateProductCode(brandCode, sequence);
+      const productCode = generateProductCode(brandCode, startingSequence + attempt - 1);
       try {
         return await this.repo.create({
           merchantId,
