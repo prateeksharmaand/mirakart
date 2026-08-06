@@ -65,7 +65,7 @@ export interface Order {
     product?: {
       productCode: string;
       brand: { name: string } | null;
-      images: { media: { url: string } }[];
+      images: { media: { url: string } | null }[];
     } | null;
     dispatchMethod: DispatchMethod | null;
     courierPartner: string | null;

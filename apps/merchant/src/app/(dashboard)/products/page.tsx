@@ -80,7 +80,7 @@ export default function MerchantProductsPage() {
       sortable: true,
       cell: (r) => (
         <div className="flex items-center gap-3">
-          {r.images?.[0] && <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 shrink-0 rounded object-cover" />}
+          {r.images?.[0]?.media && <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 shrink-0 rounded object-cover" />}
           <div className="min-w-0">
             <p className="line-clamp-1 max-w-xs font-medium" title={r.name}>{r.name}</p>
             <p className="text-xs text-muted-foreground">{r.category?.name ?? "—"}</p>

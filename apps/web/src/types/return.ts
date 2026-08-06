@@ -17,7 +17,7 @@ export interface ReturnReason {
 
 export interface ReturnImage {
   id: string;
-  media: { id: string; url: string };
+  media: { id: string; url: string } | null;
 }
 
 export interface ReturnStatusHistoryEntry {

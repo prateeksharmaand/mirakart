@@ -39,7 +39,7 @@ export interface MerchantReturn {
   customer?: { id: string; firstName: string; lastName: string } | null;
   reason?: { id: string; reason: string } | null;
   reasonDetail?: string | null;
-  images?: Array<{ id: string; media: { url: string } }>;
+  images?: Array<{ id: string; media: { url: string } | null }>;
 }
 
 export async function listMerchantReturns(

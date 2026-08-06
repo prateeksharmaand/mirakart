@@ -80,7 +80,7 @@ export default function ReturnDetailPage({ params }: { params: { returnId: strin
       {ret.images.length > 0 ? (
         <div className="flex gap-3">
           {ret.images.map((image) => (
-            <img key={image.id} src={image.media.url} alt="" className="h-20 w-20 rounded-sm object-cover" />
+            image.media && <img key={image.id} src={image.media.url} alt="" className="h-20 w-20 rounded-sm object-cover" />
           ))}
         </div>
       ) : null}

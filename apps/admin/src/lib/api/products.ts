@@ -4,7 +4,7 @@ export interface ProductImage {
   id: string;
   sortOrder: number;
   isPrimary: boolean;
-  media: { url: string };
+  media: { url: string } | null;
 }
 
 export interface ProductVariant {

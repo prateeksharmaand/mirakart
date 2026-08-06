@@ -43,7 +43,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               <h2 className="mb-4 text-sm font-semibold">Items</h2>
               <div className="flex flex-col gap-3">
                 {order.items.map((item) => {
-                  const image = item.product?.images[0]?.media.url;
+                  const image = item.product?.images[0]?.media?.url;
                   return (
                     <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
                       <div className="flex items-center gap-3">

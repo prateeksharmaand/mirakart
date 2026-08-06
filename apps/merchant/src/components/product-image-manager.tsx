@@ -115,7 +115,7 @@ export function ProductImageManager({ productId }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {images.map((image, index) => (
             <div key={image.id} className="relative group rounded-lg overflow-hidden border border-border bg-gray-50" style={{ aspectRatio: "1" }}>
-              <img src={image.media.url} alt="" className="w-full h-full object-cover" />
+              <img src={image.media?.url} alt="" className="w-full h-full object-cover" />
 
               {image.isPrimary && (
                 <div className="absolute top-1.5 left-1.5 rounded-full bg-primary p-1 shadow">

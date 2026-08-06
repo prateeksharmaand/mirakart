@@ -39,14 +39,16 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
               i === active ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
-            <Image
-              src={banner.media.url}
-              alt={banner.title}
-              fill
-              priority={i === 0}
-              sizes="1290px"
-              className="object-cover"
-            />
+            {banner.media && (
+              <Image
+                src={banner.media.url}
+                alt={banner.title}
+                fill
+                priority={i === 0}
+                sizes="1290px"
+                className="object-cover"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
             <div className="relative z-[1] max-w-md px-6 sm:px-10 lg:px-16">
               <p className="mb-3 text-sm font-medium uppercase tracking-widest text-white/80">New Collection</p>

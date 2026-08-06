@@ -6,7 +6,7 @@ export interface Banner {
   title: string;
   linkUrl: string | null;
   position: "HOME_HERO" | "HOME_SECONDARY" | "CATEGORY_TOP" | "STOREFRONT_TOP";
-  media: Media;
+  media: Media | null;
 }
 
 export function getBanners(position: Banner["position"]): Promise<Banner[]> {

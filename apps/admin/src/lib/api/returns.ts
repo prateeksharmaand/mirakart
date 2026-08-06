@@ -39,7 +39,7 @@ export interface Return {
   merchant?: { id: string; storeName: string } | null;
   reason?: { id: string; reason: string } | null;
   reasonDetail?: string | null;
-  images?: Array<{ id: string; media: { url: string } }>;
+  images?: Array<{ id: string; media: { url: string } | null }>;
 }
 
 export async function listReturns(

@@ -72,7 +72,7 @@ export default function ProductsPage() {
       sortable: true,
       cell: (r) => (
         <Link href={`/products/${r.id}`} className="flex items-center gap-3 hover:text-primary">
-          {r.images?.[0] && (
+          {r.images?.[0]?.media && (
             <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 shrink-0 rounded object-cover" />
           )}
           <div className="min-w-0">

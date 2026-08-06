@@ -13,7 +13,7 @@ export interface ProductImage {
   id: string;
   sortOrder: number;
   isPrimary: boolean;
-  media: { id: string; url: string };
+  media: { id: string; url: string } | null;
 }
 
 export interface Product {

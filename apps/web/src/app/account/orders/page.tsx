@@ -28,7 +28,7 @@ export default function OrdersPage() {
       ) : (
         data.data.map((order) => {
           const firstItem = order.items[0];
-          const image = firstItem?.product?.images[0]?.media.url;
+          const image = firstItem?.product?.images[0]?.media?.url;
           return (
             <Link
               key={order.id}

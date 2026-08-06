@@ -87,7 +87,7 @@ export default function MerchantOrdersPage() {
       cell: (r) => {
         const firstItem = r.items?.[0];
         if (!firstItem) return "—";
-        const image = firstItem.product?.images[0]?.media.url;
+        const image = firstItem.product?.images[0]?.media?.url;
         const extra = (r.items?.length ?? 0) - 1;
         return (
           <div className="flex items-center gap-2">

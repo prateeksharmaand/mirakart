@@ -72,7 +72,7 @@ export interface MerchantOrder {
       productCode: string;
       brand: { name: string } | null;
       category: { name: string } | null;
-      images: { media: { url: string } }[];
+      images: { media: { url: string } | null }[];
     } | null;
     dispatchMethod: DispatchMethod | null;
     courierPartner: string | null;

@@ -8,7 +8,7 @@ interface GalleryImage {
   id: string;
   isPrimary: boolean;
   sortOrder: number;
-  media: { url: string };
+  media: { url: string } | null;
 }
 
 interface Props {
@@ -83,13 +83,15 @@ export function ProductGallery({ images, productName }: Props) {
                     : "opacity-50 hover:opacity-90"
                 }`}
               >
-                <Image
-                  src={image.media.url}
-                  alt={`${productName} — ${index + 1}`}
-                  fill
-                  sizes="80px"
-                  className="object-cover"
-                />
+                {image.media && (
+                  <Image
+                    src={image.media.url}
+                    alt={`${productName} — ${index + 1}`}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                )}
               </button>
             ))}
           </div>
@@ -103,7 +105,7 @@ export function ProductGallery({ images, productName }: Props) {
             onMouseLeave={() => setZoom({ active: false, x: 50, y: 50 })}
             onClick={() => setLightboxOpen(true)}
           >
-            {selected && (
+            {selected && selected.media && (
               <Image
                 key={selected.id}
                 src={selected.media.url}
@@ -159,7 +161,7 @@ export function ProductGallery({ images, productName }: Props) {
             className="relative max-h-[90dvh] max-w-[90dvw] w-full h-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {selected && (
+            {selected && selected.media && (
               <Image
                 src={selected.media.url}
                 alt={productName}

@@ -75,8 +75,8 @@ export default function ReturnDetailPage({ params }: { params: { id: string } })
           <h2 className="mb-3 text-sm font-semibold">Images</h2>
           <div className="flex gap-2 flex-wrap">
             {ret.images.map((img) => (
-              <a key={img.id} href={img.media.url} target="_blank" rel="noreferrer">
-                <img src={img.media.url} alt="Return" className="h-24 w-24 rounded object-cover border border-border hover:opacity-80" />
+              <a key={img.id} href={img.media?.url} target="_blank" rel="noreferrer">
+                <img src={img.media?.url} alt="Return" className="h-24 w-24 rounded object-cover border border-border hover:opacity-80" />
               </a>
             ))}
           </div>

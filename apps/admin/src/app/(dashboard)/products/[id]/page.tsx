@@ -128,7 +128,7 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
               {product.images.map((image) => (
                 <div key={image.id} className="relative rounded-lg overflow-hidden border border-border" style={{ aspectRatio: "1" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.media.url} alt="" className="w-full h-full object-cover" />
+                  <img src={image.media?.url} alt="" className="w-full h-full object-cover" />
                   {image.isPrimary && (
                     <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-white">
                       Primary

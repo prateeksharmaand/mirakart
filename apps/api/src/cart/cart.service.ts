@@ -53,7 +53,7 @@ export class CartService {
           id: product.id,
           name: product.name,
           slug: product.slug,
-          image: product.images[0]?.media.url,
+          image: product.images[0]?.media?.url,
         },
         variant: {
           sku: variant.sku,
