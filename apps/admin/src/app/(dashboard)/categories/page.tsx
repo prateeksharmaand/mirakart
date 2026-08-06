@@ -20,7 +20,7 @@ export default function CategoriesPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["categories", page, sortBy, sortOrder],
-    queryFn: () => listCategoriesForAdmin({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listCategoriesForAdmin({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

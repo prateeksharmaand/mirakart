@@ -20,7 +20,7 @@ export default function BannersPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["banners", page, sortBy, sortOrder],
-    queryFn: () => listBanners({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listBanners({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

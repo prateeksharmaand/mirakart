@@ -37,7 +37,7 @@ export default function ReturnsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["returns", page, status, sortBy, sortOrder],
-    queryFn: () => listReturns({ page, limit: 20, status: status === "all" ? undefined : status, sortBy, sortOrder }),
+    queryFn: () => listReturns({ page, limit: 10, status: status === "all" ? undefined : status, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

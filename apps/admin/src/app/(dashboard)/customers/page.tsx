@@ -21,7 +21,7 @@ export default function CustomersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["customers", page, search, status, sortBy, sortOrder],
     queryFn: () =>
-      listCustomers({ page, limit: 20, search: search || undefined, status: status === "all" ? undefined : status, sortBy, sortOrder }),
+      listCustomers({ page, limit: 10, search: search || undefined, status: status === "all" ? undefined : status, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

@@ -20,7 +20,7 @@ export default function TagsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["tags", page, sortBy, sortOrder],
-    queryFn: () => listTags({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listTags({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

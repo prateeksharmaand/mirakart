@@ -29,7 +29,7 @@ export default function CouponsPage() {
     queryFn: () =>
       listCoupons({
         page,
-        limit: 20,
+        limit: 10,
         search: search || undefined,
         isActive: status === "all" ? undefined : status === "active",
         sortBy,

@@ -49,7 +49,7 @@ export default function OrdersPage() {
     queryFn: () =>
       listOrders({
         page,
-        limit: 20,
+        limit: 10,
         search: search || undefined,
         status: status === "all" ? undefined : status,
         paymentMethod: paymentMethod === "all" ? undefined : (paymentMethod as "COD" | "ONLINE"),

@@ -30,7 +30,7 @@ export default function AttributesPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["attributes", page, sortBy, sortOrder],
-    queryFn: () => listAttributesForAdmin({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listAttributesForAdmin({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

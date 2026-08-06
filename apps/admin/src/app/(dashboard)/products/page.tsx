@@ -25,7 +25,7 @@ export default function ProductsPage() {
     queryFn: () =>
       listProducts({
         page,
-        limit: 20,
+        limit: 10,
         search: search || undefined,
         status: status === "all" ? undefined : status,
         sortBy,

@@ -29,7 +29,7 @@ export default function MerchantProductsPage() {
     queryFn: () =>
       listMerchantProducts({
         page,
-        limit: 20,
+        limit: 10,
         search: search || undefined,
         status: status === "all" ? undefined : status,
         stockStatus: stockStatus === "all" ? undefined : (stockStatus as "LOW_STOCK" | "OUT_OF_STOCK"),

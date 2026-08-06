@@ -38,7 +38,7 @@ export default function MerchantReturnsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["merchant-returns", page, status, sortBy, sortOrder],
     queryFn: () =>
-      listMerchantReturns({ page, limit: 20, status: status === "all" ? undefined : status, sortBy, sortOrder }),
+      listMerchantReturns({ page, limit: 10, status: status === "all" ? undefined : status, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

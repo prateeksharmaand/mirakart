@@ -38,7 +38,7 @@ export default function MerchantOrdersPage() {
     queryFn: () =>
       listMerchantOrders({
         page,
-        limit: 20,
+        limit: 10,
         search: search || undefined,
         status: status === "all" ? undefined : status,
         sortBy,

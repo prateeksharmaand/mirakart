@@ -20,7 +20,7 @@ export default function BrandsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["brands", page, sortBy, sortOrder],
-    queryFn: () => listBrands({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listBrands({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

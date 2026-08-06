@@ -20,7 +20,7 @@ export default function RolesPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["roles", page, sortBy, sortOrder],
-    queryFn: () => listRoles({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listRoles({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {

@@ -24,7 +24,7 @@ export default function AdminUsersPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users", page, sortBy, sortOrder],
-    queryFn: () => listAdminUsers({ page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => listAdminUsers({ page, limit: 10, sortBy, sortOrder }),
   });
 
   function handleSortChange(key: string) {
