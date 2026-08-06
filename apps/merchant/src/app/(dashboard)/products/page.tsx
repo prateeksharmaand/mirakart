@@ -10,6 +10,7 @@ import { DataTable, type Column } from "../../../components/data-table";
 import { listMerchantProducts, deleteProduct, type Product } from "../../../lib/api/products";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@mirakart/ui";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ProductQuickView } from "../../../components/product-quick-view";
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -22,6 +23,7 @@ export default function MerchantProductsPage() {
   const [stockStatus, setStockStatus] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("createdAt");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [quickViewId, setQuickViewId] = React.useState<string | null>(null);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -72,20 +74,24 @@ export default function MerchantProductsPage() {
     {
       key: "productCode",
       header: "Product ID",
-      cell: (r) => <span className="font-mono text-xs">{r.productCode}</span>,
+      cell: (r) => (
+        <button type="button" onClick={() => setQuickViewId(r.id)} className="font-mono text-xs hover:text-primary hover:underline">
+          {r.productCode}
+        </button>
+      ),
     },
     {
       key: "name",
       header: "Product",
       sortable: true,
       cell: (r) => (
-        <div className="flex items-center gap-3">
+        <button type="button" onClick={() => setQuickViewId(r.id)} className="flex items-center gap-3 text-left hover:text-primary">
           {r.images?.[0]?.media && <img src={r.images[0].media.url} alt={r.name} className="h-10 w-10 shrink-0 rounded object-cover" />}
           <div className="min-w-0">
             <p className="line-clamp-1 max-w-xs font-medium" title={r.name}>{r.name}</p>
             <p className="text-xs text-muted-foreground">{r.category?.name ?? "—"}</p>
           </div>
-        </div>
+        </button>
       ),
     },
     { key: "basePrice", header: "Price", sortable: true, cell: (r) => <span className="font-medium">{formatCurrency(r.basePrice)}</span> },
@@ -168,6 +174,7 @@ export default function MerchantProductsPage() {
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}
+      <ProductQuickView productId={quickViewId} onOpenChange={(open) => !open && setQuickViewId(null)} />
     </div>
   );
 }
