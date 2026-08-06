@@ -219,6 +219,16 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
     setEditShipmentOpen(true);
   }
 
+  function openCodReceived() {
+    // Pre-fill with the order total — the amount the customer owes on delivery.
+    // Still editable in case less cash was actually collected.
+    codReceivedForm.reset({
+      amountReceived: order?.total ?? 0,
+      receivedDate: new Date().toISOString().slice(0, 10),
+    });
+    setCodReceivedOpen(true);
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <PageHeader
@@ -239,7 +249,7 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
                 Complete Order
               </Button>
             )}
-            {canCollectCod && <Button onClick={() => setCodReceivedOpen(true)}>Mark COD Payment Received</Button>}
+            {canCollectCod && <Button onClick={openCodReceived}>Mark COD Payment Received</Button>}
             {canRefuse && <Button variant="outline" onClick={() => setRefuseOpen(true)}>Mark COD Refused</Button>}
             {canCancel && <Button variant="danger" onClick={() => setCancelOpen(true)}>Cancel</Button>}
           </div>

@@ -78,6 +78,13 @@ export default function MerchantReturnDetailPage({ params }: { params: { id: str
 
   const isDecidable = DECIDABLE_STATUSES.includes(ret.status);
 
+  function openComplete() {
+    // Pre-fill with the returned item's paid amount — still editable if the
+    // actual refund differs (e.g. a partial refund).
+    completeForm.reset({ refundAmount: ret?.orderItem?.totalPrice != null ? String(ret.orderItem.totalPrice) : "" });
+    setCompleteOpen(true);
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <PageHeader
@@ -92,7 +99,7 @@ export default function MerchantReturnDetailPage({ params }: { params: { id: str
           ) : ret.status === "AWAITING_SHIPMENT" ? (
             <Button onClick={() => setReceivedOpen(true)}>Mark Item Received</Button>
           ) : ret.status === "ITEM_RECEIVED" ? (
-            <Button onClick={() => setCompleteOpen(true)}>
+            <Button onClick={ret.resolutionType === "REPLACEMENT" ? () => setCompleteOpen(true) : openComplete}>
               {ret.resolutionType === "REPLACEMENT" ? "Mark Replacement Sent" : "Complete Refund"}
             </Button>
           ) : null
