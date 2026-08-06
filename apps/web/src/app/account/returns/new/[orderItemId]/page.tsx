@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { X } from "lucide-react";
 import {
   Button,
   Card,
@@ -121,6 +122,15 @@ export default function NewReturnPage({ params }: { params: { orderItemId: strin
   const [replacementVariantId, setReplacementVariantId] = React.useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  const previews = React.useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
+  React.useEffect(() => {
+    return () => previews.forEach((url) => URL.revokeObjectURL(url));
+  }, [previews]);
+
+  function removeFile(index: number) {
+    setFiles((fs) => fs.filter((_, i) => i !== index));
+  }
+
   const { data: replacementOptions, isLoading: loadingOptions } = useQuery({
     queryKey: ["replacement-options", params.orderItemId],
     queryFn: () => fetchReplacementOptions(params.orderItemId),
@@ -230,6 +240,23 @@ export default function NewReturnPage({ params }: { params: { orderItemId: strin
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               className="text-sm"
             />
+            {files.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {files.map((file, i) => (
+                  <div key={i} className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-border-form">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={previews[i]} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </FormField>
           <Button type="submit" isLoading={isSubmitting}>
             Submit request
