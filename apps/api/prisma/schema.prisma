@@ -181,6 +181,13 @@ enum ReturnStatus {
   @@map("return_status")
 }
 
+enum ReturnResolutionType {
+  REFUND
+  REPLACEMENT
+
+  @@map("return_resolution_type")
+}
+
 enum CouponDiscountType {
   PERCENTAGE
   FIXED
@@ -625,11 +632,12 @@ model ProductVariant {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  attributeValues ProductVariantAttributeValue[]
-  images          ProductImage[]
-  inventory       Inventory?
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
+  attributeValues     ProductVariantAttributeValue[]
+  images              ProductImage[]
+  inventory           Inventory?
+  cartItems           CartItem[]
+  orderItems          OrderItem[]
+  returnReplacements  Return[]                        @relation("ReturnReplacementVariant")
 
   @@index([productId])
   @@map("product_variants")
@@ -847,6 +855,11 @@ model Return {
   status       ReturnStatus @default(REQUESTED)
   quantity     Int
   refundAmount Decimal?     @db.Decimal(12, 2)
+
+  resolutionType       ReturnResolutionType @default(REFUND)
+  replacementVariantId String?
+  replacementVariant   ProductVariant?      @relation("ReturnReplacementVariant", fields: [replacementVariantId], references: [id], onDelete: SetNull)
+
   requestedAt  DateTime     @default(now())
   resolvedAt   DateTime?
   createdAt    DateTime     @default(now())

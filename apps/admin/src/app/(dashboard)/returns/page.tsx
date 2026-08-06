@@ -6,11 +6,28 @@ import { Badge, Button, Pagination, Select, SelectContent, SelectItem, SelectTri
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { TableActions } from "../../../components/table-actions";
-import { listReturns, type Return } from "../../../lib/api/returns";
+import { listReturns, type Return, type ReturnStatus } from "../../../lib/api/returns";
 
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
-  APPROVED: "success", PENDING: "warning", REJECTED: "danger", REFUNDED: "success",
+const STATUS_VARIANT: Record<ReturnStatus, "success" | "warning" | "danger" | "default"> = {
+  REQUESTED: "warning",
+  UNDER_REVIEW: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  AWAITING_SHIPMENT: "default",
+  ITEM_RECEIVED: "default",
+  COMPLETED: "success",
+  CANCELLED: "danger",
 };
+
+const STATUS_OPTIONS: { value: ReturnStatus; label: string }[] = [
+  { value: "REQUESTED", label: "Requested" },
+  { value: "UNDER_REVIEW", label: "Under Review" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "AWAITING_SHIPMENT", label: "Awaiting Shipment" },
+  { value: "ITEM_RECEIVED", label: "Item Received" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
 
 export default function ReturnsPage() {
   const [page, setPage] = React.useState(1);
@@ -58,8 +75,13 @@ export default function ReturnsPage() {
       ),
     },
     { key: "merchant", header: "Merchant", cell: (r) => r.merchant?.storeName ?? "—" },
-    { key: "reason", header: "Reason", cell: (r) => r.reason?.name ?? "—" },
-    { key: "status", header: "Status", sortable: true, cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status}</Badge> },
+    { key: "reason", header: "Reason", cell: (r) => r.reason?.reason ?? "—" },
+    {
+      key: "resolutionType",
+      header: "Type",
+      cell: (r) => <Badge variant="default">{r.resolutionType === "REPLACEMENT" ? "Replace" : "Refund"}</Badge>,
+    },
+    { key: "status", header: "Status", sortable: true, cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "default"}>{r.status.replaceAll("_", " ")}</Badge> },
     { key: "createdAt", header: "Date", sortable: true, cell: (r) => new Date(r.createdAt).toLocaleDateString() },
     {
       key: "actions", header: "Action", className: "w-16",
@@ -75,10 +97,9 @@ export default function ReturnsPage() {
           <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="APPROVED">Approved</SelectItem>
-            <SelectItem value="REJECTED">Rejected</SelectItem>
-            <SelectItem value="REFUNDED">Refunded</SelectItem>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Button onClick={handleResetFilters} disabled={!hasActiveFilters}>

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, type Return } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
-import { ReturnsRepository } from "./returns.repository";
+import { InsufficientReplacementStockError, ReturnsRepository } from "./returns.repository";
 import type { AdminReturnQueryDto } from "./dto/admin-return-query.dto";
 import type { AdminUpdateReturnStatusDto } from "./dto/admin-update-return-status.dto";
 import type { CreateReturnDto } from "./dto/create-return.dto";
@@ -12,6 +12,8 @@ import { generateReturnNumber } from "./utils/return-number.util";
 const RETURN_NUMBER_RETRY_ATTEMPTS = 3;
 const MERCHANT_DECIDABLE_STATUSES = ["REQUESTED", "UNDER_REVIEW"];
 const CUSTOMER_CANCELLABLE_STATUSES = ["REQUESTED", "UNDER_REVIEW"];
+
+type ReturnDetail = NonNullable<Awaited<ReturnType<ReturnsRepository["findById"]>>>;
 
 function paginate(page: number, limit: number, totalItems: number) {
   return { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) };
@@ -42,6 +44,18 @@ export class ReturnsService {
       throw new ConflictException("A return is already in progress for this item");
     }
 
+    const resolutionType = dto.resolutionType ?? "REFUND";
+    if (resolutionType === "REPLACEMENT") {
+      if (!dto.replacementVariantId) {
+        throw new BadRequestException("replacementVariantId is required for a replacement request");
+      }
+      const replacementVariant = await this.repo.findVariantById(dto.replacementVariantId);
+      if (!replacementVariant) throw new NotFoundException("Replacement variant not found");
+      if (replacementVariant.productId !== orderItem.variant.productId) {
+        throw new BadRequestException("Replacement must be a variant of the same product");
+      }
+    }
+
     for (let attempt = 1; attempt <= RETURN_NUMBER_RETRY_ATTEMPTS; attempt++) {
       try {
         return await this.repo.create({
@@ -54,6 +68,8 @@ export class ReturnsService {
           reasonDetail: dto.reasonDetail,
           quantity: dto.quantity,
           imageMediaIds: dto.imageMediaIds,
+          resolutionType,
+          replacementVariantId: resolutionType === "REPLACEMENT" ? dto.replacementVariantId : undefined,
         });
       } catch (error) {
         const isCollision =
@@ -105,7 +121,20 @@ export class ReturnsService {
     if (!MERCHANT_DECIDABLE_STATUSES.includes(ret.status)) {
       throw new BadRequestException("This return has already been decided");
     }
-    const updated = await this.repo.updateStatus(id, "AWAITING_SHIPMENT", "MERCHANT", merchantId);
+    let updated: ReturnDetail;
+    try {
+      updated = await this.repo.approveReturn(
+        id,
+        merchantId,
+        ret.resolutionType === "REPLACEMENT" ? ret.replacementVariantId : null,
+        ret.quantity,
+      );
+    } catch (error) {
+      if (error instanceof InsufficientReplacementStockError) {
+        throw new BadRequestException("Not enough stock to fulfill this replacement right now");
+      }
+      throw error;
+    }
     void this.notifications.create(
       "CUSTOMER", ret.customerId,
       "RETURN_APPROVED",
@@ -140,7 +169,18 @@ export class ReturnsService {
     if (dto.status === "COMPLETED" && ret.status !== "ITEM_RECEIVED") {
       throw new BadRequestException("Return must be ITEM_RECEIVED before completing");
     }
+    if (dto.status === "ITEM_RECEIVED") {
+      // Restocks the originally-purchased variant — applies to both a plain
+      // refund and a replacement, since the physical item comes back either way.
+      return this.repo.markItemReceived(id, merchantId, ret.orderItem.variantId, ret.quantity);
+    }
     return this.repo.updateStatus(id, dto.status, "MERCHANT", merchantId);
+  }
+
+  async listReplacementOptions(orderItemId: string, customerId: string) {
+    const orderItem = await this.repo.findOrderItemForReturn(orderItemId, customerId);
+    if (!orderItem) throw new NotFoundException("Order item not found");
+    return this.repo.findReplacementVariants(orderItem.variant.productId);
   }
 
   async listForAdmin(query: AdminReturnQueryDto) {
@@ -176,13 +216,13 @@ export class ReturnsService {
     return updated;
   }
 
-  private async assertOwnedByCustomer(id: string, customerId: string): Promise<Return> {
+  private async assertOwnedByCustomer(id: string, customerId: string): Promise<ReturnDetail> {
     const ret = await this.repo.findById(id);
     if (!ret || ret.customerId !== customerId) throw new NotFoundException("Return not found");
     return ret;
   }
 
-  private async assertOwnedByMerchant(id: string, merchantId: string): Promise<Return> {
+  private async assertOwnedByMerchant(id: string, merchantId: string): Promise<ReturnDetail> {
     const ret = await this.repo.findById(id);
     if (!ret || ret.merchantId !== merchantId) throw new NotFoundException("Return not found");
     return ret;

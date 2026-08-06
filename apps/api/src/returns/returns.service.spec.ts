@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
-import { ReturnsRepository } from "./returns.repository";
+import { InsufficientReplacementStockError, ReturnsRepository } from "./returns.repository";
 import { ReturnsService } from "./returns.service";
 
 describe("ReturnsService", () => {
@@ -10,6 +10,8 @@ describe("ReturnsService", () => {
     repo = {
       findActiveReasons: jest.fn(),
       findOrderItemForReturn: jest.fn(),
+      findVariantById: jest.fn(),
+      findReplacementVariants: jest.fn(),
       countActiveReturnsForItem: jest.fn(),
       create: jest.fn(),
       findCustomerReturns: jest.fn(),
@@ -17,6 +19,8 @@ describe("ReturnsService", () => {
       findAdminReturns: jest.fn(),
       findById: jest.fn(),
       updateStatus: jest.fn(),
+      approveReturn: jest.fn(),
+      markItemReceived: jest.fn(),
     } as unknown as jest.Mocked<ReturnsRepository>;
     const notifications = { create: jest.fn().mockResolvedValue(undefined) } as never;
     service = new ReturnsService(repo, notifications);
@@ -52,12 +56,13 @@ describe("ReturnsService", () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it("creates a return for a valid request", async () => {
+    it("creates a refund return for a valid request", async () => {
       repo.findOrderItemForReturn.mockResolvedValue({
         status: "DELIVERED",
         quantity: 2,
         orderId: "order1",
         merchantId: "m1",
+        variant: { id: "v1", productId: "p1" },
       } as never);
       repo.countActiveReturnsForItem.mockResolvedValue(0);
       repo.create.mockResolvedValue({ id: "ret1" } as never);
@@ -65,7 +70,71 @@ describe("ReturnsService", () => {
       await service.create("c1", { orderItemId: "item1", reasonId: "r1", quantity: 1, imageMediaIds: [] });
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ orderId: "order1", merchantId: "m1", customerId: "c1" }),
+        expect.objectContaining({ orderId: "order1", merchantId: "m1", customerId: "c1", resolutionType: "REFUND" }),
+      );
+    });
+
+    it("requires a replacementVariantId for a replacement request", async () => {
+      repo.findOrderItemForReturn.mockResolvedValue({
+        status: "DELIVERED",
+        quantity: 1,
+        variant: { id: "v1", productId: "p1" },
+      } as never);
+      repo.countActiveReturnsForItem.mockResolvedValue(0);
+      await expect(
+        service.create("c1", {
+          orderItemId: "item1",
+          reasonId: "r1",
+          quantity: 1,
+          imageMediaIds: [],
+          resolutionType: "REPLACEMENT",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects a replacement variant that belongs to a different product", async () => {
+      repo.findOrderItemForReturn.mockResolvedValue({
+        status: "DELIVERED",
+        quantity: 1,
+        variant: { id: "v1", productId: "p1" },
+      } as never);
+      repo.countActiveReturnsForItem.mockResolvedValue(0);
+      repo.findVariantById.mockResolvedValue({ id: "v2", productId: "p-other" } as never);
+      await expect(
+        service.create("c1", {
+          orderItemId: "item1",
+          reasonId: "r1",
+          quantity: 1,
+          imageMediaIds: [],
+          resolutionType: "REPLACEMENT",
+          replacementVariantId: "v2",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("creates a replacement return when the variant matches the same product", async () => {
+      repo.findOrderItemForReturn.mockResolvedValue({
+        status: "DELIVERED",
+        quantity: 1,
+        orderId: "order1",
+        merchantId: "m1",
+        variant: { id: "v1", productId: "p1" },
+      } as never);
+      repo.countActiveReturnsForItem.mockResolvedValue(0);
+      repo.findVariantById.mockResolvedValue({ id: "v2", productId: "p1" } as never);
+      repo.create.mockResolvedValue({ id: "ret1" } as never);
+
+      await service.create("c1", {
+        orderItemId: "item1",
+        reasonId: "r1",
+        quantity: 1,
+        imageMediaIds: [],
+        resolutionType: "REPLACEMENT",
+        replacementVariantId: "v2",
+      });
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ resolutionType: "REPLACEMENT", replacementVariantId: "v2" }),
       );
     });
   });
@@ -99,10 +168,32 @@ describe("ReturnsService", () => {
       await expect(service.approve("ret1", "m1")).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it("approves a pending return", async () => {
-      repo.findById.mockResolvedValue({ id: "ret1", merchantId: "m1", status: "REQUESTED" } as never);
+    it("approves a pending refund return with no stock decrement", async () => {
+      repo.findById.mockResolvedValue({
+        id: "ret1", merchantId: "m1", status: "REQUESTED", resolutionType: "REFUND", quantity: 1,
+      } as never);
+      repo.approveReturn.mockResolvedValue({ id: "ret1" } as never);
       await service.approve("ret1", "m1");
-      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "AWAITING_SHIPMENT", "MERCHANT", "m1");
+      expect(repo.approveReturn).toHaveBeenCalledWith("ret1", "m1", null, 1);
+    });
+
+    it("approves a pending replacement return, decrementing the replacement variant's stock", async () => {
+      repo.findById.mockResolvedValue({
+        id: "ret1", merchantId: "m1", status: "REQUESTED", resolutionType: "REPLACEMENT",
+        replacementVariantId: "v2", quantity: 2,
+      } as never);
+      repo.approveReturn.mockResolvedValue({ id: "ret1" } as never);
+      await service.approve("ret1", "m1");
+      expect(repo.approveReturn).toHaveBeenCalledWith("ret1", "m1", "v2", 2);
+    });
+
+    it("surfaces insufficient replacement stock as a BadRequestException", async () => {
+      repo.findById.mockResolvedValue({
+        id: "ret1", merchantId: "m1", status: "REQUESTED", resolutionType: "REPLACEMENT",
+        replacementVariantId: "v2", quantity: 5,
+      } as never);
+      repo.approveReturn.mockRejectedValue(new InsufficientReplacementStockError("v2"));
+      await expect(service.approve("ret1", "m1")).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it("enforces ITEM_RECEIVED only follows AWAITING_SHIPMENT", async () => {
@@ -119,10 +210,29 @@ describe("ReturnsService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it("allows the correct sequential transition", async () => {
-      repo.findById.mockResolvedValue({ id: "ret1", merchantId: "m1", status: "AWAITING_SHIPMENT" } as never);
+    it("restocks the original variant when marking a refund return ITEM_RECEIVED", async () => {
+      repo.findById.mockResolvedValue({
+        id: "ret1", merchantId: "m1", status: "AWAITING_SHIPMENT", quantity: 3,
+        resolutionType: "REFUND", orderItem: { variantId: "v1" },
+      } as never);
       await service.merchantUpdateStatus("ret1", "m1", { status: "ITEM_RECEIVED" });
-      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "ITEM_RECEIVED", "MERCHANT", "m1");
+      expect(repo.markItemReceived).toHaveBeenCalledWith("ret1", "m1", "v1", 3);
+    });
+
+    it("restocks the original variant when marking a replacement return ITEM_RECEIVED", async () => {
+      repo.findById.mockResolvedValue({
+        id: "ret1", merchantId: "m1", status: "AWAITING_SHIPMENT", quantity: 1,
+        resolutionType: "REPLACEMENT", replacementVariantId: "v2", orderItem: { variantId: "v1" },
+      } as never);
+      await service.merchantUpdateStatus("ret1", "m1", { status: "ITEM_RECEIVED" });
+      // Restocks the ORIGINAL variant (v1), not the replacement (v2) — those are separate stock movements.
+      expect(repo.markItemReceived).toHaveBeenCalledWith("ret1", "m1", "v1", 1);
+    });
+
+    it("allows the COMPLETED transition after ITEM_RECEIVED via the generic status update", async () => {
+      repo.findById.mockResolvedValue({ id: "ret1", merchantId: "m1", status: "ITEM_RECEIVED" } as never);
+      await service.merchantUpdateStatus("ret1", "m1", { status: "COMPLETED" });
+      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "COMPLETED", "MERCHANT", "m1");
     });
   });
 
@@ -138,6 +248,21 @@ describe("ReturnsService", () => {
       repo.findById.mockResolvedValue({ id: "ret1" } as never);
       await service.adminOverride("ret1", "a1", { status: "COMPLETED", refundAmount: 499, note: "manual review" });
       expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "COMPLETED", "ADMIN", "a1", "manual review", 499);
+    });
+  });
+
+  describe("listReplacementOptions", () => {
+    it("throws NotFoundException when the order item isn't the customer's", async () => {
+      repo.findOrderItemForReturn.mockResolvedValue(null);
+      await expect(service.listReplacementOptions("item1", "c1")).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("returns sibling variants of the purchased product", async () => {
+      repo.findOrderItemForReturn.mockResolvedValue({ variant: { id: "v1", productId: "p1" } } as never);
+      repo.findReplacementVariants.mockResolvedValue([{ id: "v1" }, { id: "v2" }] as never);
+      const result = await service.listReplacementOptions("item1", "c1");
+      expect(repo.findReplacementVariants).toHaveBeenCalledWith("p1");
+      expect(result).toHaveLength(2);
     });
   });
 });

@@ -1,16 +1,27 @@
 import { Injectable } from "@nestjs/common";
-import type { ActorType, Prisma, ReturnStatus } from "@prisma/client";
+import type { ActorType, Prisma, ReturnResolutionType, ReturnStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { buildOrderBy } from "../common/utils/sort.util";
 
 const RETURN_SORT_FIELDS = ["createdAt", "returnNumber", "status"] as const;
+
+const variantAttributeValuesInclude = {
+  attributeValues: { include: { attributeValue: { include: { attribute: true } } } },
+};
 
 const returnDetailInclude = {
   images: true,
   statusHistory: { orderBy: { changedAt: "asc" as const } },
   reason: true,
   orderItem: true,
+  replacementVariant: { include: variantAttributeValuesInclude },
 };
+
+export class InsufficientReplacementStockError extends Error {
+  constructor(public readonly variantId: string) {
+    super(`Insufficient stock for replacement variant ${variantId}`);
+  }
+}
 
 @Injectable()
 export class ReturnsRepository {
@@ -23,7 +34,18 @@ export class ReturnsRepository {
   findOrderItemForReturn(orderItemId: string, customerId: string) {
     return this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { customerId } },
-      include: { order: true },
+      include: { order: true, variant: { select: { id: true, productId: true } } },
+    });
+  }
+
+  findVariantById(id: string) {
+    return this.prisma.productVariant.findFirst({ where: { id, deletedAt: null } });
+  }
+
+  findReplacementVariants(productId: string) {
+    return this.prisma.productVariant.findMany({
+      where: { productId, deletedAt: null },
+      include: { inventory: true, ...variantAttributeValuesInclude },
     });
   }
 
@@ -43,6 +65,8 @@ export class ReturnsRepository {
     reasonDetail?: string;
     quantity: number;
     imageMediaIds: string[];
+    resolutionType: ReturnResolutionType;
+    replacementVariantId?: string;
   }) {
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.return.create({
@@ -55,6 +79,8 @@ export class ReturnsRepository {
           reasonId: data.reasonId,
           reasonDetail: data.reasonDetail,
           quantity: data.quantity,
+          resolutionType: data.resolutionType,
+          replacementVariantId: data.replacementVariantId,
           images: { create: data.imageMediaIds.map((mediaId) => ({ mediaId })) },
           statusHistory: { create: { status: "REQUESTED", changedByType: "CUSTOMER", changedById: data.customerId } },
         },
@@ -154,6 +180,56 @@ export class ReturnsRepository {
         include: returnDetailInclude,
       });
       await tx.returnStatusHistory.create({ data: { returnId: id, status, changedByType, changedById, note } });
+      return updated;
+    });
+  }
+
+  /** Merchant approval → AWAITING_SHIPMENT. When `replacementVariantId` is
+   *  set (a REPLACEMENT request), atomically decrements that variant's
+   *  stock first — guarded the same way checkout's stock decrement is, so
+   *  two concurrent approvals can't oversell a low-stock replacement. */
+  async approveReturn(id: string, merchantId: string, replacementVariantId: string | null, quantity: number) {
+    return this.prisma.$transaction(async (tx) => {
+      if (replacementVariantId) {
+        const result = await tx.inventory.updateMany({
+          where: { variantId: replacementVariantId, quantity: { gte: quantity } },
+          data: { quantity: { decrement: quantity } },
+        });
+        if (result.count === 0) {
+          throw new InsufficientReplacementStockError(replacementVariantId);
+        }
+      }
+      const updated = await tx.return.update({
+        where: { id },
+        data: { status: "AWAITING_SHIPMENT" },
+        include: returnDetailInclude,
+      });
+      await tx.returnStatusHistory.create({
+        data: { returnId: id, status: "AWAITING_SHIPMENT", changedByType: "MERCHANT", changedById: merchantId },
+      });
+      return updated;
+    });
+  }
+
+  /** Merchant confirms the returned item arrived → ITEM_RECEIVED. Restocks
+   *  the *originally purchased* variant — applies to both REFUND and
+   *  REPLACEMENT requests, since the physical item comes back either way
+   *  (this is also the fix for refund-returns never having restocked
+   *  anything at all before this feature). */
+  async markItemReceived(id: string, merchantId: string, originalVariantId: string, quantity: number) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.inventory.updateMany({
+        where: { variantId: originalVariantId },
+        data: { quantity: { increment: quantity } },
+      });
+      const updated = await tx.return.update({
+        where: { id },
+        data: { status: "ITEM_RECEIVED" },
+        include: returnDetailInclude,
+      });
+      await tx.returnStatusHistory.create({
+        data: { returnId: id, status: "ITEM_RECEIVED", changedByType: "MERCHANT", changedById: merchantId },
+      });
       return updated;
     });
   }

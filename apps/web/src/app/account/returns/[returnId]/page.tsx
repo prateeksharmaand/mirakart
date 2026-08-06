@@ -39,14 +39,43 @@ export default function ReturnDetailPage({ params }: { params: { returnId: strin
 
       <div className="rounded-md border border-border p-5">
         <p className="text-sm text-foreground">
-          <span className="font-medium">Reason:</span> {ret.reason.label}
+          <span className="font-medium">Requested:</span>{" "}
+          {ret.resolutionType === "REPLACEMENT" ? "Replacement" : "Refund"}
+        </p>
+        <p className="mt-1 text-sm text-foreground">
+          <span className="font-medium">Reason:</span> {ret.reason.reason}
         </p>
         {ret.reasonDetail ? <p className="mt-1 text-sm text-foreground-muted">{ret.reasonDetail}</p> : null}
         <p className="mt-1 text-sm text-foreground-muted">Quantity: {ret.quantity}</p>
-        {ret.refundAmount ? (
+        {ret.resolutionType === "REFUND" && ret.refundAmount ? (
           <p className="mt-1 text-sm text-foreground-muted">Refund amount: ₹{ret.refundAmount}</p>
         ) : null}
       </div>
+
+      {ret.resolutionType === "REPLACEMENT" ? (
+        <div className="rounded-md border border-border p-5">
+          <h2 className="mb-3 text-sm font-medium text-foreground">Replacement</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
+            <div>
+              <p className="text-xs text-foreground-muted">You bought</p>
+              <p className="text-sm text-foreground">
+                {ret.orderItem?.variantSnapshot.attributes.map((a) => `${a.attributeName}: ${a.value}`).join(", ") ||
+                  ret.orderItem?.variantSnapshot.sku}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground-muted">Requested instead</p>
+              <p className="text-sm text-foreground">
+                {ret.replacementVariant
+                  ? ret.replacementVariant.attributeValues
+                      .map((a) => `${a.attributeValue.attribute.name}: ${a.attributeValue.value}`)
+                      .join(", ") || ret.replacementVariant.sku
+                  : "—"}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {ret.images.length > 0 ? (
         <div className="flex gap-3">

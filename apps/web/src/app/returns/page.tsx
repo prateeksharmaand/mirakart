@@ -55,8 +55,9 @@ export default function ReturnsPolicyPage() {
         <section>
           <h2 className="mb-2 text-base font-semibold text-foreground">5. Exchanges</h2>
           <p>
-            If you'd like a different size or color, request a return and place a new order — we don't
-            currently support direct exchanges.
+            If you'd like a different size or color, choose "Replace with a different item" when requesting a
+            return — we'll send the new item once the merchant receives the original back, no need to place a
+            separate order.
           </p>
         </section>
 

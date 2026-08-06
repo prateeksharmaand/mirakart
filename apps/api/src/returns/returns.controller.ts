@@ -25,6 +25,13 @@ export class ReturnsController {
     return this.service.create(user.id, dto);
   }
 
+  @Get("returns/order-items/:orderItemId/replacement-options")
+  @CustomerAuth()
+  @ApiOkResponse({ description: "Sibling variants of the purchased product, for the replacement picker" })
+  listReplacementOptions(@Param("orderItemId") orderItemId: string, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.listReplacementOptions(orderItemId, user.id);
+  }
+
   @Get("returns")
   @CustomerAuth()
   @ApiOkResponse()

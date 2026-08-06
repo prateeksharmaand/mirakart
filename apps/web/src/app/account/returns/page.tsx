@@ -32,7 +32,7 @@ export default function ReturnsPage() {
           >
             <div>
               <p className="text-sm font-medium text-foreground">{ret.returnNumber}</p>
-              <p className="text-xs text-foreground-muted">{ret.reason.label}</p>
+              <p className="text-xs text-foreground-muted">{ret.reason.reason}</p>
               <p className="text-xs text-foreground-muted">{new Date(ret.requestedAt).toLocaleDateString()}</p>
             </div>
             <StatusBadge status={ret.status} />
