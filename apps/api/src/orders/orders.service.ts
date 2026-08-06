@@ -462,7 +462,7 @@ export class OrdersService {
     if (deliveredItems.length === 0) {
       throw new ConflictException("No delivered items to complete");
     }
-    if (!order.payment || order.payment.status !== "PAID") {
+    if (!order.payment || !["PAID", "CAPTURED"].includes(order.payment.status)) {
       throw new ConflictException(
         order.payment?.method === "COD"
           ? "This is a Cash on Delivery order — it completes automatically once payment is collected."

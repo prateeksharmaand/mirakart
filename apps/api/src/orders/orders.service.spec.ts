@@ -198,18 +198,31 @@ describe("OrdersService", () => {
         id: "order1",
         orderNumber: "ORD-1",
         items: [{ id: "item1", merchantId: "m1", status: "DELIVERED" }],
-        payment: { method: "CARD", status: "PENDING" },
+        payment: { method: "ONLINE", status: "PENDING" },
       } as never);
       await expect(service.merchantCompleteOrder("order1", "m1")).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it("completes a delivered, paid order", async () => {
+    it("completes a delivered order once COD payment is collected (status PAID)", async () => {
       repo.findOrderDetail.mockResolvedValue({
         id: "order1",
         orderNumber: "ORD-1",
         customerId: "c1",
         items: [{ id: "item1", merchantId: "m1", status: "DELIVERED" }],
-        payment: { method: "CARD", status: "PAID" },
+        payment: { method: "COD", status: "PAID" },
+      } as never);
+      repo.findItemsForOrder.mockResolvedValue([{ status: "COMPLETED" }] as never);
+      await service.merchantCompleteOrder("order1", "m1");
+      expect(repo.updateItemsStatusForMerchant).toHaveBeenCalledWith("order1", "m1", ["DELIVERED"], "COMPLETED");
+    });
+
+    it("completes a delivered order once online payment is captured (status CAPTURED, not PAID)", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        customerId: "c1",
+        items: [{ id: "item1", merchantId: "m1", status: "DELIVERED" }],
+        payment: { method: "ONLINE", status: "CAPTURED" },
       } as never);
       repo.findItemsForOrder.mockResolvedValue([{ status: "COMPLETED" }] as never);
       await service.merchantCompleteOrder("order1", "m1");
@@ -220,7 +233,7 @@ describe("OrdersService", () => {
       repo.findOrderDetail.mockResolvedValue({
         id: "order1",
         items: [{ id: "item1", merchantId: "m1", status: "SHIPPED" }],
-        payment: { method: "CARD", status: "PAID" },
+        payment: { method: "ONLINE", status: "CAPTURED" },
       } as never);
       await expect(service.merchantCompleteOrder("order1", "m1")).rejects.toBeInstanceOf(ConflictException);
     });
