@@ -37,6 +37,16 @@ export default function ReturnDetailPage({ params }: { params: { returnId: strin
         <StatusBadge status={ret.status} />
       </div>
 
+      <div className="flex items-center gap-3 rounded-md border border-border p-5">
+        <div className="flex h-16 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-background-light">
+          {ret.orderItem?.product?.images[0]?.media ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={ret.orderItem.product.images[0].media.url} alt="" className="h-full w-full object-cover" />
+          ) : null}
+        </div>
+        <p className="text-sm font-medium text-foreground">{ret.orderItem?.productNameSnapshot ?? "—"}</p>
+      </div>
+
       <div className="rounded-md border border-border p-5">
         <p className="text-sm text-foreground">
           <span className="font-medium">Requested:</span>{" "}

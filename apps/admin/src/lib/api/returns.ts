@@ -34,6 +34,7 @@ export interface Return {
   orderItem?: {
     productNameSnapshot: string;
     variantSnapshot: { sku: string; attributes: { attributeName: string; value: string; colorHex: string | null }[] } | null;
+    product?: { images: Array<{ media: { url: string } | null }> } | null;
   } | null;
   customer?: { id: string; firstName: string; lastName: string } | null;
   merchant?: { id: string; storeName: string } | null;

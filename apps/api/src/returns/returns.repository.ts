@@ -13,7 +13,13 @@ const returnDetailInclude = {
   images: true,
   statusHistory: { orderBy: { changedAt: "asc" as const } },
   reason: true,
-  orderItem: true,
+  orderItem: {
+    include: {
+      product: {
+        select: { images: { where: { isPrimary: true }, take: 1, include: { media: true } } },
+      },
+    },
+  },
   replacementVariant: { include: variantAttributeValuesInclude },
   order: { select: { id: true, orderNumber: true } },
   merchant: { select: { id: true, storeName: true } },

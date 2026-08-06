@@ -35,6 +35,7 @@ export interface MerchantReturn {
     productNameSnapshot: string;
     variantSnapshot: { sku: string; attributes: { attributeName: string; value: string; colorHex: string | null }[] } | null;
     totalPrice: number;
+    product?: { images: Array<{ media: { url: string } | null }> } | null;
   } | null;
   customer?: { id: string; firstName: string; lastName: string } | null;
   reason?: { id: string; reason: string } | null;

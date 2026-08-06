@@ -53,6 +53,7 @@ export interface ReturnOrderItem {
     attributes: { attributeName: string; value: string; colorHex: string | null }[];
   } | null;
   quantity: number;
+  product?: { images: Array<{ media: { url: string } | null }> } | null;
 }
 
 export interface ReturnRequest {

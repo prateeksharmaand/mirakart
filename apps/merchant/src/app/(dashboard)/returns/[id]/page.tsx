@@ -119,6 +119,22 @@ export default function MerchantReturnDetailPage({ params }: { params: { id: str
         {ret.reasonDetail && <div className="col-span-2"><p className="text-xs text-muted-foreground">Details</p><p className="text-sm">{ret.reasonDetail}</p></div>}
       </div>
 
+      <div className="rounded-xl border border-border bg-white p-6">
+        <h2 className="mb-3 text-sm font-semibold">Product</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex h-16 w-14 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
+            {ret.orderItem?.product?.images[0]?.media ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ret.orderItem.product.images[0].media.url} alt="" className="h-full w-full object-cover" />
+            ) : null}
+          </div>
+          <div>
+            <p className="text-sm font-medium">{ret.orderItem?.productNameSnapshot ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">SKU: {ret.orderItem?.variantSnapshot?.sku ?? "—"}</p>
+          </div>
+        </div>
+      </div>
+
       {ret.resolutionType === "REPLACEMENT" && (
         <div className="rounded-xl border border-border bg-white p-6 grid grid-cols-2 gap-4">
           <div>
