@@ -146,6 +146,13 @@ enum OrderItemStatus {
   @@map("order_item_status")
 }
 
+enum DispatchMethod {
+  COURIER
+  SELF_DELIVERY
+
+  @@map("dispatch_method")
+}
+
 enum PaymentMethod {
   CARD
   UPI
@@ -770,12 +777,33 @@ model OrderItem {
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
+  // Dispatch & shipment — set by the merchant once this item is PACKED (see
+  // OrdersService.dispatchOrder). Deliberately flat on OrderItem rather than
+  // a separate table: a merchant's view of an order is already just its own
+  // OrderItem rows filtered by merchantId everywhere else in this module, so
+  // shipment data (also per-merchant-per-order) fits the same shape. Kept
+  // loosely coupled from courier specifics — courierPartner/trackingNumber
+  // are plain strings a future courier API integration can populate the
+  // same way manual entry does today, without a schema change.
+  dispatchMethod       DispatchMethod?
+  courierPartner       String?
+  customCourierName    String?
+  trackingNumber       String?
+  deliveryPersonName   String?
+  deliveryPersonPhone  String?
+  vehicleNumber        String?
+  dispatchDate         DateTime?
+  expectedDeliveryDate DateTime?
+  deliveredAt          DateTime?
+  shipmentNotes        String?
+
   returns Return[]
 
   @@index([orderId])
   @@index([merchantId])
   @@index([variantId])
   @@index([status])
+  @@index([trackingNumber])
   @@map("order_items")
 }
 

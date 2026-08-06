@@ -20,6 +20,7 @@ export * from "./components/skeleton";
 export * from "./components/spinner";
 export * from "./components/empty-state";
 export * from "./components/pagination";
+export * from "./components/order-timeline";
 export * from "./components/toaster";
 export * from "./hooks/use-toast";
 

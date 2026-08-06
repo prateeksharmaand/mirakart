@@ -36,6 +36,8 @@ describe("OrdersService", () => {
       cancelMerchantItems: jest.fn(),
       updateItemsStatusForMerchant: jest.fn(),
       updateAllItemsStatus: jest.fn(),
+      dispatchItemsForMerchant: jest.fn(),
+      updateShipmentFields: jest.fn(),
       listActiveAdminIds: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<OrdersRepository>;
     cartRepo = {
@@ -220,6 +222,108 @@ describe("OrdersService", () => {
         payment: { method: "CARD", status: "PAID" },
       } as never);
       await expect(service.merchantCompleteOrder("order1", "m1")).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe("dispatchOrder", () => {
+    it("rejects when items aren't all Packed", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        items: [{ id: "item1", merchantId: "m1", status: "PROCESSING" }],
+      } as never);
+      await expect(
+        service.dispatchOrder("order1", "m1", { dispatchMethod: "COURIER" } as never),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(repo.dispatchItemsForMerchant).not.toHaveBeenCalled();
+    });
+
+    it("rejects a courier dispatch missing a tracking number", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        items: [{ id: "item1", merchantId: "m1", status: "PACKED" }],
+      } as never);
+      await expect(
+        service.dispatchOrder("order1", "m1", { dispatchMethod: "COURIER", courierPartner: "DTDC" } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects self delivery missing a phone number", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        items: [{ id: "item1", merchantId: "m1", status: "PACKED" }],
+      } as never);
+      await expect(
+        service.dispatchOrder("order1", "m1", {
+          dispatchMethod: "SELF_DELIVERY",
+          deliveryPersonName: "Ravi",
+        } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("dispatches a courier shipment straight to SHIPPED", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        customerId: "c1",
+        status: "PACKED",
+        items: [{ id: "item1", merchantId: "m1", status: "PACKED" }],
+      } as never);
+      repo.findItemsForOrder.mockResolvedValue([{ status: "SHIPPED" }] as never);
+
+      await service.dispatchOrder("order1", "m1", {
+        dispatchMethod: "COURIER",
+        courierPartner: "DTDC",
+        trackingNumber: "TRK123",
+      } as never);
+
+      expect(repo.dispatchItemsForMerchant).toHaveBeenCalledWith(
+        "order1", "m1", ["PACKED"], "SHIPPED",
+        expect.objectContaining({ dispatchMethod: "COURIER", courierPartner: "DTDC", trackingNumber: "TRK123" }),
+      );
+    });
+
+    it("dispatches a self-delivery shipment straight to OUT_FOR_DELIVERY, skipping READY_TO_SHIP/SHIPPED", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        customerId: "c1",
+        status: "PACKED",
+        items: [{ id: "item1", merchantId: "m1", status: "PACKED" }],
+      } as never);
+      repo.findItemsForOrder.mockResolvedValue([{ status: "OUT_FOR_DELIVERY" }] as never);
+
+      await service.dispatchOrder("order1", "m1", {
+        dispatchMethod: "SELF_DELIVERY",
+        deliveryPersonName: "Ravi",
+        deliveryPersonPhone: "9999999999",
+      } as never);
+
+      expect(repo.dispatchItemsForMerchant).toHaveBeenCalledWith(
+        "order1", "m1", ["PACKED"], "OUT_FOR_DELIVERY",
+        expect.objectContaining({ deliveryPersonName: "Ravi", deliveryPersonPhone: "9999999999" }),
+      );
+    });
+  });
+
+  describe("updateShipmentDetails", () => {
+    it("blocks edits once this merchant's items are completed", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        items: [{ id: "item1", merchantId: "m1", status: "COMPLETED" }],
+      } as never);
+      await expect(
+        service.updateShipmentDetails("order1", "m1", { trackingNumber: "NEW123" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(repo.updateShipmentFields).not.toHaveBeenCalled();
+    });
+
+    it("allows editing tracking details before completion", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        items: [{ id: "item1", merchantId: "m1", status: "SHIPPED" }],
+      } as never);
+      await service.updateShipmentDetails("order1", "m1", { trackingNumber: "NEW123" });
+      expect(repo.updateShipmentFields).toHaveBeenCalledWith("order1", "m1", { trackingNumber: "NEW123" });
     });
   });
 

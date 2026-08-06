@@ -18,6 +18,7 @@ export type OrderStatus =
   | "COD_REFUSED";
 export type OrderItemStatus = OrderStatus | "RETURNED";
 export type PaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "UNPAID" | "PAID";
+export type DispatchMethod = "COURIER" | "SELF_DELIVERY";
 
 export interface OrderItem {
   id: string;
@@ -35,6 +36,17 @@ export interface OrderItem {
     brand: { name: string } | null;
     images: { media: { url: string } }[];
   } | null;
+  dispatchMethod: DispatchMethod | null;
+  courierPartner: string | null;
+  customCourierName: string | null;
+  trackingNumber: string | null;
+  deliveryPersonName: string | null;
+  deliveryPersonPhone: string | null;
+  vehicleNumber: string | null;
+  dispatchDate: string | null;
+  expectedDeliveryDate: string | null;
+  deliveredAt: string | null;
+  shipmentNotes: string | null;
 }
 
 export interface OrderStatusHistoryEntry {

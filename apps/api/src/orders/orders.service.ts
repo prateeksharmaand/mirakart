@@ -12,7 +12,9 @@ import {
 } from "./orders.repository";
 import type { AdminOrderQueryDto } from "./dto/admin-order-query.dto";
 import type { CheckoutDto } from "./dto/checkout.dto";
+import type { DispatchOrderDto } from "./dto/dispatch-order.dto";
 import type { FulfillmentStatus } from "./dto/update-fulfillment-status.dto";
+import type { UpdateShipmentDto } from "./dto/update-shipment.dto";
 import { generateOrderNumber } from "./utils/order-number.util";
 import {
   canAdvanceItem,
@@ -199,6 +201,8 @@ export class OrdersService {
   async listForAdmin(query: AdminOrderQueryDto) {
     const { items, totalItems } = await this.repo.findAdminOrders({
       status: query.status,
+      merchantId: query.merchantId,
+      dispatchMethod: query.dispatchMethod,
       paymentStatus: query.paymentStatus,
       paymentMethod: query.paymentMethod,
       customerId: query.customerId,
@@ -471,6 +475,80 @@ export class OrdersService {
     return this.findForMerchant(orderId, merchantId);
   }
 
+  /** Dispatches a merchant's PACKED items as a single shipment — Courier
+   *  jumps straight to SHIPPED, Self Delivery straight to OUT_FOR_DELIVERY,
+   *  both skipping READY_TO_SHIP/SHIPPED intentionally (this is a distinct,
+   *  bespoke transition with its own validation, same as
+   *  merchantCompleteOrder/adminMarkDelivered — NOT routed through the
+   *  generic single-step canAdvanceItem gate used by merchantUpdateFulfillment).
+   *  The old "Mark Ready To Ship" -> "Mark Shipped" manual path is untouched
+   *  and still works with no shipment details captured, for merchants who
+   *  don't use this. */
+  async dispatchOrder(orderId: string, merchantId: string, dto: DispatchOrderDto) {
+    const order = await this.findForMerchant(orderId, merchantId);
+    const activeItems = order.items.filter((i) => !ITEM_TERMINAL_STATUSES.has(i.status));
+    if (activeItems.length === 0) throw new ConflictException("No active items to dispatch");
+    if (activeItems.some((i) => i.status !== "PACKED")) {
+      throw new ConflictException("All items must be Packed before they can be dispatched");
+    }
+
+    if (dto.dispatchMethod === "COURIER") {
+      if (!dto.courierPartner) throw new BadRequestException("courierPartner is required for a courier dispatch");
+      if (!dto.trackingNumber) throw new BadRequestException("trackingNumber is required for a courier dispatch");
+      if (dto.courierPartner === "Other" && !dto.customCourierName) {
+        throw new BadRequestException('customCourierName is required when courierPartner is "Other"');
+      }
+    } else {
+      if (!dto.deliveryPersonName) throw new BadRequestException("deliveryPersonName is required for self delivery");
+      if (!dto.deliveryPersonPhone) throw new BadRequestException("deliveryPersonPhone is required for self delivery");
+    }
+
+    const toStatus = dto.dispatchMethod === "COURIER" ? "SHIPPED" : "OUT_FOR_DELIVERY";
+    await this.repo.dispatchItemsForMerchant(orderId, merchantId, ["PACKED"], toStatus, {
+      dispatchMethod: dto.dispatchMethod,
+      courierPartner: dto.dispatchMethod === "COURIER" ? dto.courierPartner : null,
+      customCourierName: dto.dispatchMethod === "COURIER" ? dto.customCourierName : null,
+      trackingNumber: dto.dispatchMethod === "COURIER" ? dto.trackingNumber : null,
+      deliveryPersonName: dto.dispatchMethod === "SELF_DELIVERY" ? dto.deliveryPersonName : null,
+      deliveryPersonPhone: dto.dispatchMethod === "SELF_DELIVERY" ? dto.deliveryPersonPhone : null,
+      vehicleNumber: dto.dispatchMethod === "SELF_DELIVERY" ? dto.vehicleNumber : null,
+      expectedDeliveryDate: dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null,
+      shipmentNotes: dto.shipmentNotes,
+    });
+    await this.recomputeGatedOrderStatus(orderId, { type: "MERCHANT", id: merchantId });
+
+    const full = await this.repo.findOrderDetail(orderId);
+    if (full) {
+      const label = dto.dispatchMethod === "COURIER" ? "has been shipped" : "is out for delivery";
+      this.notify(
+        "CUSTOMER",
+        full.customerId,
+        "ORDER_STATUS_CHANGED",
+        `Order #${full.orderNumber} ${label}`,
+        `Your order #${full.orderNumber} ${label}.`,
+        { orderId, status: toStatus },
+      );
+    }
+    return this.findForMerchant(orderId, merchantId);
+  }
+
+  /** Post-dispatch edits to tracking/courier/expected-delivery — blocked
+   *  once this merchant's items are all COMPLETED. */
+  async updateShipmentDetails(orderId: string, merchantId: string, dto: UpdateShipmentDto) {
+    const order = await this.findForMerchant(orderId, merchantId);
+    if (order.items.every((i) => i.status === "COMPLETED")) {
+      throw new ConflictException("Shipment details can no longer be edited — this order is completed");
+    }
+    await this.repo.updateShipmentFields(orderId, merchantId, {
+      ...(dto.trackingNumber !== undefined ? { trackingNumber: dto.trackingNumber } : {}),
+      ...(dto.courierPartner !== undefined ? { courierPartner: dto.courierPartner } : {}),
+      ...(dto.expectedDeliveryDate !== undefined
+        ? { expectedDeliveryDate: dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null }
+        : {}),
+    });
+    return this.findForMerchant(orderId, merchantId);
+  }
+
   /** Merchant-driven completion for delivered items — gated on payment being
    *  actually settled, preserving the original COD invariant ("no Completed
    *  while unpaid") even though merchants no longer wait on an admin
@@ -613,8 +691,9 @@ export class OrdersService {
     itemStatus?: OrderItemStatus,
     sortBy?: string,
     sortOrder?: "asc" | "desc",
+    search?: string,
   ) {
-    const { items, totalItems } = await this.repo.findMerchantOrders(merchantId, page, limit, itemStatus, sortBy, sortOrder);
+    const { items, totalItems } = await this.repo.findMerchantOrders(merchantId, page, limit, itemStatus, sortBy, sortOrder, search);
     return { data: items, meta: paginate(page, limit, totalItems) };
   }
 

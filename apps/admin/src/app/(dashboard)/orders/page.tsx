@@ -7,7 +7,12 @@ import { Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTri
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { TableActions } from "../../../components/table-actions";
-import { listOrders, type Order } from "../../../lib/api/orders";
+import { listOrders, type DispatchMethod, type Order } from "../../../lib/api/orders";
+
+const DISPATCH_METHODS: { value: DispatchMethod; label: string }[] = [
+  { value: "COURIER", label: "Courier Partner" },
+  { value: "SELF_DELIVERY", label: "Self Delivery" },
+];
 
 const ORDER_STATUSES = [
   "PENDING_CONFIRMATION",
@@ -35,11 +40,12 @@ export default function OrdersPage() {
   const [status, setStatus] = React.useState("all");
   const [paymentMethod, setPaymentMethod] = React.useState("all");
   const [paymentStatus, setPaymentStatus] = React.useState("all");
+  const [dispatchMethod, setDispatchMethod] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("createdAt");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", page, search, status, paymentMethod, paymentStatus, sortBy, sortOrder],
+    queryKey: ["orders", page, search, status, paymentMethod, paymentStatus, dispatchMethod, sortBy, sortOrder],
     queryFn: () =>
       listOrders({
         page,
@@ -48,6 +54,7 @@ export default function OrdersPage() {
         status: status === "all" ? undefined : status,
         paymentMethod: paymentMethod === "all" ? undefined : (paymentMethod as "COD" | "ONLINE"),
         paymentStatus: paymentStatus === "all" ? undefined : paymentStatus,
+        dispatchMethod: dispatchMethod === "all" ? undefined : (dispatchMethod as DispatchMethod),
         sortBy,
         sortOrder,
       }),
@@ -63,12 +70,14 @@ export default function OrdersPage() {
     setPage(1);
   }
 
-  const hasActiveFilters = search !== "" || status !== "all" || paymentMethod !== "all" || paymentStatus !== "all";
+  const hasActiveFilters =
+    search !== "" || status !== "all" || paymentMethod !== "all" || paymentStatus !== "all" || dispatchMethod !== "all";
   function handleResetFilters() {
     setSearch("");
     setStatus("all");
     setPaymentMethod("all");
     setPaymentStatus("all");
+    setDispatchMethod("all");
     setPage(1);
   }
 
@@ -116,7 +125,7 @@ export default function OrdersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Orders" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Orders" }]} />
       <div className="flex flex-wrap gap-3">
-        <Input placeholder="Search by order #…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-xs" />
+        <Input placeholder="Search by order # or tracking #…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-xs" />
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
           <SelectTrigger className="w-60 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
           <SelectContent>
@@ -144,6 +153,17 @@ export default function OrdersPage() {
             <SelectItem value="UNPAID">Unpaid</SelectItem>
             <SelectItem value="CAPTURED">Captured</SelectItem>
             <SelectItem value="FAILED">Failed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={dispatchMethod} onValueChange={(v) => { setDispatchMethod(v); setPage(1); }}>
+          <SelectTrigger className="w-48 shrink-0"><SelectValue className="block min-w-0 truncate" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Dispatch Methods</SelectItem>
+            {DISPATCH_METHODS.map((d) => (
+              <SelectItem key={d.value} value={d.value}>
+                {d.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Button onClick={handleResetFilters} disabled={!hasActiveFilters}>

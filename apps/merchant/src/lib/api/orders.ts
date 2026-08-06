@@ -19,12 +19,34 @@ export type OrderStatus =
 
 export type FulfillmentStatus = "PROCESSING" | "PACKED" | "READY_TO_SHIP" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED";
 
+export type DispatchMethod = "COURIER" | "SELF_DELIVERY";
+
+export const COURIER_PARTNERS = [
+  "Delhivery",
+  "DTDC",
+  "Blue Dart",
+  "XpressBees",
+  "Ecom Express",
+  "India Post",
+  "Shadowfax",
+  "Other",
+] as const;
+
+export interface OrderStatusHistoryEntry {
+  id: string;
+  status: OrderStatus;
+  note: string | null;
+  changedAt: string;
+  changedByType?: string | null;
+}
+
 export interface MerchantOrder {
   id: string;
   orderNumber: string;
   status: OrderStatus;
   total: number;
   createdAt: string;
+  statusHistory?: OrderStatusHistoryEntry[];
   customer?: { id: string; firstName: string; lastName: string; email: string; phone: string } | null;
   shippingAddress?: {
     fullName: string;
@@ -51,11 +73,22 @@ export interface MerchantOrder {
       category: { name: string } | null;
       images: { media: { url: string } }[];
     } | null;
+    dispatchMethod: DispatchMethod | null;
+    courierPartner: string | null;
+    customCourierName: string | null;
+    trackingNumber: string | null;
+    deliveryPersonName: string | null;
+    deliveryPersonPhone: string | null;
+    vehicleNumber: string | null;
+    dispatchDate: string | null;
+    expectedDeliveryDate: string | null;
+    deliveredAt: string | null;
+    shipmentNotes: string | null;
   }>;
 }
 
 export async function listMerchantOrders(
-  params: { page?: number; limit?: number; status?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {},
+  params: { page?: number; limit?: number; status?: string; sortBy?: string; sortOrder?: "asc" | "desc"; search?: string } = {},
 ) {
   const res = await apiClient.get("/merchants/me/orders", { params });
   return res.data as { data: MerchantOrder[]; meta: { page: number; limit: number; totalItems: number; totalPages: number } };
@@ -82,6 +115,34 @@ export async function rejectOrder(id: string, reason: string): Promise<MerchantO
 
 export async function updateFulfillmentStatus(id: string, status: FulfillmentStatus): Promise<MerchantOrder> {
   const res = await apiClient.patch(`/merchants/me/orders/${id}/fulfillment-status`, { status });
+  return res.data.data as MerchantOrder;
+}
+
+export interface DispatchOrderInput {
+  dispatchMethod: DispatchMethod;
+  courierPartner?: string;
+  customCourierName?: string;
+  trackingNumber?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  vehicleNumber?: string;
+  expectedDeliveryDate?: string;
+  shipmentNotes?: string;
+}
+
+export async function dispatchOrder(id: string, input: DispatchOrderInput): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/dispatch`, input);
+  return res.data.data as MerchantOrder;
+}
+
+export interface UpdateShipmentInput {
+  trackingNumber?: string;
+  courierPartner?: string;
+  expectedDeliveryDate?: string;
+}
+
+export async function updateShipment(id: string, input: UpdateShipmentInput): Promise<MerchantOrder> {
+  const res = await apiClient.patch(`/merchants/me/orders/${id}/shipment`, input);
   return res.data.data as MerchantOrder;
 }
 

@@ -19,6 +19,7 @@ export type OrderStatus =
 
 export type PaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "UNPAID" | "PAID";
 export type PaymentMethodFilter = "COD" | "ONLINE";
+export type DispatchMethod = "COURIER" | "SELF_DELIVERY";
 
 export interface OrderAddress {
   fullName: string;
@@ -66,6 +67,17 @@ export interface Order {
       brand: { name: string } | null;
       images: { media: { url: string } }[];
     } | null;
+    dispatchMethod: DispatchMethod | null;
+    courierPartner: string | null;
+    customCourierName: string | null;
+    trackingNumber: string | null;
+    deliveryPersonName: string | null;
+    deliveryPersonPhone: string | null;
+    vehicleNumber: string | null;
+    dispatchDate: string | null;
+    expectedDeliveryDate: string | null;
+    deliveredAt: string | null;
+    shipmentNotes: string | null;
   }>;
   payment?: {
     status: PaymentStatus;
@@ -83,6 +95,8 @@ export async function listOrders(
     limit?: number;
     search?: string;
     status?: string;
+    merchantId?: string;
+    dispatchMethod?: DispatchMethod;
     paymentStatus?: string;
     paymentMethod?: PaymentMethodFilter;
     sortBy?: string;

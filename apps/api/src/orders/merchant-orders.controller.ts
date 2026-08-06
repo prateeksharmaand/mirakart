@@ -4,9 +4,11 @@ import { MerchantAuth } from "../auth/decorators/auth.decorators";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AuthenticatedPrincipal } from "../auth/types/jwt-payload.interface";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
+import { DispatchOrderDto } from "./dto/dispatch-order.dto";
 import { MerchantOrderQueryDto } from "./dto/merchant-order-query.dto";
 import { RejectOrderDto } from "./dto/reject-order.dto";
 import { UpdateFulfillmentStatusDto } from "./dto/update-fulfillment-status.dto";
+import { UpdateShipmentDto } from "./dto/update-shipment.dto";
 import { OrdersService } from "./orders.service";
 
 @ApiTags("merchant-orders")
@@ -18,7 +20,9 @@ export class MerchantOrdersController {
   @Get()
   @ApiOkResponse()
   list(@Query() query: MerchantOrderQueryDto, @CurrentUser() user: AuthenticatedPrincipal) {
-    return this.service.listForMerchant(user.id, query.page, query.limit, query.status, query.sortBy, query.sortOrder);
+    return this.service.listForMerchant(
+      user.id, query.page, query.limit, query.status, query.sortBy, query.sortOrder, query.search,
+    );
   }
 
   @Get(":id")
@@ -47,6 +51,18 @@ export class MerchantOrdersController {
     @CurrentUser() user: AuthenticatedPrincipal,
   ) {
     return this.service.merchantUpdateFulfillment(id, user.id, dto.status);
+  }
+
+  @Post(":id/dispatch")
+  @ApiOkResponse()
+  dispatch(@Param("id") id: string, @Body() dto: DispatchOrderDto, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.dispatchOrder(id, user.id, dto);
+  }
+
+  @Patch(":id/shipment")
+  @ApiOkResponse()
+  updateShipment(@Param("id") id: string, @Body() dto: UpdateShipmentDto, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.updateShipmentDetails(id, user.id, dto);
   }
 
   @Post(":id/complete")

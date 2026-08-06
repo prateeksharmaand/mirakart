@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingBag } from "lucide-react";
-import { Button, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
+import { Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
 import { listMerchantOrders, type MerchantOrder } from "../../../lib/api/orders";
@@ -28,14 +28,22 @@ function formatCurrency(n: number) {
 
 export default function MerchantOrdersPage() {
   const [page, setPage] = React.useState(1);
+  const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("createdAt");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["merchant-orders", page, status, sortBy, sortOrder],
+    queryKey: ["merchant-orders", page, search, status, sortBy, sortOrder],
     queryFn: () =>
-      listMerchantOrders({ page, limit: 20, status: status === "all" ? undefined : status, sortBy, sortOrder }),
+      listMerchantOrders({
+        page,
+        limit: 20,
+        search: search || undefined,
+        status: status === "all" ? undefined : status,
+        sortBy,
+        sortOrder,
+      }),
   });
 
   function handleSortChange(key: string) {
@@ -48,8 +56,9 @@ export default function MerchantOrdersPage() {
     setPage(1);
   }
 
-  const hasActiveFilters = status !== "all";
+  const hasActiveFilters = search !== "" || status !== "all";
   function handleResetFilters() {
+    setSearch("");
     setStatus("all");
     setPage(1);
   }
@@ -108,6 +117,12 @@ export default function MerchantOrdersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Orders" crumbs={[{ label: "Dashboard", href: "/" }, { label: "Orders" }]} />
       <div className="flex gap-3">
+        <Input
+          placeholder="Search by order #, tracking #, customer, product…"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="max-w-sm"
+        />
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
           <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
           <SelectContent>

@@ -15,6 +15,7 @@ import {
   DialogTitle,
   FormField,
   Input,
+  OrderTimeline,
   Skeleton,
   StatusBadge,
   Textarea,
@@ -168,22 +169,54 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           {order.statusHistory && order.statusHistory.length > 0 && (
             <div className="rounded-xl border border-border bg-white p-6">
               <h2 className="mb-4 text-sm font-semibold">Order Timeline</h2>
-              <div className="flex flex-col gap-3">
-                {order.statusHistory.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={entry.status} />
-                      {entry.note && <span className="text-xs text-muted-foreground">{entry.note}</span>}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(entry.changedAt).toLocaleString()}
-                      {entry.changedByType ? ` · ${entry.changedByType}` : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <OrderTimeline status={order.status} history={order.statusHistory} />
             </div>
           )}
+
+          {(() => {
+            const shipmentGroups = Object.values(
+              (order.items ?? [])
+                .filter((item) => item.dispatchDate)
+                .reduce<Record<string, NonNullable<typeof order.items>>>((acc, item) => {
+                  (acc[item.merchantId] ??= []).push(item);
+                  return acc;
+                }, {}),
+            );
+            if (shipmentGroups.length === 0) return null;
+            return (
+              <div className="rounded-xl border border-border bg-white p-6">
+                <h2 className="mb-4 text-sm font-semibold">Shipment Information</h2>
+                <div className="flex flex-col gap-4">
+                  {shipmentGroups.map((group) => {
+                    const item = group[0]!;
+                    return (
+                      <div key={item.merchantId} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">{item.merchant?.storeName ?? "Merchant"}</p>
+                        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                          <div><p className="text-xs text-muted-foreground">Dispatch Method</p><p>{item.dispatchMethod === "COURIER" ? "Courier Partner" : "Self Delivery"}</p></div>
+                          {item.dispatchMethod === "COURIER" ? (
+                            <>
+                              <div><p className="text-xs text-muted-foreground">Courier</p><p>{item.courierPartner === "Other" ? item.customCourierName : item.courierPartner}</p></div>
+                              <div><p className="text-xs text-muted-foreground">Tracking Number</p><p className="font-mono">{item.trackingNumber ?? "—"}</p></div>
+                            </>
+                          ) : (
+                            <>
+                              <div><p className="text-xs text-muted-foreground">Delivery Person</p><p>{item.deliveryPersonName}</p></div>
+                              <div><p className="text-xs text-muted-foreground">Phone</p><p>{item.deliveryPersonPhone}</p></div>
+                              {item.vehicleNumber && <div><p className="text-xs text-muted-foreground">Vehicle Number</p><p>{item.vehicleNumber}</p></div>}
+                            </>
+                          )}
+                          {item.dispatchDate && <div><p className="text-xs text-muted-foreground">Dispatch Date</p><p>{new Date(item.dispatchDate).toLocaleDateString()}</p></div>}
+                          {item.expectedDeliveryDate && <div><p className="text-xs text-muted-foreground">Expected Delivery</p><p>{new Date(item.expectedDeliveryDate).toLocaleDateString()}</p></div>}
+                        </div>
+                        {item.shipmentNotes && <p className="mt-2 text-xs text-muted-foreground">Notes: {item.shipmentNotes}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Sidebar */}

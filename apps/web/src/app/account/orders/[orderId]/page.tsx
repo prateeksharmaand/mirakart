@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShoppingBag } from "lucide-react";
-import { Button, Skeleton, StatusBadge, toast } from "@mirakart/ui";
-import { OrderTimeline } from "../../../../components/order-timeline";
+import { Button, OrderTimeline, Skeleton, StatusBadge, toast } from "@mirakart/ui";
 import { cancelOrder, fetchOrder, fetchOrderTracking } from "../../../../lib/api/orders";
 import { formatPrice } from "../../../../lib/format";
 
@@ -91,6 +90,83 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
           );
         })}
       </div>
+
+      {(() => {
+        const shipmentGroups = Object.values(
+          order.items
+            .filter((item) => item.dispatchDate)
+            .reduce<Record<string, typeof order.items>>((acc, item) => {
+              (acc[item.merchantId] ??= []).push(item);
+              return acc;
+            }, {}),
+        );
+        if (shipmentGroups.length === 0) return null;
+        return (
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium text-foreground">Shipment</h2>
+            {shipmentGroups.map((group, index) => {
+              const item = group[0]!;
+              return (
+                <div key={item.merchantId} className="rounded-md border border-border p-5 text-sm">
+                  {shipmentGroups.length > 1 && (
+                    <p className="mb-2 text-xs font-medium text-foreground-muted">Shipment {index + 1}</p>
+                  )}
+                  <p className="mb-3 text-foreground-muted">
+                    {item.dispatchMethod === "COURIER" ? "Courier Partner" : "Self Delivery"}
+                  </p>
+                  {item.dispatchMethod === "COURIER" ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between">
+                        <span className="text-foreground-muted">Courier</span>
+                        <span className="text-foreground">
+                          {item.courierPartner === "Other" ? item.customCourierName : item.courierPartner}
+                        </span>
+                      </div>
+                      {item.trackingNumber && (
+                        <div className="flex justify-between">
+                          <span className="text-foreground-muted">Tracking Number</span>
+                          <span className="font-mono text-foreground">{item.trackingNumber}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between">
+                        <span className="text-foreground-muted">Delivery Person</span>
+                        <span className="text-foreground">{item.deliveryPersonName}</span>
+                      </div>
+                      {item.deliveryPersonPhone && (
+                        <div className="flex justify-between">
+                          <span className="text-foreground-muted">Phone</span>
+                          <span className="text-foreground">{item.deliveryPersonPhone}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {item.dispatchDate && (
+                    <div className="mt-2 flex justify-between">
+                      <span className="text-foreground-muted">Dispatch Date</span>
+                      <span className="text-foreground">{new Date(item.dispatchDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {item.expectedDeliveryDate && (
+                    <div className="mt-2 flex justify-between">
+                      <span className="text-foreground-muted">Expected Delivery</span>
+                      <span className="text-foreground">{new Date(item.expectedDeliveryDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {item.shipmentNotes && (
+                    <p className="mt-3 text-xs text-foreground-muted">
+                      {item.dispatchMethod === "COURIER" ? "Shipment Notes: " : "Remarks: "}
+                      {item.shipmentNotes}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {order.shippingAddress && (

@@ -1,7 +1,6 @@
 import { Check } from "lucide-react";
-import type { OrderStatus } from "../types/order";
 
-const HAPPY_PATH_STEPS: { status: OrderStatus; label: string; description: string }[] = [
+const HAPPY_PATH_STEPS: { status: string; label: string; description: string }[] = [
   {
     status: "PENDING_CONFIRMATION",
     label: "Pending Confirmation",
@@ -54,20 +53,21 @@ const HAPPY_PATH_STEPS: { status: OrderStatus; label: string; description: strin
   },
 ];
 
-const TERMINAL_INFO: Partial<Record<OrderStatus, { label: string; description: string }>> = {
+const TERMINAL_INFO: Record<string, { label: string; description: string }> = {
   CANCELLED: { label: "Order Cancelled", description: "This order has been cancelled." },
   FAILED_DELIVERY: { label: "Delivery Failed", description: "Delivery could not be completed for this order." },
   COD_REFUSED: { label: "Delivery Refused", description: "The Cash on Delivery payment was refused at delivery." },
 };
 
 interface OrderTimelineProps {
-  status: OrderStatus;
+  status: string;
   history?: { status: string; changedAt: string }[];
 }
 
 /** Vertical order-status stepper — generalizes CheckoutSteps' circle/line
  * pattern for the longer post-purchase COD ladder. Terminal/exception
- * statuses render a banner instead of forcing them onto the linear steps. */
+ * statuses render a banner instead of forcing them onto the linear steps.
+ * Shared across the customer, merchant, and admin apps. */
 export function OrderTimeline({ status, history = [] }: OrderTimelineProps) {
   const terminal = TERMINAL_INFO[status];
   if (terminal) {

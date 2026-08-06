@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { ActorType, OrderItemStatus, OrderStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
+import type { ActorType, DispatchMethod, OrderItemStatus, OrderStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { buildOrderBy } from "../common/utils/sort.util";
 import type { PaymentMethodFilter } from "./dto/admin-order-query.dto";
@@ -260,6 +260,8 @@ export class OrdersRepository {
 
   async findAdminOrders(filter: {
     status?: OrderStatus;
+    merchantId?: string;
+    dispatchMethod?: DispatchMethod;
     paymentStatus?: PaymentStatus;
     paymentMethod?: PaymentMethodFilter;
     customerId?: string;
@@ -273,6 +275,16 @@ export class OrdersRepository {
       deletedAt: null,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.customerId ? { customerId: filter.customerId } : {}),
+      ...(filter.merchantId || filter.dispatchMethod
+        ? {
+            items: {
+              some: {
+                ...(filter.merchantId ? { merchantId: filter.merchantId } : {}),
+                ...(filter.dispatchMethod ? { dispatchMethod: filter.dispatchMethod } : {}),
+              },
+            },
+          }
+        : {}),
       ...(filter.search
         ? {
             OR: [
@@ -280,6 +292,7 @@ export class OrdersRepository {
               { customer: { firstName: { contains: filter.search, mode: "insensitive" } } },
               { customer: { lastName: { contains: filter.search, mode: "insensitive" } } },
               { customer: { email: { contains: filter.search, mode: "insensitive" } } },
+              { items: { some: { trackingNumber: { contains: filter.search, mode: "insensitive" } } } },
             ],
           }
         : {}),
@@ -320,10 +333,22 @@ export class OrdersRepository {
     itemStatus?: OrderItemStatus,
     sortBy?: string,
     sortOrder?: "asc" | "desc",
+    search?: string,
   ) {
     const where: Prisma.OrderWhereInput = {
       deletedAt: null,
       items: { some: { merchantId, ...(itemStatus ? { status: itemStatus } : {}) } },
+      ...(search
+        ? {
+            OR: [
+              { orderNumber: { contains: search, mode: "insensitive" } },
+              { customer: { firstName: { contains: search, mode: "insensitive" } } },
+              { customer: { lastName: { contains: search, mode: "insensitive" } } },
+              { items: { some: { merchantId, trackingNumber: { contains: search, mode: "insensitive" } } } },
+              { items: { some: { merchantId, productNameSnapshot: { contains: search, mode: "insensitive" } } } },
+            ],
+          }
+        : {}),
     };
     const [items, totalItems] = await Promise.all([
       this.prisma.order.findMany({
@@ -465,6 +490,31 @@ export class OrdersRepository {
     return this.prisma.orderItem.updateMany({
       where: { orderId, status: { in: fromStatuses } },
       data: { status: toStatus },
+    });
+  }
+
+  /** Same shape as updateItemsStatusForMerchant, plus the shipment fields
+   *  captured at dispatch time — one merchant's PACKED items advance straight
+   *  to SHIPPED/OUT_FOR_DELIVERY together as a single shipment. */
+  dispatchItemsForMerchant(
+    orderId: string,
+    merchantId: string,
+    fromStatuses: OrderItemStatus[],
+    toStatus: OrderItemStatus,
+    shipment: Prisma.OrderItemUpdateManyMutationInput,
+  ) {
+    return this.prisma.orderItem.updateMany({
+      where: { orderId, merchantId, status: { in: fromStatuses } },
+      data: { status: toStatus, dispatchDate: new Date(), ...shipment },
+    });
+  }
+
+  /** Post-dispatch edits (tracking number / courier / expected delivery) —
+   *  metadata only, no status transition. */
+  updateShipmentFields(orderId: string, merchantId: string, data: Prisma.OrderItemUpdateManyMutationInput) {
+    return this.prisma.orderItem.updateMany({
+      where: { orderId, merchantId },
+      data,
     });
   }
 }
