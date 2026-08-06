@@ -842,7 +842,10 @@ model Payment {
   updatedAt         DateTime      @updatedAt
 
   // Manual COD-collection audit trail. "Received Date" reuses `paidAt`.
-  collectedByAdminId String?
+  // Collected by whichever merchant delivered the order (see OrdersService
+  // .merchantMarkCodReceived) — the OrderStatusHistory row for the same
+  // event carries the actor type, this column is just the ID.
+  collectedByActorId String?
   collectionNote     String?
   amountReceived     Decimal? @db.Decimal(12, 2)
 

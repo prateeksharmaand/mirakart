@@ -120,27 +120,6 @@ describe("ProductsService", () => {
     });
   });
 
-  describe("approval workflow", () => {
-    it("only allows approving a PENDING_APPROVAL product", async () => {
-      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "DRAFT" } as never);
-      await expect(service.approve("p1", "admin1")).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it("approves a pending product", async () => {
-      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "PENDING_APPROVAL" } as never);
-      await service.approve("p1", "admin1");
-      expect(repo.setApprovalStatus).toHaveBeenCalledWith(
-        "p1",
-        expect.objectContaining({ status: "APPROVED", approvedById: "admin1" }),
-      );
-    });
-
-    it("only allows rejecting a PENDING_APPROVAL product", async () => {
-      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "DRAFT" } as never);
-      await expect(service.reject("p1", "admin1", "bad photos")).rejects.toBeInstanceOf(BadRequestException);
-    });
-  });
-
   describe("admin visibility levers", () => {
     it("suspend() hides a product regardless of its current status", async () => {
       repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "APPROVED" } as never);
@@ -148,19 +127,13 @@ describe("ProductsService", () => {
       expect(repo.setStatus).toHaveBeenCalledWith("p1", "SUSPENDED");
     });
 
-    it("activate() works from SUSPENDED, unlike approve() which requires PENDING_APPROVAL", async () => {
+    it("activate() undoes a suspension", async () => {
       repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "SUSPENDED" } as never);
       await service.activate("p1", "admin1");
       expect(repo.setApprovalStatus).toHaveBeenCalledWith(
         "p1",
         expect.objectContaining({ status: "APPROVED", approvedById: "admin1" }),
       );
-    });
-
-    it("archive() sets ARCHIVED", async () => {
-      repo.findByIdWithDetail.mockResolvedValue({ id: "p1", status: "APPROVED" } as never);
-      await service.archive("p1");
-      expect(repo.setStatus).toHaveBeenCalledWith("p1", "ARCHIVED");
     });
   });
 });

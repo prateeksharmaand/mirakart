@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Badge, Button, FormField, Skeleton, Textarea, toast } from "@mirakart/ui";
+import { Badge, Button, FormField, Input, Skeleton, Textarea, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
 import {
   getMerchantReturn, acceptReturn, rejectReturn, markReturnItemReceived, completeReturn,
@@ -15,6 +15,9 @@ import { ConfirmDialog } from "../../../../components/confirm-dialog";
 
 const rejectSchema = z.object({ note: z.string().min(5, "Please provide a reason") });
 type RejectForm = z.infer<typeof rejectSchema>;
+
+const completeSchema = z.object({ refundAmount: z.string().optional() });
+type CompleteForm = z.infer<typeof completeSchema>;
 
 const STATUS_VARIANT: Record<ReturnStatus, "success" | "warning" | "danger" | "default"> = {
   REQUESTED: "warning",
@@ -39,6 +42,7 @@ export default function MerchantReturnDetailPage({ params }: { params: { id: str
   const { data: ret, isLoading } = useQuery({ queryKey: ["merchant-return", params.id], queryFn: () => getMerchantReturn(params.id) });
 
   const { register, handleSubmit, formState: { errors } } = useForm<RejectForm>({ resolver: zodResolver(rejectSchema) });
+  const completeForm = useForm<CompleteForm>({ resolver: zodResolver(completeSchema) });
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["merchant-return", params.id] });
@@ -64,7 +68,7 @@ export default function MerchantReturnDetailPage({ params }: { params: { id: str
   });
 
   const completeMutation = useMutation({
-    mutationFn: () => completeReturn(params.id),
+    mutationFn: (refundAmount?: number) => completeReturn(params.id, refundAmount),
     onSuccess: () => { invalidate(); toast({ title: "Return completed", variant: "success" }); setCompleteOpen(false); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
@@ -165,18 +169,38 @@ export default function MerchantReturnDetailPage({ params }: { params: { id: str
         onCancel={() => setReceivedOpen(false)}
       />
 
-      <ConfirmDialog
-        open={completeOpen}
-        title={ret.resolutionType === "REPLACEMENT" ? "Mark Replacement Sent" : "Complete Refund"}
-        description={
-          ret.resolutionType === "REPLACEMENT"
-            ? "Confirm the replacement item has been shipped to the customer?"
-            : "Confirm the refund has been processed?"
-        }
-        isLoading={completeMutation.isPending}
-        onConfirm={() => completeMutation.mutate()}
-        onCancel={() => setCompleteOpen(false)}
-      />
+      {ret.resolutionType === "REPLACEMENT" ? (
+        <ConfirmDialog
+          open={completeOpen}
+          title="Mark Replacement Sent"
+          description="Confirm the replacement item has been shipped to the customer?"
+          isLoading={completeMutation.isPending}
+          onConfirm={() => completeMutation.mutate(undefined)}
+          onCancel={() => setCompleteOpen(false)}
+        />
+      ) : (
+        completeOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-modal">
+              <h2 className="mb-4 text-lg font-semibold">Complete Refund</h2>
+              <p className="mb-4 text-sm text-muted-foreground">Confirm the refund has been processed to the customer.</p>
+              <form
+                onSubmit={completeForm.handleSubmit((v) =>
+                  completeMutation.mutate(v.refundAmount ? Number(v.refundAmount) : undefined),
+                )}
+              >
+                <FormField label="Refund Amount" htmlFor="refundAmount">
+                  <Input id="refundAmount" type="number" step="0.01" placeholder="Optional" {...completeForm.register("refundAmount")} />
+                </FormField>
+                <div className="mt-4 flex gap-3">
+                  <Button type="button" variant="outline" onClick={() => setCompleteOpen(false)}>Cancel</Button>
+                  <Button type="submit" isLoading={completeMutation.isPending}>Complete Refund</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      )}
 
       {rejectOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

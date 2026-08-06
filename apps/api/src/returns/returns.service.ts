@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { InsufficientReplacementStockError, ReturnsRepository } from "./returns.repository";
 import type { AdminReturnQueryDto } from "./dto/admin-return-query.dto";
-import type { AdminUpdateReturnStatusDto } from "./dto/admin-update-return-status.dto";
 import type { CreateReturnDto } from "./dto/create-return.dto";
 import type { MerchantReturnQueryDto } from "./dto/merchant-return-query.dto";
 import type { MerchantUpdateReturnStatusDto } from "./dto/merchant-update-return-status.dto";
@@ -174,7 +173,17 @@ export class ReturnsService {
       // refund and a replacement, since the physical item comes back either way.
       return this.repo.markItemReceived(id, merchantId, ret.orderItem.variantId, ret.quantity);
     }
-    return this.repo.updateStatus(id, dto.status, "MERCHANT", merchantId);
+    const updated = await this.repo.updateStatus(id, dto.status, "MERCHANT", merchantId, undefined, dto.refundAmount);
+    if (dto.status === "COMPLETED") {
+      void this.notifications.create(
+        "CUSTOMER", ret.customerId,
+        "RETURN_COMPLETED",
+        "Return completed — refund processed",
+        "Your return has been completed. Refund will appear in 3–5 business days.",
+        { returnId: id },
+      );
+    }
+    return updated;
   }
 
   async listReplacementOptions(orderItemId: string, customerId: string) {
@@ -199,21 +208,6 @@ export class ReturnsService {
     const ret = await this.repo.findById(id);
     if (!ret) throw new NotFoundException("Return not found");
     return ret;
-  }
-
-  async adminOverride(id: string, adminId: string, dto: AdminUpdateReturnStatusDto) {
-    const ret = await this.findForAdmin(id);
-    const updated = await this.repo.updateStatus(id, dto.status, "ADMIN", adminId, dto.note, dto.refundAmount);
-    if (dto.status === "COMPLETED") {
-      void this.notifications.create(
-        "CUSTOMER", ret.customerId,
-        "RETURN_COMPLETED",
-        "Return completed — refund processed",
-        dto.note ?? "Your return has been completed. Refund will appear in 3–5 business days.",
-        { returnId: id },
-      );
-    }
-    return updated;
   }
 
   private async assertOwnedByCustomer(id: string, customerId: string): Promise<ReturnDetail> {

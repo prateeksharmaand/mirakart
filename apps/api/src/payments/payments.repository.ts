@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { PaymentStatus } from "@prisma/client";
+import type { ActorType, PaymentStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -55,7 +55,12 @@ export class PaymentsRepository {
   async markCodReceived(
     paymentId: string,
     orderId: string,
-    data: { amountReceived: number; receivedDate: Date; remarks?: string; adminId: string },
+    data: {
+      amountReceived: number;
+      receivedDate: Date;
+      remarks?: string;
+      actor: { type: ActorType; id: string };
+    },
   ) {
     return this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.update({
@@ -64,13 +69,19 @@ export class PaymentsRepository {
           status: "PAID",
           paidAt: data.receivedDate,
           amountReceived: data.amountReceived,
-          collectedByAdminId: data.adminId,
+          collectedByActorId: data.actor.id,
           collectionNote: data.remarks,
         },
       });
       const order = await tx.order.update({ where: { id: orderId }, data: { status: "COMPLETED" } });
       await tx.orderStatusHistory.create({
-        data: { orderId, status: "COMPLETED", changedByType: "ADMIN", changedById: data.adminId, note: data.remarks },
+        data: {
+          orderId,
+          status: "COMPLETED",
+          changedByType: data.actor.type,
+          changedById: data.actor.id,
+          note: data.remarks,
+        },
       });
       return { payment, order };
     });

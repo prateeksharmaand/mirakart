@@ -13,7 +13,7 @@ export class OrderItemsController {
   constructor(private readonly service: OrdersService) {}
 
   @Patch(":orderId/items/:itemId/status")
-  @RequirePrincipal("MERCHANT", "ADMIN")
+  @RequirePrincipal("MERCHANT")
   @UseGuards(PrincipalAuthGuard)
   @ApiBearerAuth()
   @ApiOkResponse()
@@ -24,7 +24,7 @@ export class OrderItemsController {
     @CurrentUser() user: AuthenticatedPrincipal,
   ) {
     return this.service.updateItemStatus(orderId, itemId, dto.status, {
-      type: user.type as "MERCHANT" | "ADMIN",
+      type: "MERCHANT",
       id: user.id,
     });
   }

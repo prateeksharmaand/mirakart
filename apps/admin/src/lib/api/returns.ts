@@ -53,8 +53,3 @@ export async function getReturn(id: string): Promise<Return> {
   const res = await apiClient.get(`/admin/returns/${id}`);
   return res.data.data as Return;
 }
-
-export async function updateReturnStatus(id: string, status: ReturnStatus, note?: string): Promise<Return> {
-  const res = await apiClient.patch(`/admin/returns/${id}/status`, { status, note });
-  return res.data.data as Return;
-}

@@ -35,6 +35,7 @@ import {
   completeOrder,
   dispatchOrder,
   getMerchantOrder,
+  markCodReceived,
   markCodRefused,
   rejectOrder,
   updateFulfillmentStatus,
@@ -82,6 +83,13 @@ const editShipmentSchema = z.object({
 });
 type EditShipmentForm = z.infer<typeof editShipmentSchema>;
 
+const codReceivedSchema = z.object({
+  amountReceived: z.coerce.number().positive("Enter the amount received"),
+  receivedDate: z.string().min(1, "Required"),
+  remarks: z.string().optional(),
+});
+type CodReceivedForm = z.infer<typeof codReceivedSchema>;
+
 const NEXT_FULFILLMENT_STATUS: Partial<Record<string, { status: FulfillmentStatus; label: string }>> = {
   ACCEPTED: { status: "PROCESSING", label: "Mark Processing" },
   PROCESSING: { status: "PACKED", label: "Mark Packed" },
@@ -104,6 +112,7 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
   const [advanceOpen, setAdvanceOpen] = React.useState(false);
   const [dispatchOpen, setDispatchOpen] = React.useState(false);
   const [editShipmentOpen, setEditShipmentOpen] = React.useState(false);
+  const [codReceivedOpen, setCodReceivedOpen] = React.useState(false);
 
   const { data: order, isLoading } = useQuery({ queryKey: ["merchant-order", params.id], queryFn: () => getMerchantOrder(params.id) });
 
@@ -114,6 +123,10 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
     defaultValues: { dispatchMethod: "COURIER" },
   });
   const editShipmentForm = useForm<EditShipmentForm>({ resolver: zodResolver(editShipmentSchema) });
+  const codReceivedForm = useForm<CodReceivedForm>({
+    resolver: zodResolver(codReceivedSchema),
+    defaultValues: { receivedDate: new Date().toISOString().slice(0, 10) },
+  });
 
   const dispatchMethod = dispatchForm.watch("dispatchMethod");
   const courierPartner = dispatchForm.watch("courierPartner");
@@ -163,6 +176,12 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
+  const codReceivedMutation = useMutation({
+    mutationFn: (v: CodReceivedForm) => markCodReceived(params.id, v),
+    onSuccess: () => { invalidate(); toast({ title: "COD payment recorded — order completed", variant: "success" }); setCodReceivedOpen(false); },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+  });
+
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(params.id),
     onSuccess: () => { invalidate(); toast({ title: "Order cancelled", variant: "success" }); setCancelOpen(false); },
@@ -186,6 +205,7 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
   const canDispatch = myItemStatus === "PACKED";
   const canComplete = myItemStatus === "DELIVERED";
   const canRefuse = order.status === "DELIVERED";
+  const canCollectCod = order.payment?.method === "COD" && order.payment?.status === "UNPAID" && order.status === "DELIVERED";
   const canCancel = myItems.length > 0 && !["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED", "CANCELLED", "FAILED_DELIVERY", "COD_REFUSED"].includes(myItemStatus ?? "");
   const shipment = myItems.find((i) => i.dispatchDate);
   const canEditShipment = !!shipment && myItems.some((i) => i.status !== "COMPLETED");
@@ -219,6 +239,7 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
                 Complete Order
               </Button>
             )}
+            {canCollectCod && <Button onClick={() => setCodReceivedOpen(true)}>Mark COD Payment Received</Button>}
             {canRefuse && <Button variant="outline" onClick={() => setRefuseOpen(true)}>Mark COD Refused</Button>}
             {canCancel && <Button variant="danger" onClick={() => setCancelOpen(true)}>Cancel</Button>}
           </div>
@@ -406,6 +427,27 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => setRefuseOpen(false)}>Cancel</Button>
               <Button type="submit" variant="danger" isLoading={refuseMutation.isPending}>Mark Refused</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={codReceivedOpen} onOpenChange={(o) => !o && setCodReceivedOpen(false)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Mark COD payment received</DialogTitle></DialogHeader>
+          <form onSubmit={codReceivedForm.handleSubmit((v) => codReceivedMutation.mutate(v))} className="flex flex-col gap-3">
+            <FormField label="Amount Received" htmlFor="amountReceived" error={codReceivedForm.formState.errors.amountReceived?.message} required>
+              <Input id="amountReceived" type="number" step="0.01" {...codReceivedForm.register("amountReceived")} />
+            </FormField>
+            <FormField label="Received Date" htmlFor="receivedDate" error={codReceivedForm.formState.errors.receivedDate?.message} required>
+              <Input id="receivedDate" type="date" {...codReceivedForm.register("receivedDate")} />
+            </FormField>
+            <FormField label="Remarks" htmlFor="remarks">
+              <Textarea id="remarks" rows={2} {...codReceivedForm.register("remarks")} />
+            </FormField>
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setCodReceivedOpen(false)}>Cancel</Button>
+              <Button type="submit" isLoading={codReceivedMutation.isPending}>Mark Received</Button>
             </DialogFooter>
           </form>
         </DialogContent>

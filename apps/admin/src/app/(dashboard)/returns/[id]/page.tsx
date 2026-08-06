@@ -1,10 +1,9 @@
 "use client";
 
-import * as React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@mirakart/ui";
+import { useQuery } from "@tanstack/react-query";
+import { Badge, Skeleton } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { getReturn, updateReturnStatus, type ReturnStatus } from "../../../../lib/api/returns";
+import { getReturn, type ReturnStatus } from "../../../../lib/api/returns";
 
 const STATUS_VARIANT: Record<ReturnStatus, "success" | "warning" | "danger" | "default"> = {
   REQUESTED: "warning",
@@ -17,33 +16,12 @@ const STATUS_VARIANT: Record<ReturnStatus, "success" | "warning" | "danger" | "d
   CANCELLED: "danger",
 };
 
-const STATUS_OPTIONS: { value: ReturnStatus; label: string }[] = [
-  { value: "REQUESTED", label: "Requested" },
-  { value: "UNDER_REVIEW", label: "Under Review" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "REJECTED", label: "Rejected" },
-  { value: "AWAITING_SHIPMENT", label: "Awaiting Shipment" },
-  { value: "ITEM_RECEIVED", label: "Item Received" },
-  { value: "COMPLETED", label: "Completed" },
-  { value: "CANCELLED", label: "Cancelled" },
-];
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+}
 
 export default function ReturnDetailPage({ params }: { params: { id: string } }) {
-  const qc = useQueryClient();
-  const [newStatus, setNewStatus] = React.useState<ReturnStatus | "">("");
-  const [note, setNote] = React.useState("");
-
   const { data: ret, isLoading } = useQuery({ queryKey: ["return", params.id], queryFn: () => getReturn(params.id) });
-  React.useEffect(() => { if (ret) setNewStatus(ret.status); }, [ret]);
-
-  const mutation = useMutation({
-    mutationFn: () => {
-      if (!newStatus) throw new Error("Select a status");
-      return updateReturnStatus(params.id, newStatus, note || undefined);
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["return", params.id] }); toast({ title: "Status updated", variant: "success" }); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
-  });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!ret) return <p>Return not found.</p>;
@@ -65,6 +43,7 @@ export default function ReturnDetailPage({ params }: { params: { id: string } })
         {ret.customer && <div><p className="text-xs text-muted-foreground">Customer</p><p className="text-sm">{ret.customer.firstName} {ret.customer.lastName}</p></div>}
         <div><p className="text-xs text-muted-foreground">Reason</p><p className="text-sm">{ret.reason?.reason ?? "—"}</p></div>
         <div><p className="text-xs text-muted-foreground">Quantity</p><p className="text-sm">{ret.quantity}</p></div>
+        {ret.refundAmount != null && <div><p className="text-xs text-muted-foreground">Refund Amount</p><p className="text-sm">{formatCurrency(Number(ret.refundAmount))}</p></div>}
         {ret.reasonDetail && <div className="col-span-2"><p className="text-xs text-muted-foreground">Details</p><p className="text-sm">{ret.reasonDetail}</p></div>}
         <div><p className="text-xs text-muted-foreground">Date</p><p className="text-sm">{new Date(ret.createdAt).toLocaleDateString()}</p></div>
       </div>
@@ -103,26 +82,6 @@ export default function ReturnDetailPage({ params }: { params: { id: string } })
           </div>
         </div>
       )}
-
-      <div className="rounded-xl border border-border bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold">Update Status</h2>
-        <div className="flex flex-col gap-3">
-          <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ReturnStatus)}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-          <div>
-            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={newStatus === ret.status}>
-              Update Status
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

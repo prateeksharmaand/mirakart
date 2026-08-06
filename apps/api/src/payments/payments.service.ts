@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { ActorType } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PaymentsRepository } from "./payments.repository";
 import { RazorpayService } from "./razorpay.service";
@@ -57,11 +58,16 @@ export class PaymentsService {
    * validated the order is DELIVERED and the payment is COD/UNPAID —
    * payment writes stay owned by this module, same separation as every
    * other payment-status change (OrdersService never touches Payment
-   * directly).
+   * directly). Called by the merchant who delivered the order.
    */
   async markCodReceived(
     orderId: string,
-    data: { amountReceived: number; receivedDate: Date; remarks?: string; adminId: string },
+    data: {
+      amountReceived: number;
+      receivedDate: Date;
+      remarks?: string;
+      actor: { type: ActorType; id: string };
+    },
   ) {
     const payment = await this.repo.findByOrderId(orderId);
     if (!payment) throw new NotFoundException("Payment not found");

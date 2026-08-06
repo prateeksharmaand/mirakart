@@ -65,6 +65,6 @@ export async function markReturnItemReceived(id: string): Promise<void> {
   await apiClient.patch(`/merchants/me/returns/${id}/status`, { status: "ITEM_RECEIVED" });
 }
 
-export async function completeReturn(id: string): Promise<void> {
-  await apiClient.patch(`/merchants/me/returns/${id}/status`, { status: "COMPLETED" });
+export async function completeReturn(id: string, refundAmount?: number): Promise<void> {
+  await apiClient.patch(`/merchants/me/returns/${id}/status`, { status: "COMPLETED", refundAmount });
 }

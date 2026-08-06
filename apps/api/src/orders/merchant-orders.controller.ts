@@ -5,6 +5,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AuthenticatedPrincipal } from "../auth/types/jwt-payload.interface";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
 import { DispatchOrderDto } from "./dto/dispatch-order.dto";
+import { MarkCodReceivedDto } from "./dto/mark-cod-received.dto";
 import { MerchantOrderQueryDto } from "./dto/merchant-order-query.dto";
 import { RejectOrderDto } from "./dto/reject-order.dto";
 import { UpdateFulfillmentStatusDto } from "./dto/update-fulfillment-status.dto";
@@ -69,6 +70,20 @@ export class MerchantOrdersController {
   @ApiOkResponse()
   complete(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
     return this.service.merchantCompleteOrder(id, user.id);
+  }
+
+  @Post(":id/mark-cod-received")
+  @ApiOkResponse()
+  markCodReceived(
+    @Param("id") id: string,
+    @Body() dto: MarkCodReceivedDto,
+    @CurrentUser() user: AuthenticatedPrincipal,
+  ) {
+    return this.service.merchantMarkCodReceived(id, user.id, {
+      amountReceived: dto.amountReceived,
+      receivedDate: new Date(dto.receivedDate),
+      remarks: dto.remarks,
+    });
   }
 
   @Post(":id/mark-cod-refused")

@@ -56,58 +56,12 @@ export async function getProduct(id: string): Promise<Product> {
   return res.data.data as Product;
 }
 
-export async function approveProduct(id: string): Promise<void> {
-  await apiClient.patch(`/admin/products/${id}/approve`);
-}
-
-export async function rejectProduct(id: string, rejectionReason: string): Promise<void> {
-  await apiClient.patch(`/admin/products/${id}/reject`, { rejectionReason });
-}
-
-export async function setFeatured(id: string, isFeatured: boolean): Promise<void> {
-  await apiClient.patch(`/admin/products/${id}/featured`, { isFeatured });
-}
-
+/** Trust & safety override — the only admin write left on products. */
 export async function suspendProduct(id: string): Promise<void> {
   await apiClient.patch(`/admin/products/${id}/suspend`);
 }
 
+/** Undoes suspendProduct() — a merchant can't self-reactivate a suspended product. */
 export async function activateProduct(id: string): Promise<void> {
   await apiClient.patch(`/admin/products/${id}/activate`);
-}
-
-export async function archiveProduct(id: string): Promise<void> {
-  await apiClient.patch(`/admin/products/${id}/archive`);
-}
-
-// --- Image management ---
-
-export async function listProductImages(productId: string): Promise<ProductImage[]> {
-  const res = await apiClient.get(`/admin/products/${productId}/images`);
-  return res.data.data as ProductImage[];
-}
-
-export async function uploadProductImage(file: Blob): Promise<{ id: string; url: string }> {
-  const formData = new FormData();
-  formData.append("file", file, "image.jpg");
-  formData.append("purpose", "PRODUCT_IMAGES");
-  const res = await apiClient.post("/uploads", formData);
-  return res.data.data as { id: string; url: string };
-}
-
-export async function addProductImage(productId: string, mediaId: string, isPrimary?: boolean): Promise<ProductImage> {
-  const res = await apiClient.post(`/admin/products/${productId}/images`, { mediaId, isPrimary });
-  return res.data.data as ProductImage;
-}
-
-export async function deleteProductImage(productId: string, imageId: string): Promise<void> {
-  await apiClient.delete(`/admin/products/${productId}/images/${imageId}`);
-}
-
-export async function setProductImagePrimary(productId: string, imageId: string): Promise<void> {
-  await apiClient.patch(`/admin/products/${productId}/images/${imageId}/primary`);
-}
-
-export async function reorderProductImages(productId: string, items: { id: string; sortOrder: number }[]): Promise<void> {
-  await apiClient.patch(`/admin/products/${productId}/images/reorder`, { items });
 }

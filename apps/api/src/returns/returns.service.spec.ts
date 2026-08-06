@@ -232,22 +232,13 @@ describe("ReturnsService", () => {
     it("allows the COMPLETED transition after ITEM_RECEIVED via the generic status update", async () => {
       repo.findById.mockResolvedValue({ id: "ret1", merchantId: "m1", status: "ITEM_RECEIVED" } as never);
       await service.merchantUpdateStatus("ret1", "m1", { status: "COMPLETED" });
-      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "COMPLETED", "MERCHANT", "m1");
-    });
-  });
-
-  describe("adminOverride", () => {
-    it("throws NotFoundException for a missing return", async () => {
-      repo.findById.mockResolvedValue(null);
-      await expect(service.adminOverride("missing", "a1", { status: "COMPLETED" })).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "COMPLETED", "MERCHANT", "m1", undefined, undefined);
     });
 
-    it("allows an admin to set any status with an optional refund amount", async () => {
-      repo.findById.mockResolvedValue({ id: "ret1" } as never);
-      await service.adminOverride("ret1", "a1", { status: "COMPLETED", refundAmount: 499, note: "manual review" });
-      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "COMPLETED", "ADMIN", "a1", "manual review", 499);
+    it("records the refund amount and notifies the customer on completion", async () => {
+      repo.findById.mockResolvedValue({ id: "ret1", merchantId: "m1", customerId: "c1", status: "ITEM_RECEIVED" } as never);
+      await service.merchantUpdateStatus("ret1", "m1", { status: "COMPLETED", refundAmount: 499 });
+      expect(repo.updateStatus).toHaveBeenCalledWith("ret1", "COMPLETED", "MERCHANT", "m1", undefined, 499);
     });
   });
 

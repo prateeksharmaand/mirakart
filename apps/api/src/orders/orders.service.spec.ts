@@ -8,6 +8,7 @@ describe("OrdersService", () => {
   let service: OrdersService;
   let repo: jest.Mocked<OrdersRepository>;
   let cartRepo: jest.Mocked<CartRepository>;
+  let payments: { markCodReceived: jest.Mock };
 
   const approvedVariant = {
     id: "v1",
@@ -47,8 +48,8 @@ describe("OrdersService", () => {
     } as unknown as jest.Mocked<CartRepository>;
     const coupons = { priceCartForCoupon: jest.fn() } as never;
     const notifications = { create: jest.fn().mockResolvedValue(undefined) } as never;
-    const payments = { markCodReceived: jest.fn() } as never;
-    service = new OrdersService(repo, cartRepo, coupons, notifications, payments);
+    payments = { markCodReceived: jest.fn() };
+    service = new OrdersService(repo, cartRepo, coupons, notifications, payments as never);
   });
 
   describe("checkout", () => {
@@ -324,6 +325,60 @@ describe("OrdersService", () => {
       } as never);
       await service.updateShipmentDetails("order1", "m1", { trackingNumber: "NEW123" });
       expect(repo.updateShipmentFields).toHaveBeenCalledWith("order1", "m1", { trackingNumber: "NEW123" });
+    });
+  });
+
+  describe("merchantMarkCodReceived", () => {
+    const dto = { amountReceived: 499, receivedDate: new Date("2026-01-01") };
+
+    it("throws NotFoundException when the merchant has no items on the order", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        status: "DELIVERED",
+        items: [{ id: "item1", merchantId: "someone-else" }],
+      } as never);
+      await expect(service.merchantMarkCodReceived("order1", "m1", dto)).rejects.toBeInstanceOf(NotFoundException);
+      expect(payments.markCodReceived).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the order hasn't been delivered yet", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        status: "SHIPPED",
+        items: [{ id: "item1", merchantId: "m1" }],
+        payment: { method: "COD" },
+      } as never);
+      await expect(service.merchantMarkCodReceived("order1", "m1", dto)).rejects.toBeInstanceOf(ConflictException);
+      expect(payments.markCodReceived).not.toHaveBeenCalled();
+    });
+
+    it("rejects an order that wasn't paid by COD", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        status: "DELIVERED",
+        items: [{ id: "item1", merchantId: "m1" }],
+        payment: { method: "ONLINE" },
+      } as never);
+      await expect(service.merchantMarkCodReceived("order1", "m1", dto)).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("records the collection and notifies the customer once delivered", async () => {
+      repo.findOrderDetail.mockResolvedValue({
+        id: "order1",
+        orderNumber: "ORD-1",
+        customerId: "c1",
+        status: "DELIVERED",
+        items: [{ id: "item1", merchantId: "m1" }],
+        payment: { method: "COD" },
+      } as never);
+      payments.markCodReceived.mockResolvedValue({ payment: { status: "PAID" }, order: { status: "COMPLETED" } });
+
+      await service.merchantMarkCodReceived("order1", "m1", dto);
+
+      expect(payments.markCodReceived).toHaveBeenCalledWith("order1", {
+        ...dto,
+        actor: { type: "MERCHANT", id: "m1" },
+      });
     });
   });
 

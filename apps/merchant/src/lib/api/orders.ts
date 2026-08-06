@@ -47,6 +47,7 @@ export interface MerchantOrder {
   total: number;
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  payment?: { method: "COD" | "ONLINE"; status: string } | null;
   customer?: { id: string; firstName: string; lastName: string; email: string; phone: string } | null;
   shippingAddress?: {
     fullName: string;
@@ -153,6 +154,17 @@ export async function completeOrder(id: string): Promise<MerchantOrder> {
 
 export async function markCodRefused(id: string, reason: string): Promise<MerchantOrder> {
   const res = await apiClient.post(`/merchants/me/orders/${id}/mark-cod-refused`, { reason });
+  return res.data.data as MerchantOrder;
+}
+
+export interface MarkCodReceivedInput {
+  amountReceived: number;
+  receivedDate: string;
+  remarks?: string;
+}
+
+export async function markCodReceived(id: string, input: MarkCodReceivedInput): Promise<MerchantOrder> {
+  const res = await apiClient.post(`/merchants/me/orders/${id}/mark-cod-received`, input);
   return res.data.data as MerchantOrder;
 }
 

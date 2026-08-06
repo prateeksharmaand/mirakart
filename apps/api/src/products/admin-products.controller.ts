@@ -1,13 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Param, Patch, Query } from "@nestjs/common";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuth } from "../auth/decorators/auth.decorators";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AuthenticatedPrincipal } from "../auth/types/jwt-payload.interface";
-import { AddProductImageDto } from "./dto/add-product-image.dto";
-import { ReorderImagesDto } from "./dto/reorder-images.dto";
 import { AdminProductQueryDto } from "./dto/merchant-product-query.dto";
-import { RejectProductDto } from "./dto/reject-product.dto";
-import { SetFeaturedDto } from "./dto/set-featured.dto";
 import { ProductsService } from "./products.service";
 
 @ApiTags("admin-products")
@@ -29,50 +25,6 @@ export class AdminProductsController {
     return this.service.findAdminProduct(id);
   }
 
-  @Patch(":id/approve")
-  @AdminAuth("product.approve")
-  @ApiOkResponse()
-  approve(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
-    return this.service.approve(id, user.id);
-  }
-
-  @Patch(":id/reject")
-  @AdminAuth("product.reject")
-  @ApiOkResponse()
-  reject(@Param("id") id: string, @Body() dto: RejectProductDto, @CurrentUser() user: AuthenticatedPrincipal) {
-    return this.service.reject(id, user.id, dto.rejectionReason);
-  }
-
-  @Patch(":id/featured")
-  @AdminAuth("product.edit")
-  @ApiOkResponse()
-  setFeatured(@Param("id") id: string, @Body() dto: SetFeaturedDto) {
-    return this.service.setFeatured(id, dto.isFeatured);
-  }
-
-  @Patch(":id/suspend")
-  @AdminAuth("product.edit")
-  @ApiOkResponse()
-  suspend(@Param("id") id: string) {
-    return this.service.suspend(id);
-  }
-
-  @Patch(":id/activate")
-  @AdminAuth("product.edit")
-  @ApiOkResponse()
-  activate(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
-    return this.service.activate(id, user.id);
-  }
-
-  @Patch(":id/archive")
-  @AdminAuth("product.edit")
-  @ApiOkResponse()
-  archive(@Param("id") id: string) {
-    return this.service.archive(id);
-  }
-
-  // --- Images ---
-
   @Get(":id/images")
   @AdminAuth("product.view")
   @ApiOkResponse()
@@ -80,31 +32,22 @@ export class AdminProductsController {
     return this.service.listImagesAdmin(id);
   }
 
-  @Post(":id/images")
+  /** Trust & safety override — the only admin writes left on products. Force-hides
+   *  a listing regardless of the merchant's own status choice; everything else
+   *  about a product (creation, editing, archive/featured) is merchant-owned. */
+  @Patch(":id/suspend")
   @AdminAuth("product.edit")
-  @ApiCreatedResponse()
-  addImage(@Param("id") id: string, @Body() dto: AddProductImageDto) {
-    return this.service.addImageAdmin(id, dto);
+  @ApiOkResponse()
+  suspend(@Param("id") id: string) {
+    return this.service.suspend(id);
   }
 
-  @Patch(":id/images/reorder")
+  /** Undoes suspend() — a merchant can't self-reactivate a suspended product
+   *  (see ProductsService.update), so admin is the only path back. */
+  @Patch(":id/activate")
   @AdminAuth("product.edit")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  reorderImages(@Param("id") id: string, @Body() dto: ReorderImagesDto) {
-    return this.service.reorderImagesAdmin(id, dto.items);
-  }
-
-  @Patch(":id/images/:imageId/primary")
-  @AdminAuth("product.edit")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  setPrimaryImage(@Param("id") id: string, @Param("imageId") imageId: string) {
-    return this.service.setPrimaryImageAdmin(id, imageId);
-  }
-
-  @Delete(":id/images/:imageId")
-  @AdminAuth("product.edit")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeImage(@Param("id") id: string, @Param("imageId") imageId: string) {
-    return this.service.removeImageAdmin(id, imageId);
+  @ApiOkResponse()
+  activate(@Param("id") id: string, @CurrentUser() user: AuthenticatedPrincipal) {
+    return this.service.activate(id, user.id);
   }
 }

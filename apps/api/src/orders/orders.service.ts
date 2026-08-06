@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, type ActorType, type OrderItemStatus, type OrderStatus } from "@prisma/client";
+import { Prisma, type ActorType, type OrderItemStatus } from "@prisma/client";
 import { CartRepository } from "../cart/cart.repository";
 import { CouponsService } from "../coupons/coupons.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -221,125 +221,27 @@ export class OrdersService {
     return order;
   }
 
-  /** Generic admin path — kept for backward compatibility, now transition-validated too. */
-  async updateOrderStatus(id: string, adminId: string, status: OrderStatus, note?: string) {
-    const order = await this.findForAdmin(id);
-    const updated = await this.repo.updateOrderStatus(id, status, { type: "ADMIN", id: adminId }, note);
-    const statusLabels: Partial<Record<OrderStatus, string>> = {
-      PROCESSING: "is being processed",
-      SHIPPED: "has been shipped",
-      DELIVERED: "has been delivered",
-      CANCELLED: "has been cancelled",
-    };
-    const label = statusLabels[status];
-    if (label && order.customerId) {
-      this.notify(
-        "CUSTOMER",
-        order.customerId,
-        "ORDER_STATUS_CHANGED",
-        `Order #${order.orderNumber} ${label}`,
-        note ?? `Your order #${order.orderNumber} ${label}.`,
-        { orderId: id, status },
-      );
-    }
-    return updated;
-  }
-
-  // ===========================================================
-  // Admin: COD confirmation
-  // ===========================================================
-
-  async adminConfirmOrder(orderId: string, adminId: string) {
-    const order = await this.findForAdmin(orderId);
-    if (order.status !== "PENDING_CONFIRMATION") {
-      throw new ConflictException("Order is not awaiting confirmation");
-    }
-    await this.repo.updateAllItemsStatus(orderId, ["PENDING"], "CONFIRMED");
-    const updated = await this.repo.updateOrderStatus(orderId, "CONFIRMED", { type: "ADMIN", id: adminId });
-
-    this.notify(
-      "CUSTOMER",
-      order.customerId,
-      "ORDER_CONFIRMED",
-      `Order #${order.orderNumber} confirmed`,
-      `Your order #${order.orderNumber} has been confirmed and will be processed soon.`,
-      { orderId },
-    );
-    for (const merchantId of this.distinctMerchantIds(order.items)) {
-      this.notify(
-        "MERCHANT",
-        merchantId,
-        "NEW_COD_ORDER",
-        `New order #${order.orderNumber}`,
-        "You have a new confirmed order to fulfill.",
-        { orderId },
-      );
-    }
-    return updated;
-  }
-
-  async adminRejectOrder(orderId: string, adminId: string, reason: string) {
-    const order = await this.findForAdmin(orderId);
-    if (order.status !== "PENDING_CONFIRMATION") {
-      throw new ConflictException("Only orders awaiting confirmation can be rejected");
-    }
-    const updated = await this.repo.applyTerminalOrderStatus(orderId, {
-      status: "CANCELLED",
-      itemStatus: "CANCELLED",
-      actor: { type: "ADMIN", id: adminId },
-      note: reason,
-      cancelReason: reason,
-      rejectionReason: reason,
-      itemIds: order.items.map((i) => i.id),
-      restoreLines: order.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
-    });
-    this.notify(
-      "CUSTOMER",
-      order.customerId,
-      "ORDER_REJECTED",
-      `Order #${order.orderNumber} could not be confirmed`,
-      reason,
-      { orderId },
-    );
-    return updated;
-  }
-
-  async adminMarkDelivered(orderId: string, adminId: string) {
-    const order = await this.findForAdmin(orderId);
-    if (order.status !== "SHIPPED" && order.status !== "OUT_FOR_DELIVERY") {
-      throw new ConflictException("Order must be shipped before it can be marked delivered");
-    }
-    const activeStatuses = order.items
-      .map((i) => i.status)
-      .filter((s) => !ITEM_TERMINAL_STATUSES.has(s));
-    if (activeStatuses.length > 0) {
-      await this.repo.updateAllItemsStatus(orderId, [...new Set(activeStatuses)], "DELIVERED");
-    }
-    const updated = await this.repo.updateOrderStatus(orderId, "DELIVERED", { type: "ADMIN", id: adminId });
-    this.notify(
-      "CUSTOMER",
-      order.customerId,
-      "ORDER_DELIVERED",
-      `Order #${order.orderNumber} delivered`,
-      `Your order #${order.orderNumber} has been delivered.`,
-      { orderId },
-    );
-    return updated;
-  }
-
-  async markCodReceived(
+  /**
+   * Merchant-triggered COD collection — the merchant who delivered the
+   * order records the cash they collected. Admin only gets notified (see
+   * below), it no longer has a route to trigger this itself.
+   */
+  async merchantMarkCodReceived(
     orderId: string,
-    adminId: string,
+    merchantId: string,
     data: { amountReceived: number; receivedDate: Date; remarks?: string },
   ) {
-    const order = await this.findForAdmin(orderId);
+    const order = await this.findForMerchant(orderId, merchantId);
     if (order.status !== "DELIVERED") {
       throw new ConflictException("Payment can only be collected after the order is delivered");
     }
     if (!order.payment || order.payment.method !== "COD") {
       throw new BadRequestException("This order was not paid by Cash on Delivery");
     }
-    const result = await this.payments.markCodReceived(orderId, { ...data, adminId });
+    const result = await this.payments.markCodReceived(orderId, {
+      ...data,
+      actor: { type: "MERCHANT", id: merchantId },
+    });
 
     this.notify(
       "CUSTOMER",
@@ -349,10 +251,10 @@ export class OrdersService {
       "We've recorded your Cash on Delivery payment — your order is now complete.",
       { orderId },
     );
-    for (const otherAdminId of await this.repo.listActiveAdminIds()) {
+    for (const adminId of await this.repo.listActiveAdminIds()) {
       this.notify(
         "ADMIN",
-        otherAdminId,
+        adminId,
         "COD_PAYMENT_RECEIVED",
         `COD payment received for #${order.orderNumber}`,
         `₹${data.amountReceived} recorded for order #${order.orderNumber}.`,
@@ -637,14 +539,6 @@ export class OrdersService {
       );
     }
     return this.findForMerchant(orderId, merchantId);
-  }
-
-  async adminCancelOrder(orderId: string, adminId: string, reason?: string) {
-    const order = await this.findForAdmin(orderId);
-    if (!canCancel(order.status, "ADMIN")) {
-      throw new ConflictException("This order can no longer be cancelled");
-    }
-    return this.cancelWholeOrder(order, { type: "ADMIN", id: adminId }, reason);
   }
 
   private async cancelWholeOrder(order: OrderDetail, actor: { type: ActorType; id: string }, reason?: string) {

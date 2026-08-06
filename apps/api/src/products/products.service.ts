@@ -218,30 +218,10 @@ export class ProductsService {
     return product;
   }
 
-  async approve(id: string, adminId: string) {
-    const product = await this.findAdminProduct(id);
-    if (product.status !== "PENDING_APPROVAL") {
-      throw new BadRequestException("Only a product pending approval can be approved");
-    }
-    return this.repo.setApprovalStatus(id, { status: "APPROVED", approvedById: adminId, approvedAt: new Date() });
-  }
-
-  async reject(id: string, adminId: string, rejectionReason: string) {
-    const product = await this.findAdminProduct(id);
-    if (product.status !== "PENDING_APPROVAL") {
-      throw new BadRequestException("Only a product pending approval can be rejected");
-    }
-    return this.repo.setApprovalStatus(id, { status: "REJECTED", approvedById: adminId, rejectionReason });
-  }
-
-  async setFeatured(id: string, isFeatured: boolean) {
-    await this.findAdminProduct(id);
-    return this.repo.update(id, { isFeatured });
-  }
-
-  /** Admin-only visibility levers, available any time after creation (products
-   *  are live by default now — see create()). Unlike approve()/reject(), these
-   *  work from any current status, not just PENDING_APPROVAL. */
+  /** The only admin writes left on products — a trust & safety force-hide, and
+   *  its undo. Everything else (approve/reject/archive/featured/images) is
+   *  merchant-owned; see UpdateProductDto's status field. A merchant can't lift
+   *  a suspension themselves (blocked in update() above) — only admin can. */
   async suspend(id: string) {
     await this.findAdminProduct(id);
     return this.repo.setStatus(id, "SUSPENDED");
@@ -250,11 +230,6 @@ export class ProductsService {
   async activate(id: string, adminId: string) {
     await this.findAdminProduct(id);
     return this.repo.setApprovalStatus(id, { status: "APPROVED", approvedById: adminId, approvedAt: new Date() });
-  }
-
-  async archive(id: string) {
-    await this.findAdminProduct(id);
-    return this.repo.setStatus(id, "ARCHIVED");
   }
 
   // --- Variants ---
@@ -332,50 +307,11 @@ export class ProductsService {
     await this.repo.reorderImages(items);
   }
 
-  // --- Admin Images ---
+  // --- Admin Images (view-only) ---
 
   async listImagesAdmin(productId: string) {
     await this.findAdminProduct(productId);
     return this.repo.listImages(productId);
-  }
-
-  async addImageAdmin(productId: string, dto: AddProductImageDto) {
-    await this.findAdminProduct(productId);
-    const count = await this.repo.countImages(productId);
-    if (count >= 5) throw new BadRequestException("Maximum 5 images allowed per product");
-    return this.repo.addImage({
-      productId,
-      mediaId: dto.mediaId,
-      variantId: dto.variantId,
-      isPrimary: count === 0 || (dto.isPrimary ?? false),
-      sortOrder: count,
-    });
-  }
-
-  async removeImageAdmin(productId: string, imageId: string): Promise<void> {
-    await this.findAdminProduct(productId);
-    const image = await this.repo.findImageById(imageId);
-    if (!image || image.productId !== productId) throw new NotFoundException("Image not found");
-    const count = await this.repo.countImages(productId);
-    if (count <= 1) throw new BadRequestException("At least one image is required");
-    await this.repo.removeImage(imageId);
-    if (image.isPrimary) {
-      const remaining = await this.repo.listImages(productId);
-      const first = remaining[0];
-      if (first) await this.repo.setPrimary(productId, first.id);
-    }
-  }
-
-  async setPrimaryImageAdmin(productId: string, imageId: string) {
-    await this.findAdminProduct(productId);
-    const image = await this.repo.findImageById(imageId);
-    if (!image || image.productId !== productId) throw new NotFoundException("Image not found");
-    await this.repo.setPrimary(productId, imageId);
-  }
-
-  async reorderImagesAdmin(productId: string, items: { id: string; sortOrder: number }[]) {
-    await this.findAdminProduct(productId);
-    await this.repo.reorderImages(items);
   }
 
   // --- Internal helpers ---

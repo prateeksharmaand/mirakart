@@ -2,81 +2,46 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, PRODUCT_STATUS_LABELS, Skeleton, StatusBadge, Textarea, toast } from "@mirakart/ui";
+import { PRODUCT_STATUS_LABELS, Skeleton, StatusBadge } from "@mirakart/ui";
+import { Button, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../../components/page-header";
-import { ProductImageManager } from "../../../../components/product-image-manager";
 import { ConfirmDialog } from "../../../../components/confirm-dialog";
-import {
-  getProduct,
-  approveProduct,
-  rejectProduct,
-  suspendProduct,
-  activateProduct,
-  archiveProduct,
-  type Product,
-  type ProductVariant,
-} from "../../../../lib/api/products";
+import { activateProduct, getProduct, suspendProduct, type Product, type ProductVariant } from "../../../../lib/api/products";
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 }
 
-const rejectSchema = z.object({ rejectionReason: z.string().min(10, "Provide at least 10 characters") });
-type RejectForm = z.infer<typeof rejectSchema>;
-
 export default function AdminProductDetailPage({ params }: { params: { id: string } }) {
   const qc = useQueryClient();
-  const [rejectOpen, setRejectOpen] = React.useState(false);
   const [suspendOpen, setSuspendOpen] = React.useState(false);
-  const [archiveOpen, setArchiveOpen] = React.useState(false);
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ["admin-product", params.id],
     queryFn: () => getProduct(params.id),
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<RejectForm>({ resolver: zodResolver(rejectSchema) });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-product", params.id] });
-  const onError = (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" });
-
-  const approveMutation = useMutation({
-    mutationFn: () => approveProduct(params.id),
-    onSuccess: () => { invalidate(); toast({ title: "Product approved", variant: "success" }); },
-    onError,
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: (reason: string) => rejectProduct(params.id, reason),
-    onSuccess: () => { invalidate(); toast({ title: "Product rejected", variant: "success" }); setRejectOpen(false); reset(); },
-    onError,
-  });
-
   const suspendMutation = useMutation({
     mutationFn: () => suspendProduct(params.id),
-    onSuccess: () => { invalidate(); toast({ title: "Product suspended", description: "Hidden from customers.", variant: "success" }); setSuspendOpen(false); },
-    onError,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-product", params.id] });
+      toast({ title: "Product suspended", description: "Hidden from customers.", variant: "success" });
+      setSuspendOpen(false);
+    },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
   const activateMutation = useMutation({
     mutationFn: () => activateProduct(params.id),
-    onSuccess: () => { invalidate(); toast({ title: "Product activated", description: "Now visible to customers.", variant: "success" }); },
-    onError,
-  });
-
-  const archiveMutation = useMutation({
-    mutationFn: () => archiveProduct(params.id),
-    onSuccess: () => { invalidate(); toast({ title: "Product archived", variant: "success" }); setArchiveOpen(false); },
-    onError,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-product", params.id] });
+      toast({ title: "Product reactivated", variant: "success" });
+    },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
   });
 
   if (isLoading) return <div className="flex flex-col gap-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-64 w-full" /></div>;
   if (!product) return <p>Product not found.</p>;
-
-  const isPendingApproval = product.status === "PENDING_APPROVAL";
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
@@ -84,22 +49,10 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
         title={product.name}
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Products", href: "/products" }, { label: product.name }]}
         action={
-          isPendingApproval ? (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setRejectOpen(true)}>Reject</Button>
-              <Button onClick={() => approveMutation.mutate()} isLoading={approveMutation.isPending}>Approve</Button>
-            </div>
+          product.status === "SUSPENDED" ? (
+            <Button onClick={() => activateMutation.mutate()} isLoading={activateMutation.isPending}>Reactivate</Button>
           ) : (
-            <div className="flex gap-2">
-              {product.status !== "ARCHIVED" && (
-                <Button variant="outline" onClick={() => setArchiveOpen(true)}>Archive</Button>
-              )}
-              {product.status === "APPROVED" ? (
-                <Button variant="danger" onClick={() => setSuspendOpen(true)}>Suspend</Button>
-              ) : (
-                <Button onClick={() => activateMutation.mutate()} isLoading={activateMutation.isPending}>Activate</Button>
-              )}
-            </div>
+            <Button variant="danger" onClick={() => setSuspendOpen(true)}>Suspend</Button>
           )
         }
       />
@@ -168,45 +121,34 @@ export default function AdminProductDetailPage({ params }: { params: { id: strin
           </div>
         )}
 
-        <ProductImageManager productId={params.id} />
-      </div>
-
-      {/* Reject dialog */}
-      {rejectOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-modal">
-            <h2 className="mb-4 text-lg font-semibold">Reject Product</h2>
-            <form onSubmit={handleSubmit((v) => rejectMutation.mutate(v.rejectionReason))}>
-              <FormField label="Reason" htmlFor="rejectionReason" error={errors.rejectionReason?.message} required>
-                <Textarea id="rejectionReason" rows={3} placeholder="Explain why this product is being rejected…" {...register("rejectionReason")} />
-              </FormField>
-              <div className="mt-4 flex gap-3">
-                <Button type="button" variant="outline" onClick={() => { setRejectOpen(false); reset(); }}>Cancel</Button>
-                <Button type="submit" variant="danger" isLoading={rejectMutation.isPending}>Reject</Button>
-              </div>
-            </form>
+        {product.images && product.images.length > 0 && (
+          <div className="rounded-xl border border-border bg-white p-6">
+            <h2 className="text-sm font-semibold mb-4">Product Images</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {product.images.map((image) => (
+                <div key={image.id} className="relative rounded-lg overflow-hidden border border-border" style={{ aspectRatio: "1" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image.media.url} alt="" className="w-full h-full object-cover" />
+                  {image.isPrimary && (
+                    <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-white">
+                      Primary
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <ConfirmDialog
         open={suspendOpen}
         title="Suspend product"
-        description={`"${product.name}" will be hidden from customers immediately. You can activate it again anytime.`}
+        description={`"${product.name}" will be hidden from customers immediately. This is a trust & safety override — the merchant manages everything else about this listing.`}
         confirmLabel="Suspend"
         isLoading={suspendMutation.isPending}
         onConfirm={() => suspendMutation.mutate()}
         onCancel={() => setSuspendOpen(false)}
-      />
-
-      <ConfirmDialog
-        open={archiveOpen}
-        title="Archive product"
-        description={`Archive "${product.name}"? It will no longer be visible to customers.`}
-        confirmLabel="Archive"
-        isLoading={archiveMutation.isPending}
-        onConfirm={() => archiveMutation.mutate()}
-        onCancel={() => setArchiveOpen(false)}
       />
     </div>
   );
