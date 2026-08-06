@@ -230,7 +230,7 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
+    <div className="flex flex-col gap-6 max-w-6xl">
       <PageHeader
         title={`Order #${order.orderNumber}`}
         crumbs={[{ label: "Dashboard", href: "/" }, { label: "Orders", href: "/orders" }, { label: `#${order.orderNumber}` }]}
@@ -256,140 +256,171 @@ export default function MerchantOrderDetailPage({ params }: { params: { id: stri
         }
       />
 
-      <div className="rounded-xl border border-border bg-white p-6 grid grid-cols-2 gap-4">
-        <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={order.status} /></div>
-        <div><p className="text-xs text-muted-foreground">Date</p><p className="text-sm">{new Date(order.createdAt).toLocaleString()}</p></div>
-        {order.customer && (
-          <>
-            <div><p className="text-xs text-muted-foreground">Customer</p><p className="text-sm">{order.customer.firstName} {order.customer.lastName}</p></div>
-            <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm">{order.customer.email}</p></div>
-            <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm">{order.customer.phone}</p></div>
-          </>
-        )}
-      </div>
-
-      {order.statusHistory && order.statusHistory.length > 0 && (
-        <div className="rounded-xl border border-border bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold">Order Timeline</h2>
-          <OrderTimeline status={order.status} history={order.statusHistory} />
-        </div>
-      )}
-
-      {order.shippingAddress && (
-        <div className="rounded-xl border border-border bg-white p-6">
-          <h2 className="mb-3 text-sm font-semibold">Shipping Address</h2>
-          <p className="text-sm">{order.shippingAddress.fullName}</p>
-          <p className="text-sm text-muted-foreground">
-            {order.shippingAddress.line1}
-            {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
-          </p>
-          <p className="text-sm text-muted-foreground">{order.shippingAddress.country}</p>
-          <p className="text-sm text-muted-foreground">{order.shippingAddress.phone}</p>
-        </div>
-      )}
-
-      {shipment && (
-        <div className="rounded-xl border border-border bg-white p-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Shipment Information</h2>
-            {canEditShipment && (
-              <Button variant="outline" size="sm" onClick={openEditShipment}>Edit Shipment</Button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Dispatch Method</p>
-              <p>{shipment.dispatchMethod === "COURIER" ? "Courier Partner" : "Self Delivery"}</p>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Main column */}
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {order.statusHistory && order.statusHistory.length > 0 && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-4 text-sm font-semibold">Order Timeline</h2>
+              <OrderTimeline status={order.status} history={order.statusHistory} />
             </div>
-            {shipment.dispatchMethod === "COURIER" ? (
-              <>
-                <div>
-                  <p className="text-xs text-muted-foreground">Courier</p>
-                  <p>{shipment.courierPartner === "Other" ? shipment.customCourierName : shipment.courierPartner}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Tracking Number</p>
-                  <p className="font-mono">{shipment.trackingNumber ?? "—"}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="text-xs text-muted-foreground">Delivery Person</p>
-                  <p>{shipment.deliveryPersonName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  <p>{shipment.deliveryPersonPhone}</p>
-                </div>
-                {shipment.vehicleNumber && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Vehicle Number</p>
-                    <p>{shipment.vehicleNumber}</p>
-                  </div>
-                )}
-              </>
-            )}
-            {shipment.dispatchDate && (
-              <div>
-                <p className="text-xs text-muted-foreground">Dispatch Date</p>
-                <p>{new Date(shipment.dispatchDate).toLocaleDateString()}</p>
-              </div>
-            )}
-            {shipment.expectedDeliveryDate && (
-              <div>
-                <p className="text-xs text-muted-foreground">Expected Delivery</p>
-                <p>{new Date(shipment.expectedDeliveryDate).toLocaleDateString()}</p>
-              </div>
-            )}
-          </div>
-          {shipment.shipmentNotes && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              {shipment.dispatchMethod === "COURIER" ? "Shipment Notes: " : "Remarks: "}
-              {shipment.shipmentNotes}
-            </p>
           )}
-        </div>
-      )}
 
-      {myItems.length > 0 && (
-        <div className="rounded-xl border border-border bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold">Your Items in This Order</h2>
-          <div className="flex flex-col gap-3">
-            {myItems.map((item) => {
-              const image = item.product?.images[0]?.media?.url;
-              return (
-                <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-14 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
-                      {image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image} alt="" className="h-full w-full object-cover" />
-                      ) : null}
+          {shipment && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Shipment Information</h2>
+                {canEditShipment && (
+                  <Button variant="outline" size="sm" onClick={openEditShipment}>Edit Shipment</Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Dispatch Method</p>
+                  <p>{shipment.dispatchMethod === "COURIER" ? "Courier Partner" : "Self Delivery"}</p>
+                </div>
+                {shipment.dispatchMethod === "COURIER" ? (
+                  <>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Courier</p>
+                      <p>{shipment.courierPartner === "Other" ? shipment.customCourierName : shipment.courierPartner}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{item.productNameSnapshot}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[item.product?.productCode, item.product?.category?.name].filter(Boolean).join(" · ")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
-                      <div className="mt-1"><StatusBadge status={item.status} /></div>
+                      <p className="text-xs text-muted-foreground">Tracking Number</p>
+                      <p className="font-mono">{shipment.trackingNumber ?? "—"}</p>
                     </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Delivery Person</p>
+                      <p>{shipment.deliveryPersonName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p>{shipment.deliveryPersonPhone}</p>
+                    </div>
+                    {shipment.vehicleNumber && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Vehicle Number</p>
+                        <p>{shipment.vehicleNumber}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {shipment.dispatchDate && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Dispatch Date</p>
+                    <p>{new Date(shipment.dispatchDate).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-4 border-t border-border pt-3 flex justify-between">
-            <span className="text-sm font-semibold">Your Total</span>
-            <span className="text-sm font-semibold">{formatCurrency(myItems.reduce((s, i) => s + i.totalPrice, 0))}</span>
-          </div>
+                )}
+                {shipment.expectedDeliveryDate && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Expected Delivery</p>
+                    <p>{new Date(shipment.expectedDeliveryDate).toLocaleDateString()}</p>
+                  </div>
+                )}
+              </div>
+              {shipment.shipmentNotes && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {shipment.dispatchMethod === "COURIER" ? "Shipment Notes: " : "Remarks: "}
+                  {shipment.shipmentNotes}
+                </p>
+              )}
+            </div>
+          )}
+
+          {myItems.length > 0 && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-4 text-sm font-semibold">Your Items in This Order</h2>
+              <div className="flex flex-col gap-3">
+                {myItems.map((item) => {
+                  const image = item.product?.images[0]?.media?.url;
+                  return (
+                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-14 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
+                          {image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={image} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{item.productNameSnapshot}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[item.product?.productCode, item.product?.category?.name].filter(Boolean).join(" · ")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">SKU: {item.variantSnapshot?.sku ?? "—"} · Qty: {item.quantity}</p>
+                          <div className="mt-1"><StatusBadge status={item.status} /></div>
+                        </div>
+                      </div>
+                      <p className="text-sm font-medium">{formatCurrency(item.totalPrice)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 border-t border-border pt-3 flex justify-between">
+                <span className="text-sm font-semibold">Your Total</span>
+                <span className="text-sm font-semibold">{formatCurrency(myItems.reduce((s, i) => s + i.totalPrice, 0))}</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Sidebar */}
+        <div className="flex flex-col gap-6 lg:col-span-1 lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-xl border border-border bg-white p-6">
+            <h2 className="mb-4 text-sm font-semibold">Order Overview</h2>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Status</span>
+                <StatusBadge status={order.status} />
+              </div>
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <span className="text-xs text-muted-foreground">Date</span>
+                <span className="text-sm">{new Date(order.createdAt).toLocaleDateString()}</span>
+              </div>
+              {order.payment && (
+                <>
+                  <div className="flex items-center justify-between border-t border-border pt-3">
+                    <span className="text-xs text-muted-foreground">Payment Method</span>
+                    <span className="text-sm">{order.payment.method}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Payment Status</span>
+                    <span className="text-sm">{order.payment.status}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {order.customer && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-3 text-sm font-semibold">Customer</h2>
+              <p className="text-sm font-medium">{order.customer.firstName} {order.customer.lastName}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{order.customer.email}</p>
+              <p className="text-sm text-muted-foreground">{order.customer.phone}</p>
+            </div>
+          )}
+
+          {order.shippingAddress && (
+            <div className="rounded-xl border border-border bg-white p-6">
+              <h2 className="mb-3 text-sm font-semibold">Shipping Address</h2>
+              <p className="text-sm">{order.shippingAddress.fullName}</p>
+              <p className="text-sm text-muted-foreground">
+                {order.shippingAddress.line1}
+                {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+              </p>
+              <p className="text-sm text-muted-foreground">{order.shippingAddress.country}</p>
+              <p className="text-sm text-muted-foreground">{order.shippingAddress.phone}</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       <ConfirmDialog
         open={advanceOpen}
