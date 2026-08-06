@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { Pencil, Plus } from "lucide-react";
-import { Badge, Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@mirakart/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Badge, Button, Input, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@mirakart/ui";
 import { PageHeader } from "../../../components/page-header";
 import { DataTable, type Column } from "../../../components/data-table";
-import { listCoupons, type Coupon } from "../../../lib/api/coupons";
+import { ConfirmDialog } from "../../../components/confirm-dialog";
+import { CouponQuickView } from "../../../components/coupon-quick-view";
+import { listCoupons, updateCoupon, type Coupon } from "../../../lib/api/coupons";
 
 function formatDiscount(c: Coupon) {
   return c.discountType === "PERCENTAGE" ? `${c.discountValue}% off` : `₹${c.discountValue} off`;
@@ -23,6 +25,9 @@ export default function CouponsPage() {
   const [status, setStatus] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("createdAt");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [quickViewId, setQuickViewId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Coupon | null>(null);
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["coupons", page, search, status, sortBy, sortOrder],
@@ -54,6 +59,19 @@ export default function CouponsPage() {
     setPage(1);
   }
 
+  const deleteMutation = useMutation({
+    // Coupons don't hard-delete — past orders keep a durable reference via
+    // couponCode/couponId, and redemption history would cascade-delete with
+    // them. "Delete" here deactivates instead, same as the isActive toggle.
+    mutationFn: (id: string) => updateCoupon(id, { isActive: false }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coupons"] });
+      toast({ title: "Coupon deleted", variant: "success" });
+      setDeleteTarget(null);
+    },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "danger" }),
+  });
+
   const columns: Column<Coupon>[] = [
     {
       key: "sno",
@@ -61,7 +79,16 @@ export default function CouponsPage() {
       className: "w-12",
       cell: (_r, index) => (data?.meta ? (data.meta.page - 1) * data.meta.limit : 0) + index + 1,
     },
-    { key: "code", header: "Code", sortable: true, cell: (r) => <span className="font-mono text-sm font-medium">{r.code}</span> },
+    {
+      key: "code",
+      header: "Code",
+      sortable: true,
+      cell: (r) => (
+        <button type="button" onClick={() => setQuickViewId(r.id)} className="font-mono text-sm font-medium hover:text-primary hover:underline">
+          {r.code}
+        </button>
+      ),
+    },
     { key: "discount", header: "Discount", cell: (r) => formatDiscount(r) },
     {
       key: "usedCount",
@@ -79,11 +106,21 @@ export default function CouponsPage() {
     {
       key: "actions",
       header: "Action",
-      className: "w-16",
+      className: "w-24",
       cell: (r) => (
-        <Link href={`/coupons/${r.id}`} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-          <Pencil className="h-3.5 w-3.5" /> Edit
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href={`/coupons/${r.id}`} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+            <Pencil className="h-3.5 w-3.5" /> Edit
+          </Link>
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(r)}
+            className="inline-flex items-center gap-1 text-sm text-danger hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
+            disabled={!r.isActive}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        </div>
       ),
     },
   ];
@@ -122,6 +159,17 @@ export default function CouponsPage() {
       {data?.meta && data.meta.totalPages > 1 && (
         <Pagination page={data.meta.page} totalPages={data.meta.totalPages} onPageChange={setPage} />
       )}
+      <CouponQuickView couponId={quickViewId} onOpenChange={(open) => !open && setQuickViewId(null)} />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete coupon"
+        description={`Delete "${deleteTarget?.code}"? It will stop working immediately. Past orders that used it keep their discount record.`}
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
