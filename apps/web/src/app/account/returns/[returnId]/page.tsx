@@ -43,7 +43,7 @@ export default function ReturnDetailPage({ params }: { params: { returnId: strin
           {ret.resolutionType === "REPLACEMENT" ? "Replacement" : "Refund"}
         </p>
         <p className="mt-1 text-sm text-foreground">
-          <span className="font-medium">Reason:</span> {ret.reason.reason}
+          <span className="font-medium">Reason:</span> {ret.reason?.reason ?? "—"}
         </p>
         {ret.reasonDetail ? <p className="mt-1 text-sm text-foreground-muted">{ret.reasonDetail}</p> : null}
         <p className="mt-1 text-sm text-foreground-muted">Quantity: {ret.quantity}</p>
@@ -59,8 +59,8 @@ export default function ReturnDetailPage({ params }: { params: { returnId: strin
             <div>
               <p className="text-xs text-foreground-muted">You bought</p>
               <p className="text-sm text-foreground">
-                {ret.orderItem?.variantSnapshot.attributes.map((a) => `${a.attributeName}: ${a.value}`).join(", ") ||
-                  ret.orderItem?.variantSnapshot.sku}
+                {ret.orderItem?.variantSnapshot?.attributes?.map((a) => `${a.attributeName}: ${a.value}`).join(", ") ||
+                  ret.orderItem?.variantSnapshot?.sku}
               </p>
             </div>
             <div>

@@ -53,8 +53,8 @@ export default function ReturnDetailPage({ params }: { params: { id: string } })
           <div>
             <p className="text-xs text-muted-foreground">Customer bought</p>
             <p className="text-sm">
-              {ret.orderItem?.variantSnapshot.attributes.map((a) => `${a.attributeName}: ${a.value}`).join(", ") ||
-                ret.orderItem?.variantSnapshot.sku}
+              {ret.orderItem?.variantSnapshot?.attributes?.map((a) => `${a.attributeName}: ${a.value}`).join(", ") ||
+                ret.orderItem?.variantSnapshot?.sku}
             </p>
           </div>
           <div>

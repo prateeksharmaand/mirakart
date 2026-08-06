@@ -69,7 +69,7 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
                   <p className="text-xs text-foreground-muted">
                     {[item.product?.productCode, item.product?.brand?.name].filter(Boolean).join(" · ")}
                   </p>
-                  {item.variantSnapshot.attributes.length > 0 ? (
+                  {item.variantSnapshot?.attributes && item.variantSnapshot.attributes.length > 0 ? (
                     <p className="text-xs text-foreground-muted">
                       {item.variantSnapshot.attributes.map((a) => `${a.attributeName}: ${a.value}`).join(", ")}
                     </p>

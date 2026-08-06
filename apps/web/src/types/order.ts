@@ -26,7 +26,7 @@ export interface OrderItem {
   productId: string;
   variantId: string;
   productNameSnapshot: string;
-  variantSnapshot: { sku: string; attributes: { attributeName: string; value: string; colorHex: string | null }[] };
+  variantSnapshot: { sku: string; attributes: { attributeName: string; value: string; colorHex: string | null }[] } | null;
   quantity: number;
   unitPrice: string;
   totalPrice: string;

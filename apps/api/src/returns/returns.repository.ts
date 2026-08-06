@@ -15,6 +15,9 @@ const returnDetailInclude = {
   reason: true,
   orderItem: true,
   replacementVariant: { include: variantAttributeValuesInclude },
+  order: { select: { id: true, orderNumber: true } },
+  merchant: { select: { id: true, storeName: true } },
+  customer: { select: { id: true, firstName: true, lastName: true } },
 };
 
 export class InsufficientReplacementStockError extends Error {
@@ -120,7 +123,12 @@ export class ReturnsRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.return.findMany({
         where,
-        include: { reason: true, images: true },
+        include: {
+          reason: true,
+          images: true,
+          order: { select: { id: true, orderNumber: true } },
+          customer: { select: { id: true, firstName: true, lastName: true } },
+        },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
         orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, RETURN_SORT_FIELDS, "createdAt"),
@@ -145,7 +153,13 @@ export class ReturnsRepository {
     const [items, totalItems] = await Promise.all([
       this.prisma.return.findMany({
         where,
-        include: { reason: true, images: true },
+        include: {
+          reason: true,
+          images: true,
+          order: { select: { id: true, orderNumber: true } },
+          customer: { select: { id: true, firstName: true, lastName: true } },
+          merchant: { select: { id: true, storeName: true } },
+        },
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
         orderBy: buildOrderBy(filter.sortBy, filter.sortOrder, RETURN_SORT_FIELDS, "createdAt"),

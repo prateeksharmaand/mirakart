@@ -33,7 +33,7 @@ export interface Return {
   order?: { id: string; orderNumber: string } | null;
   orderItem?: {
     productNameSnapshot: string;
-    variantSnapshot: { sku: string; attributes: { attributeName: string; value: string; colorHex: string | null }[] };
+    variantSnapshot: { sku: string; attributes: { attributeName: string; value: string; colorHex: string | null }[] } | null;
   } | null;
   customer?: { id: string; firstName: string; lastName: string } | null;
   merchant?: { id: string; storeName: string } | null;

@@ -51,7 +51,7 @@ export interface ReturnOrderItem {
   variantSnapshot: {
     sku: string;
     attributes: { attributeName: string; value: string; colorHex: string | null }[];
-  };
+  } | null;
   quantity: number;
 }
 
@@ -65,7 +65,7 @@ export interface ReturnRequest {
   resolutionType: ReturnResolutionType;
   replacementVariant: { id: string; sku: string; attributeValues: VariantAttributeValue[] } | null;
   requestedAt: string;
-  reason: ReturnReason;
+  reason: ReturnReason | null;
   images: ReturnImage[];
   statusHistory?: ReturnStatusHistoryEntry[];
   orderItem?: ReturnOrderItem;
